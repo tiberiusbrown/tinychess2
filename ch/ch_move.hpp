@@ -65,10 +65,10 @@ char const* move::extended_algebraic() const
     int a = from();
     int b = to();
 
-    *bp++ = 'a' + (a % 8);
-    *bp++ = '8' - (a / 8);
-    *bp++ = 'a' + (b % 8);
-    *bp++ = '8' - (b / 8);
+    *bp++ = char('a' + (a % 8));
+    *bp++ = char('8' - (a / 8));
+    *bp++ = char('a' + (b % 8));
+    *bp++ = char('8' - (b / 8));
 
     if(is_promotion())
     {

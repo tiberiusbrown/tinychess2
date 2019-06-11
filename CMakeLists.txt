@@ -8,7 +8,7 @@ set(EXETYPE)
 
 if(MSVC AND NOT LLVM)
     set(EXETYPE WIN32)
-    set(CMAKE_CXX_FLAGS "/MT /DWIN32 /D_WINDOWS /W3 /FAcs /Gy")
+    set(CMAKE_CXX_FLAGS "/W4 /MT /DWIN32 /D_WINDOWS /FAcs /Gy /EHsc /Gs65536 /wd4127")
     set(CMAKE_CXX_FLAGS_MINSIZEREL "/DNDEBUG /MT /O1 /Oi /Os /Oy /GS- /fp:fast /Gr")
     set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /MT /Ox /Oi /Ot /Oy /Ob2 /GS- /fp:fast /Gr")
     set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS}")
@@ -94,14 +94,7 @@ add_executable(${PROJECT_NAME} ${EXETYPE} ${GUI_SOURCES})
 target_link_libraries(${PROJECT_NAME} ch)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "ch")
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
-    target_compile_options(${PROJECT_NAME} PRIVATE /Gr)
-    target_compile_options(${PROJECT_NAME} PRIVATE /EHsc)
     #target_compile_options(${PROJECT_NAME} PRIVATE /d2noftol3)
-    #target_compile_options(${PROJECT_NAME} PRIVATE
-    #    $<$<CONFIG:MINSIZEREL>:/Os /Oy>)
-    target_compile_options(${PROJECT_NAME} PRIVATE
-        /GS- /Gs9999999)
 
     if(MSVC_VERSION VERSION_LESS 1700)
         target_compile_options(${PROJECT_NAME} PRIVATE

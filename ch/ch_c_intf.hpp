@@ -3,7 +3,7 @@
 #include "ch.h"
 #include "ch_internal.hpp"
 
-static ch::position p;
+static ch::position g_pos;
 
 extern "C"
 {
@@ -15,19 +15,19 @@ void CHAPI ch_init()
 }
 void CHAPI ch_new_game()
 {
-    p.new_game();
+    g_pos.new_game();
 }
 void CHAPI ch_load_fen(char const* fen)
 {
-    p.load_fen(fen);
+    g_pos.load_fen(fen);
 }
 uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 {
 #if CH_ENABLE_ACCEL
     if(ch::has_sse())
-        return p.root_perft<ch::ACCEL_SSE>(depth, counts);
+        return g_pos.root_perft<ch::ACCEL_SSE>(depth, counts);
 #endif
-    return p.root_perft<ch::ACCEL_UNACCEL>(depth, counts);
+    return g_pos.root_perft<ch::ACCEL_UNACCEL>(depth, counts);
 }
 
 }

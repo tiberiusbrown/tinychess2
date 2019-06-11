@@ -164,14 +164,14 @@ void position::do_move(move const& mv)
         {
             int rook = p + ROOK - KING;
             bbs[rook] ^= (0x9ull << (a - 4));
-            pieces[a - 1] = rook;
+            pieces[a - 1] = uint8_t(rook);
             pieces[a - 4] = EMPTY;
         }
         else if(mv.is_castlek())
         {
             int rook = p + ROOK - KING;
             bbs[rook] ^= (0xAull << a);
-            pieces[a + 1] = rook;
+            pieces[a + 1] = uint8_t(rook);
             pieces[a + 3] = EMPTY;
         }
         else if(mv.is_en_passant())
@@ -188,7 +188,7 @@ void position::do_move(move const& mv)
             bbs[p] ^= (1ull << a);
             bbs[t] ^= cap_bb;
             pieces[a] = EMPTY;
-            pieces[b] = t;
+            pieces[b] = uint8_t(t);
             return;
         }
     }
@@ -196,7 +196,7 @@ void position::do_move(move const& mv)
     bbs[cap] ^= cap_bb;
     bbs[p] ^= p_bb;
     pieces[a] = EMPTY;
-    pieces[b] = p;
+    pieces[b] = uint8_t(p);
 }
 
 template<acceleration accel>
@@ -220,19 +220,19 @@ void position::undo_move(move const& mv)
             int rook = p + ROOK - KING;
             bbs[rook] ^= (0x9ull << (a - 4));
             pieces[a - 1] = EMPTY;
-            pieces[a - 4] = rook;
+            pieces[a - 4] = uint8_t(rook);
         }
         else if(mv.is_castlek())
         {
             int rook = p + ROOK - KING;
             bbs[rook] ^= (0xAull << a);
             pieces[a + 1] = EMPTY;
-            pieces[a + 3] = rook;
+            pieces[a + 3] = uint8_t(rook);
         }
         else if(mv.is_en_passant())
         {
             int sq = (mv >> 16) & 0xff;
-            pieces[sq] = cap;
+            pieces[sq] = uint8_t(cap);
             bbs[pieces[sq]] ^= (1ull << sq);
             cap = EMPTY;
         }
@@ -243,16 +243,16 @@ void position::undo_move(move const& mv)
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);
             bbs[t] ^= cap_bb;
-            pieces[a] = p;
-            pieces[b] = cap;
+            pieces[a] = uint8_t(p);
+            pieces[b] = uint8_t(cap);
             return;
         }
     }
 
     bbs[cap] ^= cap_bb;
     bbs[p] ^= p_bb;
-    pieces[a] = p;
-    pieces[b] = cap;
+    pieces[a] = uint8_t(p);
+    pieces[b] = uint8_t(cap);
 }
 
 #if CH_COLOR_TEMPLATE
@@ -270,9 +270,9 @@ uint64_t position::perft(color c, int depth)
     //    return 1;
 
 #if CH_COLOR_TEMPLATE
-    num = move_generator<c, accel>::generate(mvs, p);
+    num = move_generator<c, accel>::generate(mvs, *this);
 #else
-    num = move_generator<accel>::generate(c, mvs, p);
+    num = move_generator<accel>::generate(c, mvs, *this);
 #endif
     if(depth <= 1)
         return num;
@@ -300,9 +300,9 @@ uint64_t position::root_perft(int depth, uint64_t* counts)
 
 #if CH_COLOR_TEMPLATE
     if(current_turn == WHITE)
-        num = move_generator<WHITE, accel>::generate(mvs, p);
+        num = move_generator<WHITE, accel>::generate(mvs, *this);
     else
-        num = move_generator<BLACK, accel>::generate(mvs, p);
+        num = move_generator<BLACK, accel>::generate(mvs, *this);
 #else
     num = move_generator<accel>::generate(current_turn, mvs, p);
 #endif
