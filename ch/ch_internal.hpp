@@ -132,8 +132,8 @@ inline int msb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
-#ifdef CH_ARCH_X86
     unsigned long i;
+#ifdef CH_ARCH_X86
     if(uint32_t(x >> 32) != 0)
     {
         _BitScanReverse(&i, uint32_t(x));
@@ -154,8 +154,8 @@ inline int lsb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
-#ifdef CH_ARCH_X86
     unsigned long i;
+#ifdef CH_ARCH_X86
     if(uint32_t(x) != 0)
     {
         _BitScanForward(&i, uint32_t(x));
