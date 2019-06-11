@@ -185,7 +185,13 @@ static CH_FORCEINLINE uint64_t hq_bishop_attacks_sse(int sq, uint64_t occ)
 {
     __m128i occ128 = _mm_set1_epi64x(occ);
     __m128i a = hq_attacks(sq, occ128, *(__m128i*)masks[sq].diag_anti);
+#ifdef __GNUC__
+    // TODO: use Agner Fog's vector class to avoid this aliasing nonsense
+    using u64a = uint64_t __attribute((__may_alias__));
+    return ((u64a*)&a)[0] | ((u64a*)&a)[1];
+#else
     return ((uint64_t*)&a)[0] | ((uint64_t*)&a)[1];
+#endif
 }
 
 }

@@ -37,7 +37,9 @@ void init_cpuid()
 #endif
 }
 
+#ifdef CH_ARCH_X86
 bool has_sse() { return has_sse_; }
+#endif
 bool has_popcnt() { return has_popcnt_; }
 bool has_avx() { return has_avx_; }
 

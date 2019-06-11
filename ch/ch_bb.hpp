@@ -61,7 +61,7 @@ static CH_FORCEINLINE constexpr uint64_t shift_se(uint64_t bb)
     return (bb << 9) & ~FILEA;
 }
 
-static CH_FORCEINLINE constexpr uint64_t slide_fill_n(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_n(uint64_t bb, uint64_t empty)
 {
     bb |= empty & (bb >> 8);
     empty &= (empty >> 8);
@@ -70,7 +70,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_n(uint64_t bb, uint64_t empt
     bb |= empty & (bb >> 32);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_s(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_s(uint64_t bb, uint64_t empty)
 {
     bb |= empty & (bb << 8);
     empty &= (empty << 8);
@@ -79,7 +79,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_s(uint64_t bb, uint64_t empt
     bb |= empty & (bb << 32);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_w(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_w(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEH;
     bb |= empty & (bb >> 1);
@@ -89,7 +89,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_w(uint64_t bb, uint64_t empt
     bb |= empty & (bb >> 4);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_e(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_e(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEA;
     bb |= empty & (bb << 1);
@@ -99,7 +99,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_e(uint64_t bb, uint64_t empt
     bb |= empty & (bb << 4);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_nw(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_nw(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEH;
     bb |= empty & (bb >> 9);
@@ -109,7 +109,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_nw(uint64_t bb, uint64_t emp
     bb |= empty & (bb >> 36);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_ne(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_ne(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEA;
     bb |= empty & (bb >> 7);
@@ -119,7 +119,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_ne(uint64_t bb, uint64_t emp
     bb |= empty & (bb >> 28);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_sw(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_sw(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEH;
     bb |= empty & (bb << 7);
@@ -129,7 +129,7 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_sw(uint64_t bb, uint64_t emp
     bb |= empty & (bb << 28);
     return bb;
 }
-static CH_FORCEINLINE constexpr uint64_t slide_fill_se(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_fill_se(uint64_t bb, uint64_t empty)
 {
     empty &= ~FILEA;
     bb |= empty & (bb << 9);
@@ -140,40 +140,40 @@ static CH_FORCEINLINE constexpr uint64_t slide_fill_se(uint64_t bb, uint64_t emp
     return bb;
 }
 
-static CH_FORCEINLINE constexpr uint64_t slide_attack_n(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_n(uint64_t bb, uint64_t empty)
 {
     return shift_n(slide_fill_n(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_s(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_s(uint64_t bb, uint64_t empty)
 {
     return shift_s(slide_fill_s(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_w(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_w(uint64_t bb, uint64_t empty)
 {
     return shift_w(slide_fill_w(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_e(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_e(uint64_t bb, uint64_t empty)
 {
     return shift_e(slide_fill_e(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_nw(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_nw(uint64_t bb, uint64_t empty)
 {
     return shift_nw(slide_fill_nw(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_ne(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_ne(uint64_t bb, uint64_t empty)
 {
     return shift_ne(slide_fill_ne(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_sw(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_sw(uint64_t bb, uint64_t empty)
 {
     return shift_sw(slide_fill_sw(bb, empty));
 }
-static CH_FORCEINLINE constexpr uint64_t slide_attack_se(uint64_t bb, uint64_t empty)
+static CH_FORCEINLINE uint64_t slide_attack_se(uint64_t bb, uint64_t empty)
 {
     return shift_se(slide_fill_se(bb, empty));
 }
 
-static inline uint64_t bswap(uint64_t x)
+static CH_FORCEINLINE uint64_t bswap(uint64_t x)
 {
 #if 1
 #ifdef _MSC_VER

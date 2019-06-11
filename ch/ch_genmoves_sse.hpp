@@ -25,7 +25,6 @@ struct move_generator<ACCEL_SSE>
 #endif
     {
         move* m = mvs;
-        move* const first_move = mvs;
 
         color const enemy_color = opposite(c);
 
@@ -55,8 +54,6 @@ struct move_generator<ACCEL_SSE>
 
         uint64_t pin_mask = 0;
         uint64_t attacked_nonking = 0;
-        uint64_t king_checkers = 0;
-        uint64_t king_check_rays = 0;
         int const king_sq = lsb(king);
 
         // find squares attacked by enemy

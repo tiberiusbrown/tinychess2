@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(tinychess2 C CXX)
 
+set(CMAKE_CXX_STANDARD 11)
+
 set(EXETYPE)
 
 if(MSVC AND NOT LLVM)
@@ -18,15 +20,63 @@ if(MSVC AND NOT LLVM)
     set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "")
     add_definitions(-D_HAS_EXCEPTIONS=0)
 elseif(UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-unwind-tables")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-asynchronous-unwind-tables")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-protector")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer")
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+
+    if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+        option(CFG_BUILD_32BIT "Build 32-bit executable" OFF)
+    else()
+        set(CFG_BUILD_32BIT ON)
+    endif()
+	if(CFG_BUILD_32BIT)
+		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/link32.ld")
+	else()
+		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/link64.ld")
+	endif()
+
+    set(COMMON_FLAGS)
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-exceptions -fno-unwind-tables")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-asynchronous-unwind-tables")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-stack-protector")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -Wno-unused-function")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-builtin")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fvisibility=hidden")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fdata-sections -ffunction-sections")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fomit-frame-pointer")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-ident -Qn")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -freg-struct-return")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -Wall -Wextra")
+
+	if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 6)
+		set(COMMON_FLAGS "${COMMON_FLAGS} -fno-plt")
+	endif()
+
+    set(CMAKE_CXX_FLAGS "${COMMON_FLAGS}")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${COMMON_FLAGS}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${COMMON_FLAGS}")
+
+    set(COMMON_OPT_FLAGS)
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS} -DNDEBUG")
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS} -fmerge-all-constants")
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS} -fmodulo-sched")
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS} -fmodulo-sched-allow-regmoves")
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS} -flto")
+    set(COMMON_OPT_FLAGS "${COMMON_OPT_FLAGS}")
+
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} ${COMMON_OPT_FLAGS}")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${COMMON_OPT_FLAGS}")
+
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -Os")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-functions=1")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-jumps=1")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-labels=1")
+    set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-loops=1")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Ofast")
+
+    set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+
+    set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-flto")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-flto")
 endif()
 
 file(GLOB CH_SOURCES "ch/*")
@@ -84,7 +134,25 @@ elseif(UNIX)
 
     target_compile_options(${PROJECT_NAME} PRIVATE -nodefaultlibs)
 
+    target_link_libraries(${PROJECT_NAME} c)
+
     set_property(
         TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
-        " -Wl,-estart -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-s")
+        " -Wl,-estart -nostartfiles -nostdlib -Wl,--gc-sections")
+
+	set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS "${LINKLD}")
+	set_property(
+		TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+		" -Wl,-T,${LINKLD}")
+
+	set_property(
+		TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+		" -Wl,--build-id=none -Wl,-z,norelro -Wl,--hash-style=gnu -s")
+
+	file(GLOB SSTRIP_SOURCES sstrip/*.c sstrip/*.h)
+	add_executable(sstrip ${SSTRIP_SOURCES})
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND $<TARGET_FILE:sstrip> $<TARGET_FILE:${PROJECT_NAME}>
+		)
+
 endif()

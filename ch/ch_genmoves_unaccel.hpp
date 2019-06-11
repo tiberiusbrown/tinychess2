@@ -194,8 +194,16 @@ struct move_generator<ACCEL_UNACCEL>
     static int generate(color c, move* mvs, position const& p)
 #endif
     {
+
+#ifndef CH_ARCH_X86
+#if CH_COLOR_TEMPLATE
+        return move_generator<c, ACCEL_SSE>::generate(mvs, p);
+#else
+        return move_generator<ACCEL_SSE>::generate(c, mvs, p);
+#endif
+#else
+
         move* m = mvs;
-        move* const first_move = mvs;
 
         color const enemy_color = opposite(c);
 
@@ -225,8 +233,6 @@ struct move_generator<ACCEL_UNACCEL>
 
         uint64_t pin_mask = 0;
         uint64_t attacked_nonking = 0;
-        uint64_t king_checkers = 0;
-        uint64_t king_check_rays = 0;
         int const king_sq = lsb(king);
 
         // find squares attacked by enemy
@@ -623,6 +629,8 @@ struct move_generator<ACCEL_UNACCEL>
         }
 
         return int(m - mvs);
+
+#endif
     }
 };
 

@@ -89,7 +89,7 @@ struct position
         ++stack_index;
         return stack();
     }
-    constexpr void stack_pop() { --stack_index; }
+    inline void stack_pop() { --stack_index; }
 
     color current_turn;
 
@@ -244,12 +244,16 @@ void init();
 
 #if CH_ENABLE_ACCEL
 void init_cpuid();
+#ifdef CH_ARCH_X86
 bool has_sse();
+#else
+static inline constexpr bool has_sse() { return true; }
+#endif
 bool has_popcnt();
 #else
-static inline void init_cpuid() {}
-static inline bool has_sse() { return false; }
-static inline bool has_avx() { return false; }
+static inline void constexpr init_cpuid() {}
+static inline bool constexpr has_sse() { return false; }
+static inline bool constexpr has_avx() { return false; }
 #endif
 
 #ifdef _MSC_VER

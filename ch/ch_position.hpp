@@ -209,7 +209,6 @@ void position::undo_move(move const& mv)
     uint64_t cap_bb = (1ull << b);
     uint64_t p_bb = (1ull << a) | cap_bb;
 
-    auto& st = stack();
     stack_pop();
 
     current_turn = opposite(current_turn);
