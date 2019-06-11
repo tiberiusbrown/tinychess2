@@ -1,3 +1,5 @@
+#ifdef _MSC_VER
+
 #define WINVER 0x0500
 #define _WIN32_WINNT 0x0500
 
@@ -49,3 +51,6 @@ void start(void)
 
     shutdown(0);    
 }
+
+#endif
+

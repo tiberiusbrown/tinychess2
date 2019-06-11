@@ -130,9 +130,10 @@ struct move_generator
 
 inline int msb(uint64_t x)
 {
-    unsigned long i;
     assert(x != 0);
+#ifdef _MSC_VER
 #ifdef CH_ARCH_X86
+    unsigned long i;
     if(uint32_t(x >> 32) != 0)
     {
         _BitScanReverse(&i, uint32_t(x));
@@ -144,13 +145,17 @@ inline int msb(uint64_t x)
     _BitScanReverse64(&i, x);
     return i;
 #endif
+#else
+    return __builtin_clzll(x);
+#endif
 }
 
 inline int lsb(uint64_t x)
 {
-    unsigned long i;
     assert(x != 0);
+#ifdef _MSC_VER
 #ifdef CH_ARCH_X86
+    unsigned long i;
     if(uint32_t(x) != 0)
     {
         _BitScanForward(&i, uint32_t(x));
@@ -161,6 +166,9 @@ inline int lsb(uint64_t x)
 #else
     _BitScanForward64(&i, x);
     return i;
+#endif
+#else
+    return __builtin_ctzll(x);
 #endif
 }
 inline int pop_lsb(uint64_t& x)

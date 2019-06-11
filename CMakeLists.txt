@@ -17,10 +17,24 @@ if(MSVC AND NOT LLVM)
     set(CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL "")
     set(CMAKE_STATIC_LINKER_FLAGS_RELEASE "")
     add_definitions(-D_HAS_EXCEPTIONS=0)
+elseif(UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-unwind-tables")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-asynchronous-unwind-tables")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-protector")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fomit-frame-pointer")
+    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 endif()
 
 file(GLOB CH_SOURCES "ch/*")
 add_library(ch STATIC ${CH_SOURCES})
+if(UNIX)
+    target_compile_options(ch PRIVATE -mssse3 -fno-tree-vectorize)
+    target_link_libraries(ch gcc)
+endif()
 
 add_executable(test_perft test_perft.cpp)
 target_link_libraries(test_perft ch)
@@ -66,4 +80,11 @@ if(MSVC)
         /MERGE:\".pdata=.text\"
         /ignore:4254
         ")
+elseif(UNIX)
+
+    target_compile_options(${PROJECT_NAME} PRIVATE -nodefaultlibs)
+
+    set_property(
+        TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+        " -Wl,-estart -nostartfiles -nostdlib -Wl,--gc-sections -Wl,-s")
 endif()

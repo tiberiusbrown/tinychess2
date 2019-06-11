@@ -31,7 +31,13 @@ void perft_test(int depth, uint64_t expected, char const* fen)
     printf("NPS: %.3fM\n\n", double(actual) / dt * 1e-6);
 }
 
-int __cdecl main()
+#ifdef _MSC_VER
+#define CDECL __cdecl
+#else
+#define CDECL
+#endif
+
+int CDECL main()
 {
     ch_init();
     total = 0;
