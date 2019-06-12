@@ -11,16 +11,38 @@
 #include "ch_config.hpp"
 #include "ch_move.hpp"
 
+#define CH_ENABLE_UNACCEL 1
+#if CH_ENABLE_ACCEL
+#define CH_ENABLE_SSE 1
+#define CH_ENABLE_AVX 1
+#else
+#define CH_ENABLE_SSE 0
+#define CH_ENABLE_AVX 0
+#endif
+
+#define CH_ARCH_32BIT 0
+
 #ifdef _MSC_VER
 #ifdef _M_IX86
-#define CH_ARCH_X86
+#undef CH_ARCH_32BIT
+#define CH_ARCH_32BIT 1
 #endif
 #endif
 
 #ifdef __GNUC__
 #ifdef __i386__
-#define CH_ARCH_32BIT
+#undef CH_ARCH_32BIT
+#define CH_ARCH_32BIT 1
 #endif
+#endif
+
+#define CH_ARCH_64BIT (!CH_ARCH_32BIT)
+
+#if CH_ARCH_64BIT
+#undef CH_ENABLE_UNACCEL
+#define CH_ENABLE_UNACCEL 0
+#undef CH_ENABLE_SSE
+#define CH_ENABLE_SSE 1
 #endif
 
 #if defined(_MSC_VER)
@@ -72,7 +94,7 @@ inline int msb(uint64_t x)
     assert(x != 0);
 #ifdef _MSC_VER
     unsigned long i;
-#ifdef CH_ARCH_X86
+#if CH_ARCH_32BIT
     if(uint32_t(x >> 32) != 0)
     {
         _BitScanReverse(&i, uint32_t(x));
@@ -94,7 +116,7 @@ inline int lsb(uint64_t x)
     assert(x != 0);
 #ifdef _MSC_VER
     unsigned long i;
-#ifdef CH_ARCH_X86
+#if CH_ARCH_32BIT
     if(uint32_t(x) != 0)
     {
         _BitScanForward(&i, uint32_t(x));
@@ -179,19 +201,18 @@ static std::array<std::array<uint64_t, 64>, 64> lines;
 
 void init();
 
-#if CH_ENABLE_ACCEL
 void init_cpuid();
-#ifdef CH_ARCH_X86
-bool has_sse();
-#else
+#if CH_ENABLE_SSE
+#if CH_ARCH_64BIT
 static inline constexpr bool has_sse() { return true; }
+#else
+bool has_sse();
+#endif
+#else
+static inline constexpr bool has_sse() { return false; }
 #endif
 bool has_popcnt();
-#else
-static inline void constexpr init_cpuid() {}
-static inline bool constexpr has_sse() { return false; }
-static inline bool constexpr has_avx() { return false; }
-#endif
+bool has_avx();
 
 #ifdef _MSC_VER
 extern "C" void * __cdecl memset(void *, int, size_t);

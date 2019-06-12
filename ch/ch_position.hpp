@@ -2,9 +2,7 @@
 
 #include "ch_internal.hpp"
 
-#include "ch_genmoves_unaccel.hpp"
-#include "ch_genmoves_sse.hpp"
-#include "ch_genmoves_avx.hpp"
+#include "ch_genmoves.hpp"
 
 #include "ch_hash.hpp"
 
@@ -354,7 +352,7 @@ uint64_t position::root_perft(int depth, uint64_t* counts)
     else
         num = move_generator<BLACK, accel>::generate(mvs, *this);
 #else
-    num = move_generator<accel>::generate(current_turn, mvs, p);
+    num = move_generator<accel>::generate(current_turn, mvs, *this);
 #endif
 
     for(int n = 0; n < num; ++n)

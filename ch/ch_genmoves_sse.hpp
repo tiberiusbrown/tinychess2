@@ -1,10 +1,9 @@
 #pragma once
 
-#include "ch_config.hpp"
-
-#if CH_ENABLE_ACCEL
-
 #include "ch_internal.hpp"
+
+#if CH_ENABLE_SSE
+
 #include "ch_bb_sse.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_position.hpp"

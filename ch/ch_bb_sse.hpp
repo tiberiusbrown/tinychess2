@@ -2,7 +2,7 @@
 
 #include "ch_config.hpp"
 
-#if CH_ENABLE_ACCEL
+#if CH_ENABLE_SSE
 
 #include "ch_bb.hpp"
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ch_internal.hpp"
+
 #include "ch_bb.hpp"
 #include "ch_config.hpp"
 #include "ch_genmoves.hpp"
@@ -184,6 +185,8 @@ CH_FORCEINLINE move* generate_en_passant_moves(color c,
     return m;
 }
 
+#if CH_ARCH_32BIT
+
 #if CH_COLOR_TEMPLATE
 template<color c>
 struct move_generator<c, ACCEL_UNACCEL>
@@ -197,7 +200,7 @@ struct move_generator<ACCEL_UNACCEL>
 #endif
     {
 
-#ifndef CH_ARCH_X86
+#if CH_ARCH_64BIT
 #if CH_COLOR_TEMPLATE
         return move_generator<c, ACCEL_SSE>::generate(mvs, p);
 #else
@@ -635,6 +638,8 @@ struct move_generator<ACCEL_UNACCEL>
 #endif
     }
 };
+
+#endif
 
 }
 

@@ -25,11 +25,15 @@ void CHAPI ch_load_fen(char const* fen)
 }
 uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 {
-#if CH_ENABLE_ACCEL
+#if CH_ARCH_64BIT
+    return g_pos.root_perft<ch::ACCEL_SSE>(depth, counts);
+#elif CH_ENABLE_SSE
     if(ch::has_sse())
         return g_pos.root_perft<ch::ACCEL_SSE>(depth, counts);
 #endif
+#if CH_ARCH_32BIT
     return g_pos.root_perft<ch::ACCEL_UNACCEL>(depth, counts);
+#endif
 }
 
 }

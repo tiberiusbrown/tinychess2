@@ -1,6 +1,5 @@
 #pragma once
 
-#if CH_ENABLE_ACCEL
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -37,12 +36,11 @@ void init_cpuid()
 #endif
 }
 
-#ifdef CH_ARCH_X86
+#if CH_ENABLE_SSE && CH_ARCH_32BIT
 bool has_sse() { return has_sse_; }
 #endif
 bool has_popcnt() { return has_popcnt_; }
 bool has_avx() { return has_avx_; }
 
 }
-#endif
 

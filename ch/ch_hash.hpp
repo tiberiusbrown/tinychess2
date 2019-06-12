@@ -42,7 +42,7 @@ public:
 
     bool get(uint64_t hash, entry_info* info) const
     {
-        entry_data t = entries[hash & mask];
+        entry_data t = entries[hash & mask].load();
         if(t.hash_hi == uint32_t(hash >> 32))
         {
             *info = t.info;
@@ -56,7 +56,7 @@ public:
         entry_data t;
         t.hash_hi = uint32_t(hash >> 32);
         t.info = info;
-        entries[hash & mask] = t;
+        entries[hash & mask].store(t);
     }
 
 private:
