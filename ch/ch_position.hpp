@@ -66,10 +66,8 @@ CH_OPT_SIZE void position::new_game()
 
 CH_OPT_SIZE void position::load_fen(char const* fen)
 {
-    for(auto& i : bbs)
-        i = 0;
-    for(auto& i : pieces)
-        i = EMPTY;
+    memzero(&bbs[0], int(bbs.size() * sizeof(bbs[0])));
+    memzero(&pieces[0], int(pieces.size() * sizeof(pieces[0])));
 
     stack_index = 0;
     stack().cap_piece = EMPTY;

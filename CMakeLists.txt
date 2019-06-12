@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(tinychess2 C CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(EDITORCONFIG "${CMAKE_CURRENT_SOURCE_DIR}/.editorconfig")
 set(EXETYPE)
 

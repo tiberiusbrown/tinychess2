@@ -7,7 +7,9 @@
 
 // lockless transposition table
 
-static_assert(ATOMIC_LLONG_LOCK_FREE == 2, "atomic_uint64_t must be lock free");
+// TODO: MSVC generates memcpy call -- fix!
+
+static constexpr int const X = sizeof(std::atomic_flag);
 
 namespace ch
 {
@@ -15,20 +17,21 @@ namespace ch
 class trans_table
 {
 public:
-    CH_ALIGN(4) struct entry_info
+    struct entry_info
     {
+        move best;
         int16_t value;
         int8_t depth;
         uint8_t flags;
     };
 
 private:
-    CH_ALIGN(8) struct entry_data
+    struct entry_data
     {
-        uint32_t hash_hi;
+        uint64_t hash;
         entry_info info;
     };
-    static_assert(sizeof(entry_data) == 8, "entry_data size mismatch");
+    static_assert(sizeof(entry_data) == 16, "entry_data size mismatch");
     typedef std::atomic<entry_data> entry;
 
 public:
@@ -37,13 +40,13 @@ public:
     void set_memory(void* mem, int mem_size_mb_log2)
     {
         entries = (entry*)mem;
-        mask = (1ull << (mem_size_mb_log2 - 3)) - 1;
+        mask = (1ull << (mem_size_mb_log2 + 20 - 3)) - 1;
     }
 
     bool get(uint64_t hash, entry_info* info) const
     {
-        entry_data t = entries[hash & mask].load();
-        if(t.hash_hi == uint32_t(hash >> 32))
+        entry_data t = entries[hash & mask].load(std::memory_order::memory_order_relaxed);
+        if(t.hash == hash)
         {
             *info = t.info;
             return true;
@@ -54,9 +57,9 @@ public:
     void put(uint64_t hash, entry_info info)
     {
         entry_data t;
-        t.hash_hi = uint32_t(hash >> 32);
+        t.hash = hash;
         t.info = info;
-        entries[hash & mask].store(t);
+        entries[hash & mask].store(t, std::memory_order::memory_order_relaxed);
     }
 
 private:

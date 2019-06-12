@@ -2,32 +2,15 @@
 
 #include <stdint.h>
 
-#include "ch_config.hpp"
+#include "ch_internal.hpp"
 
 namespace ch
 {
 
-enum ptype
-{
-    EMPTY,
-    PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
-    END_BB,
-};
-
-enum color
-{
-    WHITE, BLACK = END_BB - 1
-};
-
-static constexpr color opposite(color c)
-{
-    return color(BLACK - c);
-};
-
 struct move
 {
     uint32_t d;
-    move() {}
+    move() = default;
     constexpr move(uint32_t d_) : d(d_) {}
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }

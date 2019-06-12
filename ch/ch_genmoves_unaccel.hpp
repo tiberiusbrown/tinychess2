@@ -577,13 +577,13 @@ struct move_generator<ACCEL_UNACCEL>
         
         // pinned diagonal sliders
         {
-            uint64_t p = my_diag_sliders & pin_mask;
-            while(p)
+            uint64_t pcs = my_diag_sliders & pin_mask;
+            while(pcs)
             {
-                uint64_t bb_from = p;
-                int i = pop_lsb(p);
+                uint64_t bb_from = pcs;
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                bb_from ^= p;
+                bb_from ^= pcs;
                 uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
@@ -592,13 +592,13 @@ struct move_generator<ACCEL_UNACCEL>
 
         // non-pinned diagonal sliders
         {
-            uint64_t p = my_diag_sliders & ~pin_mask;
-            while(p)
+            uint64_t pcs = my_diag_sliders & ~pin_mask;
+            while(pcs)
             {
-                uint64_t bb_from = p;
-                int i = pop_lsb(p);
+                uint64_t bb_from = pcs;
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                bb_from ^= p;
+                bb_from ^= pcs;
                 uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
@@ -606,13 +606,13 @@ struct move_generator<ACCEL_UNACCEL>
 
         // pinned orthogonal sliders
         {
-            uint64_t p = my_orth_sliders & pin_mask;
-            while(p)
+            uint64_t pcs = my_orth_sliders & pin_mask;
+            while(pcs)
             {
-                uint64_t bb_from = p;
-                int i = pop_lsb(p);
+                uint64_t bb_from = pcs;
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                bb_from ^= p;
+                bb_from ^= pcs;
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
@@ -621,13 +621,13 @@ struct move_generator<ACCEL_UNACCEL>
 
         // non-pinned orthogonal sliders
         {
-            uint64_t p = my_orth_sliders & ~pin_mask;
-            while(p)
+            uint64_t pcs = my_orth_sliders & ~pin_mask;
+            while(pcs)
             {
-                uint64_t bb_from = p;
-                int i = pop_lsb(p);
+                uint64_t bb_from = pcs;
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                bb_from ^= p;
+                bb_from ^= pcs;
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }

@@ -13,23 +13,9 @@ CH_OPT_SIZE void init()
     static int8_t const KDI[8] = { -1, -1, -1, 0, 1, 1, 1, 0 };
     static int8_t const KDJ[8] = { -1, 0, 1, 1, 1, 0, -1, -1 };
 
-    for(auto& i : masks)
-    {
-        i.knight_attacks = 0;
-        i.king_attacks = 0;
-        i.rook_pseudo_attacks = 0;
-        i.bishop_pseudo_attacks = 0;
-        i.singleton = 0;
-        i.vertical = 0;
-        i.diag_anti[0] = 0;
-        i.diag_anti[1] = 0;
-    }
-    for(auto& i : betweens)
-        for(auto& j : i)
-            j = 0;
-    for(auto& i : lines)
-        for(auto& j : i)
-            j = 0;
+    memzero(&masks[0], int(masks.size() * sizeof(masks[0])));
+    memzero(&betweens[0], int(betweens.size() * sizeof(betweens[0])));
+    memzero(&lines[0], int(lines.size() * sizeof(lines[0])));
 
     for(int i = 0; i < 64; ++i)
     {

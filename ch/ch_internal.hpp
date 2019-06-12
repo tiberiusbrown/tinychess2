@@ -9,7 +9,10 @@
 
 #include "ch.h"
 #include "ch_config.hpp"
-#include "ch_move.hpp"
+
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 
 #define CH_ENABLE_UNACCEL 1
 #if CH_ENABLE_ACCEL
@@ -78,16 +81,33 @@ namespace ch
 
 enum acceleration
 {
-    ACCEL_UNACCEL,
-    ACCEL_SSE,
-    ACCEL_AVX,
-    ACCEL_AVX512
+    ACCEL_UNACCEL, // no acceleration
+    ACCEL_SSE,     // SSE2
+    ACCEL_AVX,     // AVX2, popcnt, TODO: BMI2
+    ACCEL_AVX512   // TODO: AVX512F
 };
 
 static constexpr int CASTLE_WQ_MASK = 0x1;
 static constexpr int CASTLE_BQ_MASK = 0x2;
 static constexpr int CASTLE_WK_MASK = 0x4;
 static constexpr int CASTLE_BK_MASK = 0x8;
+
+enum ptype
+{
+    EMPTY,
+    PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
+    END_BB,
+};
+
+enum color
+{
+    WHITE, BLACK = END_BB - 1
+};
+
+static constexpr color opposite(color c)
+{
+    return color(BLACK - c);
+};
 
 inline int msb(uint64_t x)
 {
@@ -211,23 +231,21 @@ bool has_sse();
 #else
 static inline constexpr bool has_sse() { return false; }
 #endif
-bool has_popcnt();
 bool has_avx();
 
-#ifdef _MSC_VER
-extern "C" void * __cdecl memset(void *, int, size_t);
-#pragma intrinsic(memset)
+static ch_system_info system;
 
-#pragma function(memset)
-void * __cdecl memset(void *p, int v, size_t n)
+#ifdef _MSC_VER
+static CH_FORCEINLINE void memzero(void* p, int n)
 {
-    unsigned char *t = static_cast<unsigned char *>(p);
-    while(n-- > 0)
-        *t++ = static_cast<unsigned char>(v);
-    return p;
+    __stosb((unsigned char*)p, 0, n);
+}
+#else
+static CH_FORCEINLINE void memzero(void* p, int n)
+{
+    uint8_t* i = (uint8_t*)p;
+    while(n-- > 0) *i++ = 0;
 }
 #endif
-
-static ch_system_info system;
 
 }

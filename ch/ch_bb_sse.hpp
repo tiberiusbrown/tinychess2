@@ -7,7 +7,6 @@
 #include "ch_bb.hpp"
 
 #include <emmintrin.h>
-#include <tmmintrin.h>
 
 namespace ch
 {
@@ -165,6 +164,8 @@ static CH_FORCEINLINE __m128i slide_attack_se(__m128i bb, __m128i empty)
 
 static CH_FORCEINLINE __m128i bswap(__m128i x)
 {
+    // TODO: use magic bitboards to negate this
+    // WARNING: this is an SSSE3 instruction!!!!!
     CH_ALIGN(16) static uint8_t const M[16] =
     {
         7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ch_internal.hpp"
+#include "ch_move.hpp"
 
 namespace ch
 {
