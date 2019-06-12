@@ -6,7 +6,8 @@
 
 extern "C" __attribute__((visibility("default"))) void start(void)
 {
-    ch_init();
+    ch_system_info info = { 0 };
+    ch_init(&info);
     ch_new_game();
 
     uint64_t counts[256];

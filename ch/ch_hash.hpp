@@ -5,9 +5,7 @@
 
 #include "ch_internal.hpp"
 
-// lockless transposition table
-
-// TODO: MSVC generates memcpy call -- fix!
+// lockless transposition table (based on Hyatt's description)
 
 static constexpr int const X = sizeof(std::atomic_flag);
 
@@ -24,15 +22,14 @@ public:
         int8_t depth;
         uint8_t flags;
     };
+    static_assert(sizeof(entry_info) <= 8, "entry_info too large");
 
 private:
-    struct entry_data
+    struct entry
     {
-        uint64_t hash;
-        entry_info info;
+        std::atomic_uint64_t hash;
+        std::atomic_uint64_t info;
     };
-    static_assert(sizeof(entry_data) == 16, "entry_data size mismatch");
-    typedef std::atomic<entry_data> entry;
 
 public:
     trans_table() {}
@@ -45,21 +42,35 @@ public:
 
     bool get(uint64_t hash, entry_info* info) const
     {
-        entry_data t = entries[hash & mask].load(std::memory_order::memory_order_relaxed);
-        if(t.hash == hash)
+        entry const& e = entries[hash & mask];
+
+        union
         {
-            *info = t.info;
-            return true;
-        }
-        return false;
+            uint64_t b;
+            entry_info i;
+        } u;
+
+        uint64_t a = e.hash.load();
+        u.b = e.info.load();
+
+        if(a != (hash ^ u.b))
+            return false;
+
+        *info = u.i;
+        return true;
     }
 
     void put(uint64_t hash, entry_info info)
     {
-        entry_data t;
-        t.hash = hash;
-        t.info = info;
-        entries[hash & mask].store(t, std::memory_order::memory_order_relaxed);
+        entry& e = entries[hash & mask];
+        union
+        {
+            uint64_t b;
+            entry_info i;
+        } u;
+        u.i = info;
+        e.hash.store(hash ^ u.b);
+        e.info.store(u.b);
     }
 
 private:

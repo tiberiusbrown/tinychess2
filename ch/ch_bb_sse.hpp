@@ -8,6 +8,10 @@
 
 #include <emmintrin.h>
 
+// TODO: remove once magic bitboards are implemented
+//       and dependency on _mm_shuffle_spi8 is removed
+#include <tmmintrin.h>
+
 namespace ch
 {
 

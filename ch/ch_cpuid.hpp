@@ -8,7 +8,6 @@ namespace ch
 {
 
 static bool has_sse_;
-static bool has_popcnt_;
 static bool has_avx_;
 
 void init_cpuid()
@@ -31,7 +30,7 @@ void init_cpuid()
 #else
     has_sse_ = __builtin_cpu_supports("sse2");// &&
         //__builtin_cpu_supports("ssse3");
-    has_avx_ = __builtin_cpu_supports("popcnt") &&;
+    has_avx_ = __builtin_cpu_supports("popcnt") &&
         __builtin_cpu_supports("avx2");
 #endif
 }
