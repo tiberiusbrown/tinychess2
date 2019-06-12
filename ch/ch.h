@@ -12,15 +12,14 @@
 extern "C" {
 #endif
 
-    typedef struct ch_callback_defs
+    typedef struct ch_system_info
     {
         void(*mutex_lock)(void* m);
         void(*mutex_unlock)(void* m);
         uint32_t(*get_ms)(void);
-    } ch_callback_defs;
-    extern ch_callback_defs ch_callbacks;
+    } ch_init_info;
 
-    void CHAPI ch_init(void);
+    void CHAPI ch_init(ch_system_info const* info);
     void CHAPI ch_new_game(void);
     void CHAPI ch_load_fen(char const* fen);
 

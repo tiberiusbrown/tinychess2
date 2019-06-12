@@ -39,7 +39,8 @@ void perft_test(int depth, uint64_t expected, char const* fen)
 
 int CDECL main()
 {
-    ch_init();
+    ch_system_info info = { 0 };
+    ch_init(&info);
     total = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();

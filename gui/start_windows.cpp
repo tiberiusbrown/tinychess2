@@ -47,7 +47,8 @@ void shutdown(int code)
 
 void start(void)
 {
-    ch_init();
+    ch_system_info info = { 0 };
+    ch_init(&info);
 
     shutdown(0);    
 }

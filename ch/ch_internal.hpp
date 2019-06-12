@@ -7,6 +7,7 @@
 
 #include <emmintrin.h>
 
+#include "ch.h"
 #include "ch_config.hpp"
 #include "ch_move.hpp"
 
@@ -215,10 +216,10 @@ struct precomputed_mask_data
     uint64_t vertical;
     CH_ALIGN(16) uint64_t diag_anti[2];
 };
-std::array<precomputed_mask_data, 64> masks;
+static std::array<precomputed_mask_data, 64> masks;
 
 // for simple rank attacks: indexed by: occupancy (center 6 bits), col
-std::array<uint8_t, 64 * 8> first_rank_attacks;
+static std::array<uint8_t, 64 * 8> first_rank_attacks;
 
 #if 0
 enum
@@ -237,8 +238,8 @@ struct sbamg_mask_data
 std::array<sbamg_mask_data, 64> sbamg_masks;
 #endif
 
-std::array<std::array<uint64_t, 64>, 64> betweens;
-std::array<std::array<uint64_t, 64>, 64> lines;
+static std::array<std::array<uint64_t, 64>, 64> betweens;
+static std::array<std::array<uint64_t, 64>, 64> lines;
 
 void init();
 
@@ -269,5 +270,7 @@ void * __cdecl memset(void *p, int v, size_t n)
     return p;
 }
 #endif
+
+static ch_system_info system;
 
 }

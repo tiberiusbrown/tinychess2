@@ -8,8 +8,9 @@ static ch::position g_pos;
 extern "C"
 {
 
-void CHAPI ch_init()
+void CHAPI ch_init(ch_system_info const* info)
 {
+    ch::system = *info;
     ch::init();
     ch::init_cpuid();
 }
