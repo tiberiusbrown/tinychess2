@@ -2,6 +2,7 @@
 
 #include "ch.h"
 #include "ch_internal.hpp"
+#include "ch_position.hpp"
 
 static ch::position g_pos;
 

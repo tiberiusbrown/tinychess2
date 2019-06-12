@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(tinychess2 C CXX)
 
 set(CMAKE_CXX_STANDARD 11)
-
+set(EDITORCONFIG "${CMAKE_CURRENT_SOURCE_DIR}/.editorconfig")
 set(EXETYPE)
 
 if(MSVC AND NOT LLVM)
@@ -81,17 +81,17 @@ elseif(UNIX)
 endif()
 
 file(GLOB CH_SOURCES "ch/*")
-add_library(ch STATIC ${CH_SOURCES})
+add_library(ch STATIC ${CH_SOURCES} ${EDITORCONFIG})
 if(UNIX)
     target_compile_options(ch PRIVATE -mssse3 -fno-tree-vectorize)
     target_link_libraries(ch gcc)
 endif()
 
-add_executable(test_perft test_perft.cpp)
+add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
 
 file(GLOB GUI_SOURCES "gui/*")
-add_executable(${PROJECT_NAME} ${EXETYPE} ${GUI_SOURCES})
+add_executable(${PROJECT_NAME} ${EXETYPE} ${GUI_SOURCES} ${EDITORCONFIG})
 target_link_libraries(${PROJECT_NAME} ch)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "ch")
 if(MSVC)

@@ -67,68 +67,6 @@ static constexpr int CASTLE_BQ_MASK = 0x2;
 static constexpr int CASTLE_WK_MASK = 0x4;
 static constexpr int CASTLE_BK_MASK = 0x8;
 
-struct position
-{
-    CH_ALIGN(64) std::array<uint64_t, BLACK + END_BB> bbs;
-
-    std::array<uint8_t, 64> pieces;
-
-    static constexpr int const STACK_SIZE = 64;
-    struct stack_node
-    {
-        int cap_piece;
-        int ep_sq;
-        int castling_rights;
-    };
-    std::array<stack_node, STACK_SIZE> stack_data;
-    int stack_index;
-    stack_node& stack() { return stack_data[stack_index]; }
-    stack_node const& stack() const { return stack_data[stack_index]; }
-    stack_node& stack_push()
-    {
-        stack_data[stack_index + 1] = stack_data[stack_index];
-        ++stack_index;
-        return stack();
-    }
-    inline void stack_pop() { --stack_index; }
-
-    color current_turn;
-
-    void new_game();
-    void load_fen(char const* fen);
-
-    template<acceleration accel>
-    void do_move(move const& mv);
-
-    template<acceleration accel>
-    void undo_move(move const& mv);
-
-#if CH_COLOR_TEMPLATE
-    template<color c, acceleration accel>
-    uint64_t perft(int depth);
-#else
-    template<acceleration accel>
-    uint64_t perft(color c, int depth);
-#endif
-
-    template<acceleration accel>
-    uint64_t root_perft(int depth, uint64_t* counts);
-};
-
-#if CH_COLOR_TEMPLATE
-template<color c, acceleration accel>
-struct move_generator
-{
-    static int generate(move* mvs, position const& p);
-};
-#else
-template<acceleration accel>
-struct move_generator
-{
-    static int generate(color c, move* mvs, position const& p);
-};
-#endif
-
 inline int msb(uint64_t x)
 {
     assert(x != 0);
@@ -199,8 +137,6 @@ inline bool more_than_one(uint64_t x)
 void print_bbs(uint64_t bbs[], int n);
 inline void print_bb(uint64_t bb) { print_bbs(&bb, 1); }
 inline void print_bb(__m128i bb) { print_bbs((uint64_t*)&bb, 2); }
-
-void print_position(position const& p);
 
 struct precomputed_mask_data
 {

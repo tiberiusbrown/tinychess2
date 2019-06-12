@@ -6,6 +6,8 @@
 
 #include "ch_internal.hpp"
 #include "ch_bb_sse.hpp"
+#include "ch_genmoves.hpp"
+#include "ch_position.hpp"
 
 #include "ch_genmoves_unaccel.hpp"
 

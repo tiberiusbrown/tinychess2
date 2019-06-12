@@ -14,12 +14,14 @@ extern "C" {
 
     typedef struct ch_system_info
     {
-        void(*mutex_lock)(void* m);
-        void(*mutex_unlock)(void* m);
         uint32_t(*get_ms)(void);
+
     } ch_init_info;
 
     void CHAPI ch_init(ch_system_info const* info);
+
+    void CHAPI ch_set_hash(void* mem, int size_megabyte_log2);
+
     void CHAPI ch_new_game(void);
     void CHAPI ch_load_fen(char const* fen);
 

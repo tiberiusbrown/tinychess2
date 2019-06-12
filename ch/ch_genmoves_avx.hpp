@@ -5,6 +5,8 @@
 #if CH_ENABLE_ACCEL
 
 #include "ch_internal.hpp"
+#include "ch_genmoves.hpp"
+#include "ch_position.hpp"
 
 #include <immintrin.h>
 

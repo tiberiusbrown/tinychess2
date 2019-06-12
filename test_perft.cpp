@@ -45,8 +45,8 @@ int CDECL main()
 
     auto t_start = std::chrono::high_resolution_clock::now();
 
-    perft_test(5, 193690690ull, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     perft_test(6, 119060324ull, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
+    perft_test(5, 193690690ull, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     perft_test(6, 71179139ull, "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - -");
     perft_test(7, 178633661ull, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");
     perft_test(6, 706045033ull, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -");
