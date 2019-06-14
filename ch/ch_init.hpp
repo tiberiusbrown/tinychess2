@@ -6,7 +6,7 @@
 namespace ch
 {
 
-CH_OPT_SIZE void init()
+CH_OPT_SIZE static void init()
 {
     static int8_t const NDI[8] = { -2, -2, 1, -1, 2, 2, -1, 1 };
     static int8_t const NDJ[8] = { -1, 1, 2, 2, 1, -1, -2, -2 };
@@ -56,41 +56,6 @@ CH_OPT_SIZE void init()
             a = m;
         }
     }
-
-#if 0
-    for(int i = 0; i < 64; ++i)
-        for(auto& n : sbamg_masks[i].low)
-            n = (i == 0 ? 1ull : (1ull << i) - 1);
-    for(int i = 0; i < 8; ++i)
-    {
-        for(int j = 0; j < 8; ++j)
-        {
-            int k = i * 8 + j;
-            auto& m = sbamg_masks[k];
-            uint64_t const rank = 0xFFull << (i * 8);
-            uint64_t const file = 0x0101010101010101ull << j;
-            uint64_t const singleton = (1ull << k);
-            uint64_t diag = singleton, anti = singleton;
-            for(int n = 0; n < 7; ++n)
-            {
-                diag |= shift_nw(diag) | shift_se(diag);
-                anti |= shift_ne(anti) | shift_sw(anti);
-            }
-            m.lin[SBAMG_RANK] = rank ^ singleton;
-            m.lin[SBAMG_FILE] = file ^ singleton;
-            m.lin[SBAMG_DIAG] = diag ^ singleton;
-            m.lin[SBAMG_ANTI] = anti ^ singleton;
-            uint64_t const edges = 0xFF818181818181FFull;
-            uint64_t const rank_edges = 0x8181818181818181ull;
-            uint64_t const file_edges = 0xFF000000000000FFull;
-            m.out[SBAMG_DIAG] = (m.lin[SBAMG_DIAG] & edges) | 1;
-            m.out[SBAMG_ANTI] = (m.lin[SBAMG_ANTI] & edges) | 1;
-            m.out[SBAMG_RANK] = (m.lin[SBAMG_RANK] & rank_edges) | 1;
-            m.out[SBAMG_FILE] = (m.lin[SBAMG_FILE] & file_edges) | 1;
-        }
-    }
-    sbamg_masks[SBAMG_RANK].out[0] = 0x81ull;
-#endif
 
     for(int i = 0; i < 8; ++i)
     {

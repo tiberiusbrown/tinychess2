@@ -13,9 +13,8 @@ namespace ch
 
 struct position
 {
-    CH_ALIGN(64) std::array<uint64_t, BLACK + END_BB> bbs;
-
-    std::array<uint8_t, 64> pieces;
+    CH_ALIGN(64) std::array<uint8_t, 64> pieces;
+    CH_ALIGN(64) std::array<uint64_t, NUM_BB> bbs;
 
     static constexpr int const STACK_SIZE = 64;
     struct stack_node
@@ -77,30 +76,31 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     int i = 0;
     while(' ' != (c = *fen++) && c)
     {
-#define CH_PUT(c_, p_) \
-    bbs[c_ + p_] |= m; \
-    pieces[i] = c_ + p_; \
-    m <<= 1; ++i; break
+#define CH_PUT(p_) do { \
+    bbs[p_] |= m; \
+    pieces[i] = p_; \
+    m <<= 1; ++i; \
+    } while(0)
         switch(c)
         {
-        case 'p': CH_PUT(BLACK, PAWN);
-        case 'n': CH_PUT(BLACK, KNIGHT);
-        case 'b': CH_PUT(BLACK, BISHOP);
-        case 'r': CH_PUT(BLACK, ROOK);
-        case 'q': CH_PUT(BLACK, QUEEN);
-        case 'k': CH_PUT(BLACK, KING);
-        case 'P': CH_PUT(WHITE, PAWN);
-        case 'N': CH_PUT(WHITE, KNIGHT);
-        case 'B': CH_PUT(WHITE, BISHOP);
-        case 'R': CH_PUT(WHITE, ROOK);
-        case 'Q': CH_PUT(WHITE, QUEEN);
-        case 'K': CH_PUT(WHITE, KING);
-#undef CH_PUT
+        case 'p': CH_PUT(BLACK + PAWN);   break;
+        case 'n': CH_PUT(BLACK + KNIGHT); break;
+        case 'b': CH_PUT(BLACK + BISHOP); break;
+        case 'r': CH_PUT(BLACK + ROOK);   break;
+        case 'q': CH_PUT(BLACK + QUEEN);  break;
+        case 'k': CH_PUT(BLACK + KING);   break;
+        case 'P': CH_PUT(WHITE + PAWN);   break;
+        case 'N': CH_PUT(WHITE + KNIGHT); break;
+        case 'B': CH_PUT(WHITE + BISHOP); break;
+        case 'R': CH_PUT(WHITE + ROOK);   break;
+        case 'Q': CH_PUT(WHITE + QUEEN);  break;
+        case 'K': CH_PUT(WHITE + KING);   break;
         case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8':
-            m <<= int(c - '0');
-            i += int(c - '0');
+            for(int j = 0; j < int(c - '0'); ++j)
+                CH_PUT(EMPTY);
             break;
+#undef CH_PUT
         case '/':
         default:
             break;
@@ -285,7 +285,7 @@ void position::undo_move(move const& mv)
         else if(mv.is_promotion())
         {
             int t = (mv >> 16) & 0xff;
-            p = (p >= BLACK ? BLACK : WHITE) + PAWN;
+            p = (is_black(p) ? BLACK : WHITE) + PAWN;
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);
             bbs[t] ^= cap_bb;

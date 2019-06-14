@@ -1,55 +1,32 @@
-Lazy SMP
-===============================
-    IterativeDeepening:
-        synchronize smp threads (copy age, board, history, repetition list, multipv => helpers)
-        depth 1 with full width window on 1 thread
-        loop (depth=2 .. max)
-            AspirationLoop:
-                (as usual)
-                start helper threads( depth, alpha, beta )
-                root( depth, alpha, beta)
-                stop helper threads
-                (rest as usual)
-            end aspiration loop
-        end depth loop 
-    
-    starting helper threads:
-        clear smp abort flag
-        for each helper thread:
-            copy rootmoves and minimum qs depth => helper
-            signal helper to start root search at current depth (add 1 for each even helper 
-            assuming 0-based indexing)  with aspiration alpha, beta bounds and wait until 
-            helper starts searching 
-    
-    aborting helper threads:
-        set abort flag for each helper and wait for each to stop searching 
+#pragma once
 
-    
-Fancy Magics
-=====================================
-    // Fixed shift fancy magics
-    // taken from http://www.open-aurec.com/wbforum/viewtopic.php?f=4&t=51162
-    
-    unsigned long long fancy_magic_lookup_table[97264];
-    
-    struct FancyMagicEntry
-    {
-        union
-        {
-            struct {
-                unsigned long long factor;  // the magic factor
-                int position;               // position in the main lookup table (of 97264 entries)
-    
-                int offset;                 // position in the byte lookup table (only used when byte lookup is enabled)
-            };
-    #ifdef __CUDA_ARCH__
-            uint4 data;
-    #endif
-        };
-    };
-    
-    FancyMagicEntry bishop_magics_fancy[64] =
-    {
+#include <array>
+
+#include <stdint.h>
+
+namespace ch
+{
+
+// fixed shift fancy magics taken from
+// http://www.open-aurec.com/wbforum/viewtopic.php?f=4&t=51162
+
+struct magic_info
+{
+    uint64_t magic;
+    uint32_t offset;
+    uint32_t pad_;
+};
+
+static std::array<uint64_t, 97264> magic_lookup;
+
+static std::array<uint64_t, 64> magic_bishop_rays;
+static std::array<uint64_t, 64> magic_rook_rays;
+
+static constexpr int const MAGIC_BISHOP_SHIFT = 9;
+static constexpr int const MAGIC_ROOK_SHIFT = 12;
+
+static magic_info const BISHOP_MAGICS[64] =
+{
         { 0x007bfeffbfeffbffull,  16530 },
         { 0x003effbfeffbfe08ull,   9162 },
         { 0x0000401020200000ull,   9674 },
@@ -114,10 +91,10 @@ Fancy Magics
         { 0x0000000040408020ull,   9465 },
         { 0x00007ffeffbfeff9ull,  16196 },
         { 0x007ffdff7fdff7fdull,   6166 },
-    };
-    
-    FancyMagicEntry rook_magics_fancy[64] =
-    {
+};
+
+static magic_info const ROOK_MAGICS[64] =
+{
         { 0x00a801f7fbfeffffull,  85487 },
         { 0x00180012000bffffull,  43101 },
         { 0x0040080010004004ull,      0 },
@@ -182,4 +159,6 @@ Fancy Magics
         { 0x0007fffdfa03ffffull,  56135 },
         { 0x0003ffdeff7fbdecull,  44989 },
         { 0x0001ffff99ffab2full,  21479 },
-    };
+};
+
+}

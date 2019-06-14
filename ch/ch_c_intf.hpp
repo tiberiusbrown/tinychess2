@@ -1,7 +1,10 @@
 #pragma once
 
 #include "ch.h"
+#include "ch_cpuid.hpp"
+#include "ch_init.hpp"
 #include "ch_internal.hpp"
+#include "ch_magic.hpp"
 #include "ch_position.hpp"
 
 static ch::position g_pos;
@@ -14,6 +17,7 @@ void CHAPI ch_init(ch_system_info const* info)
     ch::system = *info;
     ch::init();
     ch::init_cpuid();
+    ch::init_magic();
 }
 void CHAPI ch_new_game()
 {

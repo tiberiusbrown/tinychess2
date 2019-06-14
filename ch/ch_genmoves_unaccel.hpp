@@ -228,9 +228,9 @@ struct move_generator<ACCEL_UNACCEL>
             p.bbs[enemy_color + PAWN] | p.bbs[enemy_color + KNIGHT] |
             p.bbs[enemy_color + KING];
         uint64_t const all_pieces = my_all | enemy_all;
-        uint64_t const pro_pawns = p.bbs[c + PAWN] &
+        uint64_t const my_pro_pawns = p.bbs[c + PAWN] &
             (c == WHITE ? RANK7 : RANK2);
-        uint64_t const nonpro_pawns = p.bbs[c + PAWN] ^ pro_pawns;
+        uint64_t const my_nonpro_pawns = p.bbs[c + PAWN] ^ my_pro_pawns;
 
         uint64_t const capture = ~my_all;
         uint64_t const empty = ~all_pieces;
@@ -338,9 +338,9 @@ struct move_generator<ACCEL_UNACCEL>
                         (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
                     if(c == WHITE)
-                        pcs |= (masks[i].black_pawn_attacks & nonpro_pawns);
+                        pcs |= (masks[i].black_pawn_attacks & my_nonpro_pawns);
                     else
-                        pcs |= (masks[i].white_pawn_attacks & nonpro_pawns);
+                        pcs |= (masks[i].white_pawn_attacks & my_nonpro_pawns);
                     pcs &= ~pin_mask;
                     while(pcs) *m++ = mv + move::from(pop_lsb(pcs));
 
@@ -381,7 +381,7 @@ struct move_generator<ACCEL_UNACCEL>
                     while(t)
                     {
                         int i = pop_lsb(t);
-                        if(t & pro_pawns)
+                        if(t & my_pro_pawns)
 #if CH_COLOR_TEMPLATE
                             m = add_pawn_promotions<c>(m, move(i + 8, i));
 #else
@@ -404,7 +404,7 @@ struct move_generator<ACCEL_UNACCEL>
                     while(t)
                     {
                         int i = pop_lsb(t);
-                        if(t & pro_pawns)
+                        if(t & my_pro_pawns)
 #if CH_COLOR_TEMPLATE
                             m = add_pawn_promotions<c>(m, move(i - 8, i));
 #else
@@ -428,10 +428,10 @@ struct move_generator<ACCEL_UNACCEL>
                     int i = lsb(slider_threats);
                     move mv = move::to(i);
                     uint64_t t = masks[i].black_pawn_attacks &
-                        non_pinned_pawns & nonpro_pawns;
+                        non_pinned_pawns & my_nonpro_pawns;
                     while(t) *m++ = mv + move::from(pop_lsb(t));
                     t = masks[i].black_pawn_attacks &
-                        non_pinned_pawns & pro_pawns;
+                        non_pinned_pawns & my_pro_pawns;
 #if CH_COLOR_TEMPLATE
                     while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb(t)));
 #else
@@ -443,10 +443,10 @@ struct move_generator<ACCEL_UNACCEL>
                     int i = lsb(slider_threats);
                     move mv = move::to(i);
                     uint64_t t = masks[i].white_pawn_attacks &
-                        non_pinned_pawns & nonpro_pawns;
+                        non_pinned_pawns & my_nonpro_pawns;
                     while(t) *m++ = mv + move::from(pop_lsb(t));
                     t = masks[i].white_pawn_attacks &
-                        non_pinned_pawns & pro_pawns;
+                        non_pinned_pawns & my_pro_pawns;
 #if CH_COLOR_TEMPLATE
                     while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb(t)));
 #else
@@ -530,7 +530,7 @@ struct move_generator<ACCEL_UNACCEL>
                 // at most one capture can be generated for a pinned pawn
                 if(pf)
                 {
-                    if(pawn & pro_pawns)
+                    if(pawn & my_pro_pawns)
 #if CH_COLOR_TEMPLATE
                         m = add_pawn_promotions<c>(m, move(sq, lsb(pf)));
 #else
@@ -545,14 +545,14 @@ struct move_generator<ACCEL_UNACCEL>
         // non-pinned pawns
 #if CH_COLOR_TEMPLATE
         m = generate_non_pinned_pawn_moves<c, false>(
-            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
         m = generate_non_pinned_pawn_moves<c, true>(
-            m, pro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #else
         m = generate_non_pinned_pawn_moves<false>(c,
-            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
         m = generate_non_pinned_pawn_moves<true>(c,
-            m, pro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #endif
 
 #if CH_COLOR_TEMPLATE

@@ -94,15 +94,27 @@ static constexpr int CASTLE_BK_MASK = 0x8;
 
 enum ptype
 {
-    EMPTY,
-    PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
-    END_BB,
+    PAWN = 0,
+    KNIGHT = 2,
+    BISHOP = 4,
+    ROOK = 6,
+    QUEEN = 8,
+    KING = 10,
+    EMPTY = 12,
 };
 
 enum color
 {
-    WHITE, BLACK = END_BB - 1
+    WHITE = 0,
+    BLACK = 1,
 };
+
+template<class T>
+static constexpr bool is_white(T p) { return (p & 1) == 0; }
+template<class T>
+static constexpr bool is_black(T p) { return (p & 1) != 0; }
+
+static constexpr int const NUM_BB = 13;
 
 static constexpr color opposite(color c)
 {
@@ -199,29 +211,9 @@ static std::array<precomputed_mask_data, 64> masks;
 // for simple rank attacks: indexed by: occupancy (center 6 bits), col
 static std::array<uint8_t, 64 * 8> first_rank_attacks;
 
-#if 0
-enum
-{
-    SBAMG_RANK,
-    SBAMG_FILE,
-    SBAMG_DIAG,
-    SBAMG_ANTI,
-};
-struct sbamg_mask_data
-{
-    CH_ALIGN(32) uint64_t low[4];
-    CH_ALIGN(32) uint64_t lin[4];
-    CH_ALIGN(32) uint64_t out[4];
-};
-std::array<sbamg_mask_data, 64> sbamg_masks;
-#endif
-
 static std::array<std::array<uint64_t, 64>, 64> betweens;
 static std::array<std::array<uint64_t, 64>, 64> lines;
 
-void init();
-
-void init_cpuid();
 #if CH_ENABLE_SSE
 #if CH_ARCH_64BIT
 static inline constexpr bool has_sse() { return true; }

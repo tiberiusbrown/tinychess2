@@ -229,29 +229,4 @@ static CH_FORCEINLINE uint64_t hq_rook_attacks(int sq, uint64_t occ)
         rank_attacks_simple(sq, occ);
 }
 
-#if 0
-// subtraction-based attack mask generation (SBAMG)
-static inline uint64_t sbamg_attacks(int sq, uint64_t all_pieces, int dir)
-{
-    uint64_t occ = all_pieces & sbamg_masks[sq].lin[dir];
-    occ |= sbamg_masks[sq].out[dir];
-    int bsq = msb(occ & sbamg_masks[sq].low[dir]);
-    uint64_t cbnx3 = 3ull << bsq; // or lookup
-    occ = occ ^ (occ - cbnx3);
-    return occ & sbamg_masks[sq].lin[dir];
-}
-static inline uint64_t sbamg_bishop_attacks(int sq, uint64_t all_pieces)
-{
-    return
-        sbamg_attacks(sq, all_pieces, SBAMG_DIAG) |
-        sbamg_attacks(sq, all_pieces, SBAMG_ANTI);
-}
-static inline uint64_t sbamg_rook_attacks(int sq, uint64_t all_pieces)
-{
-    return
-        sbamg_attacks(sq, all_pieces, SBAMG_RANK) |
-        sbamg_attacks(sq, all_pieces, SBAMG_FILE);
-}
-#endif
-
 }

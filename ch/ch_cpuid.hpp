@@ -4,18 +4,19 @@
 #include <intrin.h>
 #endif
 
+#include "ch_internal.hpp"
+
 namespace ch
 {
 
 static bool has_sse_;
 static bool has_avx_;
 
-void init_cpuid()
+CH_OPT_SIZE static void init_cpuid()
 {
 #ifdef _MSC_VER
     int n, data[4];
     has_sse_ = false;
-    has_popcnt_ = false;
     has_avx_ = false;
     __cpuid(data, 0);
     n = data[0];

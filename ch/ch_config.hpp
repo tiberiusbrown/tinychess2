@@ -4,4 +4,4 @@
 #define CH_COLOR_TEMPLATE 1
 
 // enable SSE and AVX acceleration
-#define CH_ENABLE_ACCEL 0
+#define CH_ENABLE_ACCEL 1

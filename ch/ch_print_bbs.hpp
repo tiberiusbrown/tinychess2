@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "ch_position.hpp"
+
 namespace ch
 {
 
