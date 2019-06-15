@@ -207,6 +207,19 @@ CH_FORCEINLINE int popcnt_avx(uint64_t x)
 #endif
 }
 
+CH_FORCEINLINE static int popcnt(uint64_t x)
+{
+    static constexpr uint64_t const k1 = 0x5555555555555555ull;
+    static constexpr uint64_t const k2 = 0x3333333333333333ull;
+    static constexpr uint64_t const k4 = 0x0f0f0f0f0f0f0f0full;
+    static constexpr uint64_t const kf = 0x0101010101010101ull;
+    x = x - ((x >> 1)  & k1);
+    x = (x & k2) + ((x >> 2) & k2);
+    x = (x + (x >> 4)) & k4;
+    x = (x * kf) >> 56;
+    return (int)x;
+}
+
 inline bool more_than_one(uint64_t x)
 {
     assert(x != 0);
