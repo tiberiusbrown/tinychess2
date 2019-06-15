@@ -67,9 +67,9 @@ CH_OPT_SIZE static void init_magic()
         uint64_t p = (1ull << i);
         uint64_t mask = magic_bishop_rays[i];
         int n = (1 << popcnt(mask));
-        for(uint64_t j = 0; j < n; ++j)
+        for(int j = 0; j < n; ++j)
         {
-            uint64_t occ = sw_pdep(j, mask);
+            uint64_t occ = sw_pdep(uint64_t(j), mask);
             uint64_t& atts = magic_bishop_attacks(i, occ);
             if(atts == 0)
             {
@@ -89,9 +89,9 @@ CH_OPT_SIZE static void init_magic()
         uint64_t p = (1ull << i);
         uint64_t mask = magic_rook_rays[i];
         int n = (1 << popcnt(mask));
-        for(uint64_t j = 0; j < n; ++j)
+        for(int j = 0; j < n; ++j)
         {
-            uint64_t occ = sw_pdep(j, mask);
+            uint64_t occ = sw_pdep(uint64_t(j), mask);
             uint64_t& atts = magic_rook_attacks(i, occ);
             if(atts == 0)
             {

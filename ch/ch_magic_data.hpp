@@ -17,7 +17,6 @@ struct magic_info
 {
     uint64_t magic;
     uint32_t offset;
-    uint32_t pad_;
 };
 
 static std::array<uint64_t, 97264> magic_lookup;
