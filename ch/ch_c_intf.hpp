@@ -1,11 +1,10 @@
 #pragma once
 
 #include "ch.h"
-#include "ch_cpuid.hpp"
-#include "ch_init.hpp"
 #include "ch_internal.hpp"
 #include "ch_magic.hpp"
-#include "ch_position.hpp"
+#include "ch_move_impl.hpp"
+#include "ch_position_impl.hpp"
 
 static ch::position g_pos;
 

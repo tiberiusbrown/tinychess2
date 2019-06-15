@@ -122,7 +122,7 @@ static constexpr color opposite(color c)
     return color(BLACK - c);
 };
 
-inline int msb(uint64_t x)
+static CH_FORCEINLINE int msb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
@@ -144,7 +144,7 @@ inline int msb(uint64_t x)
 #endif
 }
 
-inline int lsb(uint64_t x)
+static CH_FORCEINLINE int lsb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
@@ -165,40 +165,40 @@ inline int lsb(uint64_t x)
     return __builtin_ctzll(x);
 #endif
 }
-CH_FORCEINLINE int pop_lsb(uint64_t& x)
+static CH_FORCEINLINE int pop_lsb(uint64_t& x)
 {
     int i = lsb(x);
     x &= x - 1;
     return i;
 }
-CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
+static CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
 {
     return x & uint64_t(-int64_t(x));
 }
-CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
+static CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
 {
     uint64_t r = lsb_mask(x);
     x ^= r;
     return r;
 }
 
-CH_FORCEINLINE int pop_lsb_avx(uint64_t& x)
+static CH_FORCEINLINE int pop_lsb_avx(uint64_t& x)
 {
     int i = lsb(x);
     x = _blsr_u64(x);
     return i;
 }
-CH_FORCEINLINE uint64_t lsb_mask_avx(uint64_t x)
+static CH_FORCEINLINE uint64_t lsb_mask_avx(uint64_t x)
 {
     return _blsi_u64(x);
 }
-CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
+static CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
 {
     uint64_t r = lsb_mask_avx(x);
     x ^= r;
     return r;
 }
-CH_FORCEINLINE int popcnt_avx(uint64_t x)
+static CH_FORCEINLINE int popcnt_avx(uint64_t x)
 {
 #ifdef _MSC_VER
     return int(__popcnt64(x));
@@ -207,7 +207,7 @@ CH_FORCEINLINE int popcnt_avx(uint64_t x)
 #endif
 }
 
-CH_FORCEINLINE static int popcnt(uint64_t x)
+static CH_FORCEINLINE int popcnt(uint64_t x)
 {
     static constexpr uint64_t const k1 = 0x5555555555555555ull;
     static constexpr uint64_t const k2 = 0x3333333333333333ull;
@@ -220,15 +220,15 @@ CH_FORCEINLINE static int popcnt(uint64_t x)
     return (int)x;
 }
 
-inline bool more_than_one(uint64_t x)
+static CH_FORCEINLINE  bool more_than_one(uint64_t x)
 {
     assert(x != 0);
     return (x & (x - 1)) != 0;
 }
 
-void print_bbs(uint64_t bbs[], int n);
-inline void print_bb(uint64_t bb) { print_bbs(&bb, 1); }
-inline void print_bb(__m128i bb) { print_bbs((uint64_t*)&bb, 2); }
+void print_bbs(uint64_t const bbs[], int n);
+static CH_FORCEINLINE void print_bb(uint64_t bb) { print_bbs(&bb, 1); }
+static CH_FORCEINLINE void print_bb(__m128i bb) { print_bbs((uint64_t*)&bb, 2); }
 
 struct precomputed_mask_data
 {
@@ -244,13 +244,16 @@ struct precomputed_mask_data
     uint64_t vertical;
     CH_ALIGN(16) uint64_t diag_anti[2];
 };
-static std::array<precomputed_mask_data, 64> masks;
+extern std::array<precomputed_mask_data, 64> masks;
 
 // for simple rank attacks: indexed by: occupancy (center 6 bits), col
-static std::array<uint8_t, 64 * 8> first_rank_attacks;
+extern std::array<uint8_t, 64 * 8> first_rank_attacks;
 
-static std::array<std::array<uint64_t, 64>, 64> betweens;
-static std::array<std::array<uint64_t, 64>, 64> lines;
+extern std::array<std::array<uint64_t, 64>, 64> betweens;
+extern std::array<std::array<uint64_t, 64>, 64> lines;
+
+void init();
+void init_cpuid();
 
 #if CH_ENABLE_SSE
 #if CH_ARCH_64BIT
@@ -263,7 +266,7 @@ static inline constexpr bool has_sse() { return false; }
 #endif
 bool has_avx();
 
-static ch_system_info system;
+extern ch_system_info system;
 
 #ifdef _MSC_VER
 static CH_FORCEINLINE void memzero(void* p, int n)

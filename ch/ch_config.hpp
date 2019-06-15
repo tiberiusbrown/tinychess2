@@ -8,5 +8,5 @@
 
 // magic bitboards (bishop might be slower than HQ at SSE+)
 #define CH_ENABLE_MAGIC 1
-#define CH_ENABLE_MAGIC_BISHOP 0
+#define CH_ENABLE_MAGIC_BISHOP 1
 #define CH_ENABLE_MAGIC_ROOK 1

@@ -12,7 +12,7 @@ namespace ch
 static bool has_sse_;
 static bool has_avx_;
 
-CH_OPT_SIZE static void init_cpuid()
+CH_OPT_SIZE void init_cpuid()
 {
 #ifdef _MSC_VER
     int n, data[4];

@@ -2,31 +2,37 @@
 
 #include "ch_internal.hpp"
 
-#if CH_ENABLE_AVX
-
+#include "ch_bb.hpp"
+#include "ch_config.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_position.hpp"
-
-#include <immintrin.h>
 
 namespace ch
 {
 
+#if CH_ARCH_32BIT
+
 #if CH_COLOR_TEMPLATE
 template<color c>
-struct move_generator<c, ACCEL_AVX>
+struct move_generator<c, ACCEL_UNACCEL>
 {
     static int generate(move* mvs, position const& p)
-    {
-        //return move_generator<c, ACCEL_SSE>::generate(mvs, p);
 #else
 template<>
-struct move_generator<ACCEL_AVX>
+struct move_generator<ACCEL_UNACCEL>
 {
     static int generate(color c, move* mvs, position const& p)
-    {
-        //return move_generator<ACCEL_SSE>::generate(c, mvs, p);
 #endif
+    {
+
+#if CH_ARCH_64BIT
+#if CH_COLOR_TEMPLATE
+        return move_generator<c, ACCEL_SSE>::generate(mvs, p);
+#else
+        return move_generator<ACCEL_SSE>::generate(c, mvs, p);
+#endif
+#else
+
         move* m = mvs;
 
         color const enemy_color = opposite(c);
@@ -62,8 +68,8 @@ struct move_generator<ACCEL_AVX>
         // find squares attacked by enemy
         // these are used to test for both check and castling legality
         {
-            uint64_t e;
             uint64_t const empty_nonking = empty ^ king;
+            uint64_t e;
             e = enemy_diag_sliders;
             attacked_nonking |= slide_attack_nw(e, empty_nonking);
             attacked_nonking |= slide_attack_ne(e, empty_nonking);
@@ -78,7 +84,7 @@ struct move_generator<ACCEL_AVX>
             assert(e != 0);
             attacked_nonking |= masks[lsb(e)].king_attacks;
             e = p.bbs[enemy_color + KNIGHT];
-            while(e) attacked_nonking |= masks[pop_lsb_avx(e)].knight_attacks;
+            while(e) attacked_nonking |= masks[pop_lsb(e)].knight_attacks;
             e = p.bbs[enemy_color + PAWN];
             if(enemy_color == WHITE)
                 attacked_nonking |= shift_nw(e) | shift_ne(e);
@@ -96,7 +102,7 @@ struct move_generator<ACCEL_AVX>
             // see if exactly one piece is between any pinners and our king
             while(potential_pinners)
             {
-                int sq = pop_lsb_avx(potential_pinners);
+                int sq = pop_lsb(potential_pinners);
                 uint64_t between = betweens[king_sq][sq] & all_pieces;
                 if(between && !(between & (between - 1)))
                     pin_mask |= between;
@@ -107,7 +113,7 @@ struct move_generator<ACCEL_AVX>
         {
             uint64_t a = masks[king_sq].king_attacks;
             a &= capture & ~attacked_nonking;
-            while(a) *m++ = move(king_sq, pop_lsb_avx(a));
+            while(a) *m++ = move(king_sq, pop_lsb(a));
         }
 
         if(attacked_nonking & king)
@@ -127,16 +133,8 @@ struct move_generator<ACCEL_AVX>
             */
 
             uint64_t slider_threats =
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
-                (magic_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
-#else
-                (hq_bishop_attacks_sse(king_sq, all_pieces) & enemy_diag_sliders) |
-#endif
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
-                (magic_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
-#else
+                (hq_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
                 (hq_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
-#endif
             uint64_t knight_pawn_threats =
                 masks[king_sq].knight_attacks & p.bbs[enemy_color + KNIGHT];
             if(c == WHITE)
@@ -162,22 +160,14 @@ struct move_generator<ACCEL_AVX>
                     move mv = move::to(i);
                     uint64_t pcs =
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
-                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-#else
-                        (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
-#endif
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
-                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
-#else
+                        (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
-#endif
                     if(c == WHITE)
                         pcs |= (masks[i].black_pawn_attacks & my_nonpro_pawns);
                     else
                         pcs |= (masks[i].white_pawn_attacks & my_nonpro_pawns);
                     pcs &= ~pin_mask;
-                    while(pcs) *m++ = mv + move::from(pop_lsb_avx(pcs));
+                    while(pcs) *m++ = mv + move::from(pop_lsb(pcs));
 
                     // TODO: promotions
 
@@ -197,23 +187,14 @@ struct move_generator<ACCEL_AVX>
                 uint64_t ray_and_threat = ray | slider_threats;
                 while(ray_and_threat)
                 {
-                    int i = pop_lsb_avx(ray_and_threat);
+                    int i = pop_lsb(ray_and_threat);
                     move mv = move::to(i);
                     uint64_t pcs = (
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
-                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-#else
-                        (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
-#endif
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
-                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
-#else
+                        (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders)
-#endif
                         ) & ~pin_mask;
-                    while(pcs) *m++ = mv + move::from(pop_lsb_avx(pcs));
+                    while(pcs) *m++ = mv + move::from(pop_lsb(pcs));
                 }
 
                 // generate non-pinned pawn forward moves that block threat
@@ -224,7 +205,7 @@ struct move_generator<ACCEL_AVX>
                     uint64_t t = b & ray;
                     while(t)
                     {
-                        int i = pop_lsb_avx(t);
+                        int i = pop_lsb(t);
                         if(t & my_pro_pawns)
 #if CH_COLOR_TEMPLATE
                             m = add_pawn_promotions<c>(m, move(i + 8, i));
@@ -237,7 +218,7 @@ struct move_generator<ACCEL_AVX>
                     t = shift_n(b & RANK3) & empty & ray;
                     while(t)
                     {
-                        int i = pop_lsb_avx(t);
+                        int i = pop_lsb(t);
                         *m++ = move::pawn_dmove(i + 16, i);
                     }
                 }
@@ -247,7 +228,7 @@ struct move_generator<ACCEL_AVX>
                     uint64_t t = b & ray;
                     while(t)
                     {
-                        int i = pop_lsb_avx(t);
+                        int i = pop_lsb(t);
                         if(t & my_pro_pawns)
 #if CH_COLOR_TEMPLATE
                             m = add_pawn_promotions<c>(m, move(i - 8, i));
@@ -260,7 +241,7 @@ struct move_generator<ACCEL_AVX>
                     t = shift_s(b & RANK6) & empty & ray;
                     while(t)
                     {
-                        int i = pop_lsb_avx(t);
+                        int i = pop_lsb(t);
                         *m++ = move::pawn_dmove(i - 16, i);
                     }
                 }
@@ -273,13 +254,13 @@ struct move_generator<ACCEL_AVX>
                     move mv = move::to(i);
                     uint64_t t = masks[i].black_pawn_attacks &
                         non_pinned_pawns & my_nonpro_pawns;
-                    while(t) *m++ = mv + move::from(pop_lsb_avx(t));
+                    while(t) *m++ = mv + move::from(pop_lsb(t));
                     t = masks[i].black_pawn_attacks &
                         non_pinned_pawns & my_pro_pawns;
 #if CH_COLOR_TEMPLATE
-                    while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb_avx(t)));
+                    while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb(t)));
 #else
-                    while(t) m = add_pawn_promotions(c, m, mv + move::from(pop_lsb_avx(t)));
+                    while(t) m = add_pawn_promotions(c, m, mv + move::from(pop_lsb(t)));
 #endif
                 }
                 else
@@ -288,13 +269,13 @@ struct move_generator<ACCEL_AVX>
                     move mv = move::to(i);
                     uint64_t t = masks[i].white_pawn_attacks &
                         non_pinned_pawns & my_nonpro_pawns;
-                    while(t) *m++ = mv + move::from(pop_lsb_avx(t));
+                    while(t) *m++ = mv + move::from(pop_lsb(t));
                     t = masks[i].white_pawn_attacks &
                         non_pinned_pawns & my_pro_pawns;
 #if CH_COLOR_TEMPLATE
-                    while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb_avx(t)));
+                    while(t) m = add_pawn_promotions<c>(m, mv + move::from(pop_lsb(t)));
 #else
-                    while(t) m = add_pawn_promotions(c, m, mv + move::from(pop_lsb_avx(t)));
+                    while(t) m = add_pawn_promotions(c, m, mv + move::from(pop_lsb(t)));
 #endif
                 }
             }
@@ -337,10 +318,10 @@ struct move_generator<ACCEL_AVX>
 
         // pinned pawns
         {
-            uint64_t pinned_pawns = p.bbs[c + PAWN] & pin_mask;
-            while(pinned_pawns)
+            uint64_t pawns = p.bbs[c + PAWN] & pin_mask;
+            while(pawns)
             {
-                uint64_t pawn = pop_lsb_mask_avx(pinned_pawns);
+                uint64_t pawn = pop_lsb_mask(pawns);
                 int sq = lsb(pawn);
                 uint64_t pf;
                 uint64_t ray = lines[king_sq][sq];
@@ -394,9 +375,9 @@ struct move_generator<ACCEL_AVX>
             m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #else
         m = generate_non_pinned_pawn_moves<false>(c,
-            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
         m = generate_non_pinned_pawn_moves<true>(c,
-            m, pro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #endif
 
 #if CH_COLOR_TEMPLATE
@@ -408,33 +389,29 @@ struct move_generator<ACCEL_AVX>
 
         // non-pinned knights (pinned knights cannot move)
         {
-            uint64_t unpinned_knights = p.bbs[c + KNIGHT] & ~pin_mask;
-            while(unpinned_knights)
+            uint64_t knights = p.bbs[c + KNIGHT] & ~pin_mask;
+            while(knights)
             {
-                int i = pop_lsb_avx(unpinned_knights);
+                int i = pop_lsb(knights);
                 uint64_t a = masks[i].knight_attacks & capture;
                 move mv = move::from(i);
                 while(a)
-                    *m++ = (mv + move::to(pop_lsb_avx(a)));
+                    *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
-
+        
         // pinned diagonal sliders
         {
             uint64_t pcs = my_diag_sliders & pin_mask;
             while(pcs)
             {
                 uint64_t bb_from = pcs;
-                int i = pop_lsb_avx(pcs);
-                bb_from ^= pcs;
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
-                uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
-#else
-                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
-#endif
-                a &= lines[king_sq][i];
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                while(a) *m++ = (mv + move::to(pop_lsb_avx(a)));
+                bb_from ^= pcs;
+                uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+                a &= lines[king_sq][i];
+                while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
 
@@ -444,15 +421,11 @@ struct move_generator<ACCEL_AVX>
             while(pcs)
             {
                 uint64_t bb_from = pcs;
-                int i = pop_lsb_avx(pcs);
-                bb_from ^= pcs;
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
-                uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
-#else
-                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
-#endif
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                while(a) *m++ = (mv + move::to(pop_lsb_avx(a)));
+                bb_from ^= pcs;
+                uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+                while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
 
@@ -462,16 +435,12 @@ struct move_generator<ACCEL_AVX>
             while(pcs)
             {
                 uint64_t bb_from = pcs;
-                int i = pop_lsb_avx(pcs);
-                bb_from ^= pcs;
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
-                uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
-#else
-                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
-#endif
-                a &= lines[king_sq][i];
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                while(a) *m++ = (mv + move::to(pop_lsb_avx(a)));
+                bb_from ^= pcs;
+                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+                a &= lines[king_sq][i];
+                while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
 
@@ -481,22 +450,22 @@ struct move_generator<ACCEL_AVX>
             while(pcs)
             {
                 uint64_t bb_from = pcs;
-                int i = pop_lsb_avx(pcs);
-                bb_from ^= pcs;
-#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
-                uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
-#else
-                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
-#endif
+                int i = pop_lsb(pcs);
                 move mv = move::from(i);
-                while(a) *m++ = (mv + move::to(pop_lsb_avx(a)));
+                bb_from ^= pcs;
+                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+                while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
 
         return int(m - mvs);
+
+#endif
     }
 };
 
+#endif
+
 }
 
-#endif
+#undef CH_PUSH_MOVE

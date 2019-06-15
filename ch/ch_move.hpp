@@ -11,6 +11,7 @@ struct move
 {
     uint32_t d;
     move() = default;
+    move(move const&) = default;
     constexpr move(uint32_t d_) : d(d_) {}
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
@@ -39,33 +40,5 @@ private:
     static constexpr uint32_t const MOVE_CASTLEK = 0x10000000;
     static constexpr uint32_t const MOVE_PROMOTION = 0x08000000;
 };
-
-char const* move::extended_algebraic() const
-{
-    static char buf[16];
-    char* bp = buf;
-
-    int a = from();
-    int b = to();
-
-    *bp++ = char('a' + (a % 8));
-    *bp++ = char('8' - (a / 8));
-    *bp++ = char('a' + (b % 8));
-    *bp++ = char('8' - (b / 8));
-
-    if(is_promotion())
-    {
-        switch((d >> 16) & 0xff)
-        {
-        case WHITE + KNIGHT: case BLACK + KNIGHT: *bp++ = 'n'; break;
-        case WHITE + BISHOP: case BLACK + BISHOP: *bp++ = 'b'; break;
-        case WHITE + ROOK  : case BLACK + ROOK  : *bp++ = 'r'; break;
-        case WHITE + QUEEN : case BLACK + QUEEN : *bp++ = 'q'; break;
-        }
-    }
-
-    *bp = '\0';
-    return buf;
-}
 
 }

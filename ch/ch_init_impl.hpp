@@ -6,7 +6,13 @@
 namespace ch
 {
 
-CH_OPT_SIZE static void init()
+std::array<precomputed_mask_data, 64> masks;
+std::array<uint8_t, 64 * 8> first_rank_attacks;
+std::array<std::array<uint64_t, 64>, 64> betweens;
+std::array<std::array<uint64_t, 64>, 64> lines;
+ch_system_info system;
+
+CH_OPT_SIZE void init()
 {
     static int8_t const NDI[8] = { -2, -2, 1, -1, 2, 2, -1, 1 };
     static int8_t const NDJ[8] = { -1, 1, 2, 2, 1, -1, -2, -2 };

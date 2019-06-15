@@ -2,212 +2,40 @@
 
 #include "ch_internal.hpp"
 
-#include "ch_bb.hpp"
-#include "ch_config.hpp"
+#if CH_ENABLE_SSE
+
+#include "ch_bb_sse.hpp"
 #include "ch_genmoves.hpp"
+#include "ch_magic.hpp"
 #include "ch_position.hpp"
 
 namespace ch
 {
 
-#if CH_COLOR_TEMPLATE
+CH_FORCEINLINE __m128i swap64(__m128i x)
+{
+    return _mm_shuffle_epi32(x, _MM_SHUFFLE(1, 0, 3, 2));
+}
+
 template<color c>
-CH_FORCEINLINE move* add_pawn_promotions(move* m, move mv)
-#else
-CH_FORCEINLINE move* add_pawn_promotions(color c, move* m, move mv)
-#endif
-{
-    m[0] = mv + move::pawn_promotion(c + QUEEN);
-    m[1] = mv + move::pawn_promotion(c + KNIGHT);
-    m[2] = mv + move::pawn_promotion(c + ROOK);
-    m[3] = mv + move::pawn_promotion(c + BISHOP);
-    return m + 4;
-}
-
-#if CH_COLOR_TEMPLATE
-template<color c, bool promote>
-CH_FORCEINLINE move* generate_non_pinned_pawn_moves(move* m,
-#else
-template<bool promote>
-CH_FORCEINLINE move* generate_non_pinned_pawn_moves(color c, move* m,
-#endif
-    uint64_t pawns, uint64_t empty, uint64_t enemy_all)
-{
-    if(promote && pawns == 0) return m;
-
-    // forward moves
-    uint64_t pf;
-    if(c == WHITE) pf = shift_n(pawns) & empty;
-    else pf = shift_s(pawns) & empty;
-    uint64_t t = pf;
-    while(t)
-    {
-        int i = pop_lsb(t);
-        if(promote)
-        {
-#if CH_COLOR_TEMPLATE
-            if(c == WHITE) m = add_pawn_promotions<c>(m, move(i + 8, i));
-            else m = add_pawn_promotions<c>(m, move(i - 8, i));
-#else
-            if(c == WHITE) m = add_pawn_promotions(c, m, move(i + 8, i));
-            else m = add_pawn_promotions(c, m, move(i - 8, i));
-#endif
-        }
-        else
-        {
-            if(c == WHITE) *m++ = (move(i + 8, i));
-            else *m++ = (move(i - 8, i));
-        }
-    }
-
-    if(!promote)
-    {
-        // double forward moves
-        if(c == WHITE)
-            pf = shift_n(pf & RANK3) & empty;
-        else
-            pf = shift_s(pf & RANK6) & empty;
-        while(pf)
-        {
-            int i = pop_lsb(pf);
-            if(c == WHITE)
-                *m++ = (move::pawn_dmove(i + 16, i));
-            else
-                *m++ = (move::pawn_dmove(i - 16, i));
-        }
-    }
-
-    // captures
-    if(c == WHITE)
-    {
-        pf = shift_nw(pawns) & enemy_all;
-        while(pf)
-        {
-            int i = pop_lsb(pf);
-#if CH_COLOR_TEMPLATE
-            if(promote) m = add_pawn_promotions<c>(m, move(i + 9, i));
-#else
-            if(promote) m = add_pawn_promotions(c, m, move(i + 9, i));
-#endif
-            else *m++ = move(i + 9, i);
-        }
-        pf = shift_ne(pawns) & enemy_all;
-        while(pf)
-        {
-            int i = pop_lsb(pf);
-#if CH_COLOR_TEMPLATE
-            if(promote) m = add_pawn_promotions<c>(m, move(i + 7, i));
-#else
-            if(promote) m = add_pawn_promotions(c, m, move(i + 7, i));
-#endif
-            else *m++ = move(i + 7, i);
-        }
-    }
-    else
-    {
-        pf = shift_sw(pawns) & enemy_all;
-        while(pf)
-        {
-            int i = pop_lsb(pf);
-#if CH_COLOR_TEMPLATE
-            if(promote) m = add_pawn_promotions<c>(m, move(i - 7, i));
-#else
-            if(promote) m = add_pawn_promotions(c, m, move(i - 7, i));
-#endif
-            else *m++ = move(i - 7, i);
-        }
-        pf = shift_se(pawns) & enemy_all;
-        while(pf)
-        {
-            int i = pop_lsb(pf);
-#if CH_COLOR_TEMPLATE
-            if(promote) m = add_pawn_promotions<c>(m, move(i - 9, i));
-#else
-            if(promote) m = add_pawn_promotions(c, m, move(i - 9, i));
-#endif
-            else *m++ = move(i - 9, i);
-        }
-    }
-
-    return m;
-}
+CH_FORCEINLINE __m128i colorswap(__m128i x);
+template<>
+CH_FORCEINLINE __m128i colorswap<WHITE>(__m128i x) { return x; }
+template<>
+CH_FORCEINLINE __m128i colorswap<BLACK>(__m128i x) { return swap64(x); }
 
 #if CH_COLOR_TEMPLATE
 template<color c>
-CH_FORCEINLINE bool is_en_passant_legal(
-#else
-CH_FORCEINLINE bool is_en_passant_legal(color c,
-#endif
-    uint64_t pawn, uint64_t ep, int king_sq, uint64_t all_pieces,
-    uint64_t enemy_orth_sliders, uint64_t enemy_diag_sliders)
-{
-    if(!pawn) return false;
-    uint64_t mask = all_pieces ^ pawn ^ ep;
-    if(c == WHITE) mask ^= shift_n(ep);
-    else mask ^= shift_s(ep);
-    uint64_t attacks =
-        (hq_bishop_attacks(king_sq, mask) & enemy_diag_sliders) |
-        (hq_rook_attacks(king_sq, mask) & enemy_orth_sliders);
-    return attacks == 0;
-}
-
-#if CH_COLOR_TEMPLATE
-template<color c>
-CH_FORCEINLINE move* generate_en_passant_moves(
-#else
-CH_FORCEINLINE move* generate_en_passant_moves(color c,
-#endif
-    move* m, position const& p, int king_sq, uint64_t all_pieces,
-    uint64_t enemy_orth_sliders, uint64_t enemy_diag_sliders)
-{
-    int ep_sq = p.stack().ep_sq;
-    if(!ep_sq) return m;
-    uint64_t ep = (1ull << ep_sq);
-    int dest = (c == WHITE ? ep_sq - 8 : ep_sq + 8);
-#if CH_COLOR_TEMPLATE
-    if(is_en_passant_legal<c>(shift_w(ep) & p.bbs[c + PAWN], ep,
-#else
-    if(is_en_passant_legal(c, shift_w(ep) & p.bbs[c + PAWN], ep,
-#endif
-        king_sq, all_pieces, enemy_orth_sliders, enemy_diag_sliders))
-    {
-        *m++ = move::en_passant(ep_sq) + move(ep_sq - 1, dest);
-    }
-#if CH_COLOR_TEMPLATE
-    if(is_en_passant_legal<c>(shift_e(ep) & p.bbs[c + PAWN], ep,
-#else
-    if(is_en_passant_legal(c, shift_e(ep) & p.bbs[c + PAWN], ep,
-#endif
-        king_sq, all_pieces, enemy_orth_sliders, enemy_diag_sliders))
-    {
-        *m++ = move::en_passant(ep_sq) + move(ep_sq + 1, dest);
-    }
-    return m;
-}
-
-#if CH_ARCH_32BIT
-
-#if CH_COLOR_TEMPLATE
-template<color c>
-struct move_generator<c, ACCEL_UNACCEL>
+struct move_generator<c, ACCEL_SSE>
 {
     static int generate(move* mvs, position const& p)
 #else
 template<>
-struct move_generator<ACCEL_UNACCEL>
+struct move_generator<ACCEL_SSE>
 {
     static int generate(color c, move* mvs, position const& p)
 #endif
     {
-
-#if CH_ARCH_64BIT
-#if CH_COLOR_TEMPLATE
-        return move_generator<c, ACCEL_SSE>::generate(mvs, p);
-#else
-        return move_generator<ACCEL_SSE>::generate(c, mvs, p);
-#endif
-#else
-
         move* m = mvs;
 
         color const enemy_color = opposite(c);
@@ -243,8 +71,8 @@ struct move_generator<ACCEL_UNACCEL>
         // find squares attacked by enemy
         // these are used to test for both check and castling legality
         {
-            uint64_t const empty_nonking = empty ^ king;
             uint64_t e;
+            uint64_t const empty_nonking = empty ^ king;
             e = enemy_diag_sliders;
             attacked_nonking |= slide_attack_nw(e, empty_nonking);
             attacked_nonking |= slide_attack_ne(e, empty_nonking);
@@ -308,8 +136,16 @@ struct move_generator<ACCEL_UNACCEL>
             */
 
             uint64_t slider_threats =
-                (hq_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
+            (magic_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
+#else
+                (hq_bishop_attacks_sse(king_sq, all_pieces) & enemy_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                (magic_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
+#else
                 (hq_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
+#endif
             uint64_t knight_pawn_threats =
                 masks[king_sq].knight_attacks & p.bbs[enemy_color + KNIGHT];
             if(c == WHITE)
@@ -324,7 +160,7 @@ struct move_generator<ACCEL_UNACCEL>
                     masks[king_sq].black_pawn_attacks &
                     p.bbs[enemy_color + PAWN]);
             }
-
+            
             if(knight_pawn_threats)
             {
                 assert(!more_than_one(knight_pawn_threats));
@@ -335,8 +171,16 @@ struct move_generator<ACCEL_UNACCEL>
                     move mv = move::to(i);
                     uint64_t pcs =
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-                        (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
+                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+#else
+                        (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
+#else
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
+#endif
                     if(c == WHITE)
                         pcs |= (masks[i].black_pawn_attacks & my_nonpro_pawns);
                     else
@@ -366,8 +210,16 @@ struct move_generator<ACCEL_UNACCEL>
                     move mv = move::to(i);
                     uint64_t pcs = (
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-                        (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
+                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+#else
+                        (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
+#else
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders)
+#endif
                         ) & ~pin_mask;
                     while(pcs) *m++ = mv + move::from(pop_lsb(pcs));
                 }
@@ -493,10 +345,10 @@ struct move_generator<ACCEL_UNACCEL>
 
         // pinned pawns
         {
-            uint64_t pawns = p.bbs[c + PAWN] & pin_mask;
-            while(pawns)
+            uint64_t pinned_pawns = p.bbs[c + PAWN] & pin_mask;
+            while(pinned_pawns)
             {
-                uint64_t pawn = pop_lsb_mask(pawns);
+                uint64_t pawn = pop_lsb_mask(pinned_pawns);
                 int sq = lsb(pawn);
                 uint64_t pf;
                 uint64_t ray = lines[king_sq][sq];
@@ -549,10 +401,10 @@ struct move_generator<ACCEL_UNACCEL>
         m = generate_non_pinned_pawn_moves<c, true>(
             m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #else
-        m = generate_non_pinned_pawn_moves<false>(c,
-            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
-        m = generate_non_pinned_pawn_moves<true>(c,
-            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
+        m = generate_non_pinned_pawn_moves<false>(c, 
+            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+        m = generate_non_pinned_pawn_moves<true>(c, 
+            m, pro_pawns & ~pin_mask, empty, enemy_all);
 #endif
 
 #if CH_COLOR_TEMPLATE
@@ -564,17 +416,17 @@ struct move_generator<ACCEL_UNACCEL>
 
         // non-pinned knights (pinned knights cannot move)
         {
-            uint64_t knights = p.bbs[c + KNIGHT] & ~pin_mask;
-            while(knights)
+            uint64_t unpinned_knights = p.bbs[c + KNIGHT] & ~pin_mask;
+            while(unpinned_knights)
             {
-                int i = pop_lsb(knights);
+                int i = pop_lsb(unpinned_knights);
                 uint64_t a = masks[i].knight_attacks & capture;
                 move mv = move::from(i);
                 while(a)
                     *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
-        
+
         // pinned diagonal sliders
         {
             uint64_t pcs = my_diag_sliders & pin_mask;
@@ -584,7 +436,11 @@ struct move_generator<ACCEL_UNACCEL>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
+                uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#endif
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
@@ -599,7 +455,11 @@ struct move_generator<ACCEL_UNACCEL>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
+                uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#endif
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
@@ -613,7 +473,11 @@ struct move_generator<ACCEL_UNACCEL>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
+#else
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#endif
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
@@ -628,19 +492,22 @@ struct move_generator<ACCEL_UNACCEL>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
+#else
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#endif
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
 
         return int(m - mvs);
-
-#endif
     }
 };
 
-#endif
+template struct move_generator<WHITE, ACCEL_SSE>;
+template struct move_generator<BLACK, ACCEL_SSE>;
 
 }
 
-#undef CH_PUSH_MOVE
+#endif
