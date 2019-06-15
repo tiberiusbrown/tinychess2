@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ch_config.hpp"
+#if CH_ENABLE_MAGIC
+
 #include "ch_bb.hpp"
 #include "ch_internal.hpp"
 #include "ch_magic_data.hpp"
@@ -112,25 +115,10 @@ CH_OPT_SIZE static void init_magic()
                     slide_attack_w(p, empty) |
                     slide_attack_e(p, empty);
             }
-#if 1
-            else
-            {
-                uint64_t empty = ~occ;
-                uint64_t a =
-                    slide_attack_n(p, empty) |
-                    slide_attack_s(p, empty) |
-                    slide_attack_w(p, empty) |
-                    slide_attack_e(p, empty);
-                if(a != atts)
-                {
-                    print_bb(a);
-                    print_bb(atts);
-                    print_bb(occ);
-                }
-            }
-#endif
         }
     }
 }
 
 }
+
+#endif

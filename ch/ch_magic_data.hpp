@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ch_config.hpp"
+#if CH_ENABLE_MAGIC
+
 #include <array>
 
 #include <stdint.h>
@@ -162,3 +165,5 @@ static magic_info const ROOK_MAGICS[64] =
 };
 
 }
+
+#endif

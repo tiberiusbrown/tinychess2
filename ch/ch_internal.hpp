@@ -6,6 +6,7 @@
 #include <array>
 
 #include <emmintrin.h>
+#include <immintrin.h>
 
 #include "ch.h"
 #include "ch_config.hpp"
@@ -70,7 +71,7 @@
 #define CH_FORCENOINLINE __attribute__((noinline))
 #define CH_OPT_SIZE __attribute__((optimize("-Os")))
 #else
-#define CH_FORCEINLINE
+#define CH_FORCEINLINE inline
 #define CH_FORCENOINLINE
 #define CH_OPT_SIZE
 #endif
@@ -164,22 +165,42 @@ inline int lsb(uint64_t x)
     return __builtin_ctzll(x);
 #endif
 }
-inline int pop_lsb(uint64_t& x)
+CH_FORCEINLINE int pop_lsb(uint64_t& x)
 {
     int i = lsb(x);
     x &= x - 1;
     return i;
 }
-
-inline uint64_t lsb_mask(uint64_t x)
+CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
 {
     return x & uint64_t(-int64_t(x));
 }
-inline uint64_t pop_lsb_mask(uint64_t& x)
+CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
 {
     uint64_t r = lsb_mask(x);
     x ^= r;
     return r;
+}
+
+CH_FORCEINLINE int pop_lsb_avx(uint64_t& x)
+{
+    int i = lsb(x);
+    x = _blsr_u64(x);
+    return i;
+}
+CH_FORCEINLINE uint64_t lsb_mask_avx(uint64_t x)
+{
+    return _blsi_u64(x);
+}
+CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
+{
+    uint64_t r = lsb_mask_avx(x);
+    x ^= r;
+    return r;
+}
+CH_FORCEINLINE int popcnt_avx(uint64_t x)
+{
+    return int(__popcnt64(x));
 }
 
 inline bool more_than_one(uint64_t x)

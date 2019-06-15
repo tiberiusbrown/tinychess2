@@ -165,9 +165,14 @@ struct move_generator<ACCEL_SSE>
                     move mv = move::to(i);
                     uint64_t pcs =
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
+#if CH_ENABLE_MAGIC
+                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
+#else
                         (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
-                    if(c == WHITE)
+#endif
+                        if(c == WHITE)
                         pcs |= (masks[i].black_pawn_attacks & my_nonpro_pawns);
                     else
                         pcs |= (masks[i].white_pawn_attacks & my_nonpro_pawns);
@@ -196,8 +201,13 @@ struct move_generator<ACCEL_SSE>
                     move mv = move::to(i);
                     uint64_t pcs = (
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-                        (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+#if CH_ENABLE_MAGIC
+                        (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
+#else
+                        (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders)
+#endif
                         ) & ~pin_mask;
                     while(pcs) *m++ = mv + move::from(pop_lsb(pcs));
                 }
@@ -414,8 +424,11 @@ struct move_generator<ACCEL_SSE>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                //uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#endif
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
@@ -430,8 +443,11 @@ struct move_generator<ACCEL_SSE>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                //uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
+#endif
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
@@ -445,8 +461,11 @@ struct move_generator<ACCEL_SSE>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                //uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#endif
                 a &= lines[king_sq][i];
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
@@ -461,8 +480,11 @@ struct move_generator<ACCEL_SSE>
                 int i = pop_lsb(pcs);
                 move mv = move::from(i);
                 bb_from ^= pcs;
-                //uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#if CH_ENABLE_MAGIC
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
+#else
+                uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+#endif
                 while(a) *m++ = (mv + move::to(pop_lsb(a)));
             }
         }
