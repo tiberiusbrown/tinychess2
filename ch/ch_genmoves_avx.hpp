@@ -127,11 +127,14 @@ struct move_generator<ACCEL_AVX>
             */
 
             uint64_t slider_threats =
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                 (magic_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
-                (magic_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
 #else
                 (hq_bishop_attacks_sse(king_sq, all_pieces) & enemy_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                (magic_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
+#else
                 (hq_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
 #endif
             uint64_t knight_pawn_threats =
@@ -159,14 +162,17 @@ struct move_generator<ACCEL_AVX>
                     move mv = move::to(i);
                     uint64_t pcs =
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                         (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
 #else
                         (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
+#else
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
 #endif
-                        if(c == WHITE)
+                    if(c == WHITE)
                         pcs |= (masks[i].black_pawn_attacks & my_nonpro_pawns);
                     else
                         pcs |= (masks[i].white_pawn_attacks & my_nonpro_pawns);
@@ -196,11 +202,14 @@ struct move_generator<ACCEL_AVX>
                     uint64_t pcs = (
                         (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
 
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                         (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
 #else
                         (hq_bishop_attacks_sse(i, all_pieces) & my_diag_sliders) |
+#endif
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
+                        (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
+#else
                         (hq_rook_attacks(i, all_pieces) & my_orth_sliders)
 #endif
                         ) & ~pin_mask;
@@ -418,7 +427,7 @@ struct move_generator<ACCEL_AVX>
                 uint64_t bb_from = pcs;
                 int i = pop_lsb_avx(pcs);
                 bb_from ^= pcs;
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
@@ -437,7 +446,7 @@ struct move_generator<ACCEL_AVX>
                 uint64_t bb_from = pcs;
                 int i = pop_lsb_avx(pcs);
                 bb_from ^= pcs;
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
@@ -455,7 +464,7 @@ struct move_generator<ACCEL_AVX>
                 uint64_t bb_from = pcs;
                 int i = pop_lsb_avx(pcs);
                 bb_from ^= pcs;
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
@@ -474,7 +483,7 @@ struct move_generator<ACCEL_AVX>
                 uint64_t bb_from = pcs;
                 int i = pop_lsb_avx(pcs);
                 bb_from ^= pcs;
-#if CH_ENABLE_MAGIC
+#if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
