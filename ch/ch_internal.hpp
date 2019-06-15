@@ -200,7 +200,11 @@ CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
 }
 CH_FORCEINLINE int popcnt_avx(uint64_t x)
 {
+#ifdef _MSC_VER
     return int(__popcnt64(x));
+#else
+    return __builtin_popcountll(x);
+#endif
 }
 
 inline bool more_than_one(uint64_t x)
