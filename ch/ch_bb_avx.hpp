@@ -28,7 +28,8 @@ static inline __m256i horizontal_or(__m256i x)
     { { M64_CONVERT_(a_) M64_CONVERT_(b_) M64_CONVERT_(c_) M64_CONVERT_(d_) } }
 #define M256_CONSTANT_ALL(a_) M256_CONSTANT(a_, a_, a_, a_)
 #else
-#define M256_CONSTANT(a_, b_, c_, d_) { a_, b_, c_, d_ }
+#define M256_CONSTANT(a_, b_, c_, d_) \
+    { int64_t(a_), int64_t(b_), int64_t(c_), int64_t(d_) }
 #endif
 
 static inline __m256i shift_nw_ne(__m256i bb)
