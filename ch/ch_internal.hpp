@@ -24,24 +24,6 @@
 #define CH_ENABLE_AVX 0
 #endif
 
-#define CH_ARCH_32BIT 0
-
-#ifdef _MSC_VER
-#ifdef _M_IX86
-#undef CH_ARCH_32BIT
-#define CH_ARCH_32BIT 1
-#endif
-#endif
-
-#ifdef __GNUC__
-#ifdef __i386__
-#undef CH_ARCH_32BIT
-#define CH_ARCH_32BIT 1
-#endif
-#endif
-
-#define CH_ARCH_64BIT (!CH_ARCH_32BIT)
-
 #if CH_ARCH_64BIT
 #undef CH_ENABLE_UNACCEL
 #define CH_ENABLE_UNACCEL 0
@@ -184,13 +166,21 @@ CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
 
 CH_FORCEINLINE int pop_lsb_avx(uint64_t& x)
 {
+#if CH_ARCH_32BIT
+    return pop_lsb(x);
+#else
     int i = lsb(x);
     x = _blsr_u64(x);
     return i;
+#endif
 }
 CH_FORCEINLINE uint64_t lsb_mask_avx(uint64_t x)
 {
+#if CH_ARCH_32BIT
+    return lsb_mask(x);
+#else
     return _blsi_u64(x);
+#endif
 }
 CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
 {
@@ -201,7 +191,11 @@ CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
 CH_FORCEINLINE int popcnt_avx(uint64_t x)
 {
 #ifdef _MSC_VER
+#if CH_ARCH_32BIT
+    return int(__popcnt(uint32_t(x))) + int(__popcnt(uint32_t(x >> 32)));
+#else
     return int(__popcnt64(x));
+#endif
 #else
     return __builtin_popcountll(x);
 #endif

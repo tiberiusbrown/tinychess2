@@ -7,6 +7,8 @@
 #include "ch_genmoves.hpp"
 #include "ch_position.hpp"
 
+#include "ch_bb_avx.hpp"
+
 #include <immintrin.h>
 
 namespace ch
@@ -60,19 +62,20 @@ struct move_generator<ACCEL_AVX>
         // find squares attacked by enemy
         // these are used to test for both check and castling legality
         {
-            uint64_t e;
-            uint64_t const empty_nonking = empty ^ king;
-            e = enemy_diag_sliders;
-            attacked_nonking |= slide_attack_nw(e, empty_nonking);
-            attacked_nonking |= slide_attack_ne(e, empty_nonking);
-            attacked_nonking |= slide_attack_sw(e, empty_nonking);
-            attacked_nonking |= slide_attack_se(e, empty_nonking);
-            e = enemy_orth_sliders;
-            attacked_nonking |= slide_attack_n(e, empty_nonking);
-            attacked_nonking |= slide_attack_s(e, empty_nonking);
-            attacked_nonking |= slide_attack_w(e, empty_nonking);
-            attacked_nonking |= slide_attack_e(e, empty_nonking);
-            e = p.bbs[enemy_color + KING];
+            {
+                __m256i t = _mm256_setr_epi64x(
+                    enemy_orth_sliders,
+                    enemy_orth_sliders,
+                    enemy_diag_sliders,
+                    enemy_diag_sliders);
+                __m256i enk = _mm256_set1_epi64x(empty ^ king);
+                t = _mm256_or_si256(
+                    slide_attack_n_w_nw_ne(t, enk),
+                    slide_attack_s_e_sw_se(t, enk));
+                t = horizontal_or(t);
+                attacked_nonking = *(uint64_t*)&t;
+            }
+            uint64_t e = p.bbs[enemy_color + KING];
             assert(e != 0);
             attacked_nonking |= masks[lsb(e)].king_attacks;
             e = p.bbs[enemy_color + KNIGHT];
@@ -392,9 +395,9 @@ struct move_generator<ACCEL_AVX>
             m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #else
         m = generate_non_pinned_pawn_moves<false>(c,
-            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
         m = generate_non_pinned_pawn_moves<true>(c,
-            m, pro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #endif
 
 #if CH_COLOR_TEMPLATE

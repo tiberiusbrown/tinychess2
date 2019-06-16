@@ -404,9 +404,9 @@ struct move_generator<ACCEL_SSE>
             m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #else
         m = generate_non_pinned_pawn_moves<false>(c, 
-            m, nonpro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_nonpro_pawns & ~pin_mask, empty, enemy_all);
         m = generate_non_pinned_pawn_moves<true>(c, 
-            m, pro_pawns & ~pin_mask, empty, enemy_all);
+            m, my_pro_pawns & ~pin_mask, empty, enemy_all);
 #endif
 
 #if CH_COLOR_TEMPLATE
