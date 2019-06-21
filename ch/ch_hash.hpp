@@ -19,9 +19,6 @@ static uint64_t hashes[13][64];
 // whose turn is it?
 static uint64_t hash_turn;
 // castling rights
-static uint64_t hash_cq[2];
-static uint64_t hash_ck[2];
-// castling rights hashes
 static uint64_t hash_castling_rights[16];
 
 // en passant columns: use extra pawn storage
@@ -45,14 +42,17 @@ static void init_hashes(void)
 
     hash_turn = random(seed);
 
-    hash_cq[WHITE] = random(seed);
-    hash_cq[BLACK] = random(seed);
-    hash_ck[WHITE] = random(seed);
-    hash_ck[BLACK] = random(seed);
-
-    for(auto& h : hash_castling_rights)
-        h = random(seed);
-    hash_castling_rights[0] = 0ull;
+    {
+        uint64_t ch[4];
+        for(auto& h : ch) h = random(seed);
+        for(int i = 0; i < 16; ++i)
+        {
+            hash_castling_rights[i] = 0ull;
+            for(int j = 0; j < 4; ++j)
+                if(i & (1 << j))
+                    hash_castling_rights[i] ^= ch[j];
+        }
+    }
 }
 
 static constexpr uint8_t TTFLAG_EXACT = 1;
