@@ -16,12 +16,28 @@ struct position
     CH_ALIGN(64) std::array<uint8_t, 64> pieces;
     CH_ALIGN(64) std::array<uint64_t, NUM_BB> bbs;
 
+    // written to by move_generator<>::generate
+    uint64_t attacked_nonking;
+    uint64_t pinned_pieces;
+    bool in_check;
+
+    // written to by negamax<>
+    // principal variation
+    std::array<move, 256> pv;
+    int num_pv;
+    // node counts
+    uint64_t nodes;
+
+    // transposition table
+    trans_table tt;
+
     static constexpr int const STACK_SIZE = 64;
     struct stack_node
     {
+        uint64_t hash;
         int cap_piece;
-        int ep_sq;
-        int castling_rights;
+        uint16_t ep_sq;
+        uint16_t castling_rights;
     };
     std::array<stack_node, STACK_SIZE> stack_data;
     int stack_index;
@@ -70,44 +86,51 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
 
     stack_index = 0;
     stack().cap_piece = EMPTY;
+    uint64_t& hash = stack().hash;
+    hash = 0ull;
 
     char c = 1;
-    uint64_t m = 1;
-    int i = 0;
-    while(' ' != (c = *fen++) && c)
+
+    // pieces
     {
+        uint64_t m = 1;
+        int i = 0;
+        while(' ' != (c = *fen++) && c)
+        {
 #define CH_PUT(p_) do { \
     bbs[p_] |= m; \
     pieces[i] = p_; \
+    hash ^= hashes[p_][i]; \
     m <<= 1; ++i; \
     } while(0)
-        switch(c)
-        {
-        case 'p': CH_PUT(BLACK + PAWN);   break;
-        case 'n': CH_PUT(BLACK + KNIGHT); break;
-        case 'b': CH_PUT(BLACK + BISHOP); break;
-        case 'r': CH_PUT(BLACK + ROOK);   break;
-        case 'q': CH_PUT(BLACK + QUEEN);  break;
-        case 'k': CH_PUT(BLACK + KING);   break;
-        case 'P': CH_PUT(WHITE + PAWN);   break;
-        case 'N': CH_PUT(WHITE + KNIGHT); break;
-        case 'B': CH_PUT(WHITE + BISHOP); break;
-        case 'R': CH_PUT(WHITE + ROOK);   break;
-        case 'Q': CH_PUT(WHITE + QUEEN);  break;
-        case 'K': CH_PUT(WHITE + KING);   break;
-        case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8':
-            for(int j = 0; j < int(c - '0'); ++j)
-                CH_PUT(EMPTY);
-            break;
+            switch(c)
+            {
+            case 'p': CH_PUT(BLACK + PAWN);   break;
+            case 'n': CH_PUT(BLACK + KNIGHT); break;
+            case 'b': CH_PUT(BLACK + BISHOP); break;
+            case 'r': CH_PUT(BLACK + ROOK);   break;
+            case 'q': CH_PUT(BLACK + QUEEN);  break;
+            case 'k': CH_PUT(BLACK + KING);   break;
+            case 'P': CH_PUT(WHITE + PAWN);   break;
+            case 'N': CH_PUT(WHITE + KNIGHT); break;
+            case 'B': CH_PUT(WHITE + BISHOP); break;
+            case 'R': CH_PUT(WHITE + ROOK);   break;
+            case 'Q': CH_PUT(WHITE + QUEEN);  break;
+            case 'K': CH_PUT(WHITE + KING);   break;
+            case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8':
+                for(int j = 0; j < int(c - '0'); ++j)
+                    CH_PUT(EMPTY);
+                break;
 #undef CH_PUT
-        case '/':
-        default:
-            break;
+            case '/':
+            default:
+                break;
+            }
         }
     }
 
-    // TODO: current turn
+    // current turn
     current_turn = WHITE;
     while(' ' != (c = *fen++) && c)
     {
@@ -120,6 +143,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
         }
     }
 
+    // castling rights
     stack().castling_rights =
         CASTLE_WQ_MASK |
         CASTLE_BQ_MASK |
@@ -137,30 +161,36 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
             break;
         }
     }
+    hash ^= hash_castling_rights[stack().castling_rights];
 
     // en passant target square
-    int ep_rank = -1, ep_file = -1;
-    stack().ep_sq = 0;
-    while(' ' != (c = *fen++) && c)
     {
-        switch(c)
+        int ep_rank = -1, ep_file = -1;
+        stack().ep_sq = 0;
+        while(' ' != (c = *fen++) && c)
         {
-        case 'a': case 'b': case 'c': case 'd':
-        case 'e': case 'f': case 'g': case 'h':
-            ep_file = (c - 'a');
-            break;
-        case '3':
-            ep_rank = 4;
-            break;
-        case '6':
-            ep_rank = 5;
-            break;
-        default:
-            break;
+            switch(c)
+            {
+            case 'a': case 'b': case 'c': case 'd':
+            case 'e': case 'f': case 'g': case 'h':
+                ep_file = (c - 'a');
+                break;
+            case '3':
+                ep_rank = 4;
+                break;
+            case '6':
+                ep_rank = 5;
+                break;
+            default:
+                break;
+            }
+        }
+        if(ep_rank >= 1 && ep_file >= 0)
+        {
+            stack().ep_sq = uint16_t((8 - ep_rank) * 8 + ep_file);
+            hash ^= hash_enp[stack().ep_sq & 7];
         }
     }
-    if(ep_rank >= 1 && ep_file >= 0)
-        stack().ep_sq = (8 - ep_rank) * 8 + ep_file;
 }
 
 static constexpr uint8_t const CASTLING_SPOILERS[64] =
@@ -191,27 +221,44 @@ void position::do_move(move const& mv)
     uint64_t cap_bb = (1ull << b);
     uint64_t p_bb = (1ull << a) | cap_bb;
 
+    ++nodes;
+
     assert(cap != WHITE + KING && cap != BLACK + KING);
 
     auto& st = stack_push();
     st.cap_piece = cap;
 
-    st.castling_rights |=
-        CASTLING_SPOILERS[a] | CASTLING_SPOILERS[b];
+    {
+        uint16_t diff_castling_rights = st.castling_rights;
+        st.castling_rights |=
+            CASTLING_SPOILERS[a] | CASTLING_SPOILERS[b];
+        diff_castling_rights ^= st.castling_rights;
+        st.hash ^= hash_castling_rights[diff_castling_rights];
+    }
 
     current_turn = opposite(current_turn);
+    st.hash ^= hash_turn;
 
-    st.ep_sq = 0;
+    if(st.ep_sq)
+    {
+        st.hash ^= hash_enp[st.ep_sq & 7];
+        st.ep_sq = 0;
+    }
+    
     if(mv.is_special())
     {
         if(mv.is_pawn_dmove())
-            st.ep_sq = b;
+        {
+            st.hash ^= hash_enp[b & 7];
+            st.ep_sq = uint16_t(b);
+        }
         else if(mv.is_castleq())
         {
             int rook = p + ROOK - KING;
             bbs[rook] ^= (0x9ull << (a - 4));
             pieces[a - 1] = uint8_t(rook);
             pieces[a - 4] = EMPTY;
+            st.hash ^= (hashes[rook][a - 1] ^ hashes[rook][a - 4]);
         }
         else if(mv.is_castlek())
         {
@@ -219,6 +266,7 @@ void position::do_move(move const& mv)
             bbs[rook] ^= (0xAull << a);
             pieces[a + 1] = uint8_t(rook);
             pieces[a + 3] = EMPTY;
+            st.hash ^= (hashes[rook][a + 1] ^ hashes[rook][a + 3]);
         }
         else if(mv.is_en_passant())
         {
@@ -226,6 +274,7 @@ void position::do_move(move const& mv)
             st.cap_piece = pieces[sq];
             bbs[pieces[sq]] ^= (1ull << sq);
             pieces[sq] = EMPTY;
+            st.hash ^= hashes[st.cap_piece][sq];
         }
         else if(mv.is_promotion())
         {
@@ -235,6 +284,11 @@ void position::do_move(move const& mv)
             bbs[t] ^= cap_bb;
             pieces[a] = EMPTY;
             pieces[b] = uint8_t(t);
+            st.hash ^= (
+                hashes[p][a] ^
+                hashes[t][b] ^
+                hashes[cap][b]
+                );
             return;
         }
     }
@@ -243,6 +297,12 @@ void position::do_move(move const& mv)
     bbs[p] ^= p_bb;
     pieces[a] = EMPTY;
     pieces[b] = uint8_t(p);
+
+    st.hash ^= (
+        hashes[p][a] ^
+        hashes[p][b] ^
+        hashes[cap][b]
+        );
 }
 
 template<acceleration accel>
@@ -312,8 +372,13 @@ uint64_t position::perft(color c, int depth)
     move mvs[256];
     int num;
 
-    //if(depth <= 0)
-    //    return 1;
+    // transposition table lookup
+    {
+        hash_info_perft i;
+        if(tt.get(stack().hash, i))
+            if(i.depth == depth)
+                return i.count;
+    }
 
 #if CH_COLOR_TEMPLATE
     num = move_generator<c, accel>::generate(mvs, *this);
@@ -334,6 +399,15 @@ uint64_t position::perft(color c, int depth)
 #endif
         undo_move<accel>(mvs[n]);
     }
+
+    // transposition table store
+    {
+        hash_info_perft i;
+        i.depth = depth;
+        i.count = uint32_t(r);
+        tt.put(stack().hash, i);
+    }
+
     return r;
 }
 
@@ -343,6 +417,8 @@ uint64_t position::root_perft(int depth, uint64_t* counts)
     move mvs[256];
     uint64_t total = 0;
     int num;
+
+    tt.clear();
 
 #if CH_COLOR_TEMPLATE
     if(current_turn == WHITE)
@@ -369,8 +445,6 @@ uint64_t position::root_perft(int depth, uint64_t* counts)
 #endif
         }
         undo_move<accel>(mvs[n]);
-        //if(!brief)
-        //    printf("%s: %llu\n", mvs[n].extended_algebraic(), count);
         total += count;
         *counts++ = count;
     }

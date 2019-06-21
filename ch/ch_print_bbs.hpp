@@ -11,7 +11,6 @@ namespace ch
 #ifndef NDEBUG
 void print_bbs(uint64_t bbs[], int n)
 {
-    uint64_t m = 1;
     for(int i = 0; i < 8; ++i)
     {
         for(int j = 0; j < n; ++j)

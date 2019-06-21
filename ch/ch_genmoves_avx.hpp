@@ -18,13 +18,13 @@ namespace ch
 template<color c>
 struct move_generator<c, ACCEL_AVX>
 {
-    static int generate(move* mvs, position const& p)
+    static int generate(move* mvs, position& p)
     {
 #else
 template<>
 struct move_generator<ACCEL_AVX>
 {
-    static int generate(color c, move* mvs, position const& p)
+    static int generate(color c, move* mvs, position& p)
     {
 #endif
         move* m = mvs;
@@ -85,6 +85,7 @@ struct move_generator<ACCEL_AVX>
                 attacked_nonking |= shift_nw(e) | shift_ne(e);
             else
                 attacked_nonking |= shift_sw(e) | shift_se(e);
+            p.attacked_nonking = attacked_nonking;
         }
 
         // find pinned pieces
@@ -102,6 +103,8 @@ struct move_generator<ACCEL_AVX>
                 if(between && !(between & (between - 1)))
                     pin_mask |= between;
             }
+
+            p.pinned_pieces = pin_mask;
         }
 
         // generate legal king moves
@@ -111,7 +114,8 @@ struct move_generator<ACCEL_AVX>
             while(a) *m++ = move(king_sq, pop_lsb_avx(a));
         }
 
-        if(attacked_nonking & king)
+        p.in_check = ((attacked_nonking & king) != 0);
+        if(p.in_check)
         {
             /*
             we are in check. specialized move generator:

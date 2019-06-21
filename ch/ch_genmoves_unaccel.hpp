@@ -191,12 +191,12 @@ CH_FORCEINLINE move* generate_en_passant_moves(color c,
 template<color c>
 struct move_generator<c, ACCEL_UNACCEL>
 {
-    static int generate(move* mvs, position const& p)
+    static int generate(move* mvs, position& p)
 #else
 template<>
 struct move_generator<ACCEL_UNACCEL>
 {
-    static int generate(color c, move* mvs, position const& p)
+    static int generate(color c, move* mvs, position& p)
 #endif
     {
 
@@ -265,6 +265,7 @@ struct move_generator<ACCEL_UNACCEL>
                 attacked_nonking |= shift_nw(e) | shift_ne(e);
             else
                 attacked_nonking |= shift_sw(e) | shift_se(e);
+            p.attacked_nonking = attacked_nonking;
         }
 
         // find pinned pieces
@@ -282,6 +283,8 @@ struct move_generator<ACCEL_UNACCEL>
                 if(between && !(between & (between - 1)))
                     pin_mask |= between;
             }
+
+            p.pinned_pieces = pin_mask;
         }
 
         // generate legal king moves
@@ -290,9 +293,11 @@ struct move_generator<ACCEL_UNACCEL>
             a &= capture & ~attacked_nonking;
             while(a) *m++ = move(king_sq, pop_lsb(a));
         }
-
-        if(attacked_nonking & king)
+        
+        p.in_check = ((attacked_nonking & king) != 0);
+        if(p.in_check)
         {
+            
             /*
             we are in check. specialized move generator:
                 if there are any knights or pawns attacking our king:

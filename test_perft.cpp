@@ -26,7 +26,7 @@ void perft_test(int depth, uint64_t expected, char const* fen)
     else
     {
         printf("FAIL\n   expected: %llu\n   actual:   %llu\n", expected, actual);
-        exit(-1);
+        //exit(-1);
     }
     printf("NPS: %.3fM\n\n", double(actual) / dt * 1e-6);
 }
@@ -37,10 +37,13 @@ void perft_test(int depth, uint64_t expected, char const* fen)
 #define CDECL
 #endif
 
+static uint64_t hash_mem[(64 << 20) / 8];
+
 int CDECL main()
 {
     ch_system_info info = { 0 };
     ch_init(&info);
+    ch_set_hash(hash_mem, 6);
     total = 0;
 
     auto t_start = std::chrono::high_resolution_clock::now();

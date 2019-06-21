@@ -27,7 +27,7 @@ CH_OPT_SIZE static void init_cpuid()
     has_avx_ = (data[2] & (1 << 23)) != 0; // popcnt
     if(n < 7) return;
     __cpuid(data, 7);
-    has_avx_ &= (data[1] & (1 << 7)) != 0; // AVX2
+    has_avx_ &= (data[1] & (1 << 5)) != 0; // AVX2
 #else
     has_sse_ = __builtin_cpu_supports("sse2");// &&
         //__builtin_cpu_supports("ssse3");

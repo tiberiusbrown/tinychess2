@@ -12,13 +12,13 @@ struct position;
 template<color c, acceleration accel>
 struct move_generator
 {
-    static int generate(move* mvs, position const& p);
+    static int generate(move* mvs, position& p);
 };
 #else
 template<acceleration accel>
 struct move_generator
 {
-    static int generate(color c, move* mvs, position const& p);
+    static int generate(color c, move* mvs, position& p);
 };
 #endif
 

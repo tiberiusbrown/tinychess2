@@ -95,6 +95,8 @@ endif()
 add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
 
+if(FALSE)
+
 file(GLOB GUI_SOURCES "gui/*")
 add_executable(${PROJECT_NAME} ${EXETYPE} ${GUI_SOURCES} ${EDITORCONFIG})
 target_link_libraries(${PROJECT_NAME} ch)
@@ -153,5 +155,7 @@ elseif(UNIX)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 		COMMAND $<TARGET_FILE:sstrip> $<TARGET_FILE:${PROJECT_NAME}>
 		)
+
+endif()
 
 endif()

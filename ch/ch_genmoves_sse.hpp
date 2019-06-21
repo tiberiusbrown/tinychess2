@@ -14,6 +14,12 @@
 namespace ch
 {
 
+CH_FORCEINLINE move* serialize_attacks_sse(move* m, move from, uint64_t a)
+{
+    while(a) *m++ = (from + move::to(pop_lsb(a)));
+    return m;
+}
+
 CH_FORCEINLINE __m128i swap64(__m128i x)
 {
     return _mm_shuffle_epi32(x, _MM_SHUFFLE(1, 0, 3, 2));
@@ -30,12 +36,12 @@ CH_FORCEINLINE __m128i colorswap<BLACK>(__m128i x) { return swap64(x); }
 template<color c>
 struct move_generator<c, ACCEL_SSE>
 {
-    static int generate(move* mvs, position const& p)
+    static int generate(move* mvs, position& p)
 #else
 template<>
 struct move_generator<ACCEL_SSE>
 {
-    static int generate(color c, move* mvs, position const& p)
+    static int generate(color c, move* mvs, position& p)
 #endif
     {
         move* m = mvs;
@@ -95,6 +101,7 @@ struct move_generator<ACCEL_SSE>
                 attacked_nonking |= shift_nw(e) | shift_ne(e);
             else
                 attacked_nonking |= shift_sw(e) | shift_se(e);
+            p.attacked_nonking = attacked_nonking;
         }
 
         // find pinned pieces
@@ -112,16 +119,19 @@ struct move_generator<ACCEL_SSE>
                 if(between && !(between & (between - 1)))
                     pin_mask |= between;
             }
+
+            p.pinned_pieces = pin_mask;
         }
 
         // generate legal king moves
         {
             uint64_t a = masks[king_sq].king_attacks;
             a &= capture & ~attacked_nonking;
-            while(a) *m++ = move(king_sq, pop_lsb(a));
+            m = serialize_attacks_sse(m, move::from(king_sq), a);
         }
 
-        if(attacked_nonking & king)
+        p.in_check = ((attacked_nonking & king) != 0);
+        if(p.in_check)
         {
             /*
             we are in check. specialized move generator:
@@ -423,9 +433,7 @@ struct move_generator<ACCEL_SSE>
             {
                 int i = pop_lsb(unpinned_knights);
                 uint64_t a = masks[i].knight_attacks & capture;
-                move mv = move::from(i);
-                while(a)
-                    *m++ = (mv + move::to(pop_lsb(a)));
+                m = serialize_attacks_sse(m, move::from(i), a);
             }
         }
 
@@ -436,7 +444,6 @@ struct move_generator<ACCEL_SSE>
             {
                 uint64_t bb_from = pcs;
                 int i = pop_lsb(pcs);
-                move mv = move::from(i);
                 bb_from ^= pcs;
 #if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
@@ -444,7 +451,7 @@ struct move_generator<ACCEL_SSE>
                 uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
 #endif
                 a &= lines[king_sq][i];
-                while(a) *m++ = (mv + move::to(pop_lsb(a)));
+                m = serialize_attacks_sse(m, move::from(i), a);
             }
         }
 
@@ -455,14 +462,13 @@ struct move_generator<ACCEL_SSE>
             {
                 uint64_t bb_from = pcs;
                 int i = pop_lsb(pcs);
-                move mv = move::from(i);
                 bb_from ^= pcs;
 #if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_BISHOP
                 uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_bishop_attacks_sse(i, all_pieces) & capture;
 #endif
-                while(a) *m++ = (mv + move::to(pop_lsb(a)));
+                m = serialize_attacks_sse(m, move::from(i), a);
             }
         }
 
@@ -473,7 +479,6 @@ struct move_generator<ACCEL_SSE>
             {
                 uint64_t bb_from = pcs;
                 int i = pop_lsb(pcs);
-                move mv = move::from(i);
                 bb_from ^= pcs;
 #if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
@@ -481,7 +486,7 @@ struct move_generator<ACCEL_SSE>
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
 #endif
                 a &= lines[king_sq][i];
-                while(a) *m++ = (mv + move::to(pop_lsb(a)));
+                m = serialize_attacks_sse(m, move::from(i), a);
             }
         }
 
@@ -492,14 +497,13 @@ struct move_generator<ACCEL_SSE>
             {
                 uint64_t bb_from = pcs;
                 int i = pop_lsb(pcs);
-                move mv = move::from(i);
                 bb_from ^= pcs;
 #if CH_ENABLE_MAGIC && CH_ENABLE_MAGIC_ROOK
                 uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
 #else
                 uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
 #endif
-                while(a) *m++ = (mv + move::to(pop_lsb(a)));
+                m = serialize_attacks_sse(m, move::from(i), a);
             }
         }
 

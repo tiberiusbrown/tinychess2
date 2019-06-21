@@ -4,26 +4,77 @@
 #include <stdint.h>
 
 #include "ch_internal.hpp"
+#include "ch_move.hpp"
+#include "ch_random.hpp"
 
-// lockless transposition table (based on Hyatt's description)
+// lockless transposition table (uses xor trick described by Hyatt)
 
 static constexpr int const X = sizeof(std::atomic_flag);
 
 namespace ch
 {
 
+static uint64_t hashes[13][64];
+
+// whose turn is it?
+static uint64_t hash_turn;
+// castling rights
+static uint64_t hash_cq[2];
+static uint64_t hash_ck[2];
+// castling rights hashes
+static uint64_t hash_castling_rights[16];
+
+// en passant columns: use extra pawn storage
+static constexpr uint64_t const* const& hash_enp = &hashes[PAWN][0];
+
+static void init_hashes(void)
+{
+    uint64_t seed[4] =
+    {
+        0xf29c39b263eef763ull,
+        0x7b2e950fc56de271ull,
+        0xa0cb3ec26ab650a0ull,
+        0x69e6e96592d8af17ull,
+    };
+
+    for(auto& ph : hashes)
+        for(auto& h : ph)
+            h = random(seed);
+    for(auto& h : hashes[EMPTY])
+        h = 0ull;
+
+    hash_turn = random(seed);
+
+    hash_cq[WHITE] = random(seed);
+    hash_cq[BLACK] = random(seed);
+    hash_ck[WHITE] = random(seed);
+    hash_ck[BLACK] = random(seed);
+
+    for(auto& h : hash_castling_rights)
+        h = random(seed);
+    hash_castling_rights[0] = 0ull;
+}
+
+static constexpr uint8_t TTFLAG_EXACT = 1;
+static constexpr uint8_t TTFLAG_LOWER = 2;
+static constexpr uint8_t TTFLAG_UPPER = 4;
+
+struct hash_info
+{
+    move best;
+    int16_t value;
+    int8_t depth;
+    uint8_t flags;
+};
+
+struct hash_info_perft
+{
+    int depth;
+    uint32_t count;
+};
+
 class trans_table
 {
-public:
-    struct entry_info
-    {
-        move best;
-        int16_t value;
-        int8_t depth;
-        uint8_t flags;
-    };
-    static_assert(sizeof(entry_info) <= 8, "entry_info too large");
-
 private:
     struct entry
     {
@@ -34,39 +85,53 @@ private:
 public:
     trans_table() {}
 
+    void clear()
+    {
+        if(entries)
+            memzero(entries, int(mask + 1) * 16);
+    }
+
     void set_memory(void* mem, int mem_size_mb_log2)
     {
         entries = (entry*)mem;
-        mask = (1ull << (mem_size_mb_log2 + 20 - 3)) - 1;
+        if(entries)
+        {
+            mask = (1ull << (mem_size_mb_log2 + 20 - 4)) - 1;
+            clear();
+        }
     }
 
-    bool get(uint64_t hash, entry_info* info) const
+    template<class T>
+    CH_FORCEINLINE bool get(uint64_t hash, T& info) const
     {
+        static_assert(sizeof(T) <= 8, "hash info too large");
+        if(!entries)
+            return false;
         entry const& e = entries[hash & mask];
-
         union
         {
             uint64_t b;
-            entry_info i;
+            T i;
         } u;
-
         uint64_t a = e.hash.load();
         u.b = e.info.load();
-
         if(a != (hash ^ u.b))
             return false;
-
-        *info = u.i;
+        info = u.i;
         return true;
     }
 
-    void put(uint64_t hash, entry_info info)
+    template<class T>
+    CH_FORCEINLINE void put(uint64_t hash, T info)
     {
+        static_assert(sizeof(T) <= 8, "hash info too large");
+        if(!entries)
+            return;
         entry& e = entries[hash & mask];
         union
         {
             uint64_t b;
-            entry_info i;
+            T i;
         } u;
         u.i = info;
         e.hash.store(hash ^ u.b);
