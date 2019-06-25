@@ -22,27 +22,30 @@ template<acceleration accel>
 int negamax(color c, position& p, int depth, int alpha, int beta)
 #endif
 {
-    // transposition table lookup
-    {
-        // TODO
-        /*
-        alphaOrig := a
-        ttEntry := transpositionTableLookup(node)
-        if ttEntry is valid and ttEntry.depth >= depth then
-            if ttEntry.flag == EXACT then
-                return ttEntry.value
-            else if ttEntry.flag == LOWERBOUND then
-                a := max(a, ttEntry.value)
-            else if ttEntry.flag == UPPERBOUND then
-                b := min(b, ttEntry.value)
-
-            if a >= b then
-                return ttEntry.value
-        */
-    }
+    move best = INVALID_MOVE;
+    int alpha_orig = alpha;
 
     if(depth == 0)
         return evaluator<accel>::evaluate(p, c);
+
+    // transposition table lookup
+    move hash_move = INVALID_MOVE;
+    if(depth > 1)
+    {
+        hash_info i;
+        if(p.tt.get(p.stack().hash, i) && i.depth >= depth)
+        {
+            if(i.flag == hash_info::EXACT)
+                return i.value;
+            else if(i.flag == hash_info::LOWER)
+                alpha = std::max<int>(alpha, i.value);
+            else if(i.flag == hash_info::UPPER)
+                beta = std::min<int>(beta, i.value);
+            if(alpha >= beta)
+                return i.value;
+            hash_move = i.best;
+        }
+    }
 
     move mvs[256];
 #if CH_COLOR_TEMPLATE
@@ -60,6 +63,15 @@ int negamax(color c, position& p, int depth, int alpha, int beta)
             return MIN_SCORE;
     }
 
+    for(int n = 0; n < num; ++n)
+    {
+        if(mvs[n] == hash_move)
+        {
+            std::swap(mvs[0], mvs[n]);
+            break;
+        }
+    }
+
     int value = MIN_SCORE;
 
     for(int n = 0; n < num; ++n)
@@ -73,24 +85,28 @@ int negamax(color c, position& p, int depth, int alpha, int beta)
 #endif
         p.undo_move<accel>(mvs[n]);
 
-        alpha = std::max(alpha, value);
+        if(value > alpha)
+        {
+            alpha = value;
+            best = mvs[n];
+        }
         if(alpha >= beta) break;
     }
 
     // transposition table store
+    if(depth > 1)
     {
-        // TODO
-        /*
-        ttEntry.value := value
-        if value <= alphaOrig then
-            ttEntry.flag := UPPERBOUND
-        else if value >= b then
-            ttEntry.flag := LOWERBOUND
+        hash_info i;
+        i.value = int16_t(value);
+        if(value <= alpha_orig)
+            i.flag = hash_info::UPPER;
+        else if(value >= beta)
+            i.flag = hash_info::LOWER;
         else
-            ttEntry.flag := EXACT
-        ttEntry.depth := depth	
-        transpositionTableStore(node, ttEntry)
-        */
+            i.flag = hash_info::EXACT;
+        i.depth = int8_t(depth);
+        i.best = best;
+        p.tt.put(p.stack().hash, i);
     }
 
     return value;
@@ -122,7 +138,7 @@ int negamax_root(position& p, move& best, int depth, int alpha, int beta)
             -negamax<WHITE, accel>(p, depth - 1, -beta, -alpha) :
             -negamax<BLACK, accel>(p, depth - 1, -beta, -alpha));
 #else
-            -negamax<accel>(opposite(p.current_turn), p, depth - 1, -beta, -alpha));
+            -negamax<accel>(p.current_turn, p, depth - 1, -beta, -alpha));
 #endif
         p.undo_move<accel>(mvs[n]);
 

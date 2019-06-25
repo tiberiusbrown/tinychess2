@@ -14,6 +14,7 @@
 #define CH_ENABLE_MAGIC_BISHOP 1
 #define CH_ENABLE_MAGIC_ROOK 1
 
+#define CH_ENABLE_HASH 1
 
 // force off magic bitboards for 32-bit targets (expensive multiply)
 #if CH_ARCH_32BIT

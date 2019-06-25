@@ -48,6 +48,8 @@ int CDECL main()
 
     auto t_start = std::chrono::high_resolution_clock::now();
 
+#if 1
+
     //perft_test(7, 3195901860ull, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
     //perft_test(6, 8031647685ull, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     
@@ -58,6 +60,21 @@ int CDECL main()
     perft_test(6, 706045033ull, "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq -");
     perft_test(5, 89941194ull, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -");
     perft_test(5, 164075551ull, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - -");
+
+#else
+
+    //ch_new_game();
+    ch_load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+#if 0
+    uint32_t best = ch_depth_search_iterative(6);
+#else
+    uint32_t best = ch_depth_search(6);
+#endif
+    printf("Best: %s\n", ch_extended_algebraic(best));
+    total = ch_get_nodes();
+    printf("Nodes: %.2f M (%llu)\n", double(total) / 1e6, total);
+
+#endif
 
     auto t_end = std::chrono::high_resolution_clock::now();
     using dps = std::chrono::duration<double, std::chrono::seconds::period>;

@@ -64,12 +64,13 @@ struct hash_info
     move best;
     int16_t value;
     int8_t depth;
-    uint8_t flags;
+    uint8_t flag;
+    enum { EXACT, LOWER, UPPER };
 };
 
 struct hash_info_perft
 {
-    int depth;
+    int32_t depth;
     uint32_t count;
 };
 
@@ -87,8 +88,10 @@ public:
 
     void clear()
     {
+#if CH_ENABLE_HASH
         if(entries)
             memzero(entries, int(mask + 1) * 16);
+#endif
     }
 
     void set_memory(void* mem, int mem_size_mb_log2)
@@ -104,7 +107,8 @@ public:
     template<class T>
     CH_FORCEINLINE bool get(uint64_t hash, T& info) const
     {
-        static_assert(sizeof(T) <= 8, "hash info too large");
+#if CH_ENABLE_HASH
+        static_assert(sizeof(T) == 8, "hash info not 8 bytes");
         if(!entries)
             return false;
         entry const& e = entries[hash & mask];
@@ -119,12 +123,18 @@ public:
             return false;
         info = u.i;
         return true;
+#else
+        (void)hash;
+        (void)info;
+        return false;
+#endif
     }
 
     template<class T>
     CH_FORCEINLINE void put(uint64_t hash, T info)
     {
-        static_assert(sizeof(T) <= 8, "hash info too large");
+#if CH_ENABLE_HASH
+        static_assert(sizeof(T) == 8, "hash info not 8 bytes");
         if(!entries)
             return;
         entry& e = entries[hash & mask];
@@ -136,6 +146,10 @@ public:
         u.i = info;
         e.hash.store(hash ^ u.b);
         e.info.store(u.b);
+#else
+        (void)hash;
+        (void)info;
+#endif
     }
 
 private:
