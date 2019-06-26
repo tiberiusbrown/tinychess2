@@ -14,9 +14,14 @@
 #define CH_ENABLE_MAGIC_BISHOP 1
 #define CH_ENABLE_MAGIC_ROOK 1
 
+// enable transposition table
 #define CH_ENABLE_HASH 1
+#define CH_ENABLE_HASH_PERFT 1
 
 #define CH_MAX_THREADS 8
+
+// number of killer moves to track at each height
+#define CH_NUM_KILLERS 2
 
 // force off magic bitboards for 32-bit targets (expensive multiply)
 #if CH_ARCH_32BIT

@@ -14,7 +14,6 @@
 
 
 static ch::trans_table g_tt;
-
 static ch::position g_pos;
 static ch::search_data g_sd[CH_MAX_THREADS];
 
@@ -31,8 +30,12 @@ void CHAPI ch_init(ch_system_info const* info)
 #endif
     ch::init_hashes();
     g_tt.set_memory(nullptr, 0);
-    for(int i = 0; i < CH_MAX_THREADS; ++i)
-        g_sd[i].tt = &g_tt;
+    for(int n = 0; n < CH_MAX_THREADS; ++n)
+    {
+        g_sd[n].tt = &g_tt;
+        g_sd[n].nodes = 0;
+    }
+    g_pos.new_game();
 }
 
 void CHAPI ch_set_hash(void* mem, int size_megabyte_log2)
@@ -52,32 +55,29 @@ void CHAPI ch_load_fen(char const* fen)
 
 ch_move CHAPI ch_depth_search(int depth)
 {
-    ch::principal_variation pv;
-
-    g_sd[0].p = g_pos;
-
 #if CH_ENABLE_AVX
     if(ch::has_avx())
-        ch::negamax_root<ch::ACCEL_AVX>(g_sd[0], pv, depth, CH_MIN_SCORE, CH_MAX_SCORE);
+        return ch::iterative_deepening<ch::ACCEL_AVX>(g_sd[0], g_pos, depth);
     else
 #endif
 #if CH_ENABLE_SSE
     if(ch::has_sse())
-        ch::negamax_root<ch::ACCEL_SSE>(g_sd[0], pv, depth, CH_MIN_SCORE, CH_MAX_SCORE);
+        return ch::iterative_deepening<ch::ACCEL_SSE>(g_sd[0], g_pos, depth);
     else
 #endif
 #if CH_ENABLE_UNACCEL
-        ch::negamax_root<ch::ACCEL_UNACCEL>(g_sd[0], pv, depth, CH_MIN_SCORE, CH_MAX_SCORE);
+        return ch::iterative_deepening<ch::ACCEL_UNACCEL>(g_sd[0], g_pos, depth);
 #else
         return 0;
 #endif
-    return pv.pv[0];
 }
 
 uint64_t CHAPI ch_get_nodes(void)
 {
-    // TODO: total them all up
-    return g_sd[0].nodes;
+    uint64_t total = 0;
+    for(int n = 0; n < CH_MAX_THREADS; ++n)
+        total += g_sd[n].nodes;
+    return total;
 }
 
 char const* CHAPI ch_extended_algebraic(uint32_t m)

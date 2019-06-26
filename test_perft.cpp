@@ -63,9 +63,9 @@ int CDECL main()
 
 #else
 
-    //ch_new_game();
-    ch_load_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
-    ch_move best = ch_depth_search(6);
+    ch_new_game();
+    //ch_load_fen("1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -");
+    ch_move best = ch_depth_search(8);
     printf("Best: %s\n", ch_extended_algebraic(best));
     total = ch_get_nodes();
     printf("Nodes: %.2f M (%llu)\n", double(total) / 1e6, total);

@@ -360,6 +360,7 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
     move mvs[256];
     int num;
 
+#if CH_ENABLE_HASH_PERFT
     // transposition table lookup
     {
         hash_info_perft i;
@@ -367,6 +368,7 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
             if(i.depth == depth)
                 return i.count;
     }
+#endif
 
 #if CH_COLOR_TEMPLATE
     num = move_generator<c, accel>::generate(mvs, *this);
@@ -388,6 +390,7 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
         undo_move<accel>(mvs[n]);
     }
 
+#if CH_ENABLE_HASH_PERFT
     // transposition table store
     {
         hash_info_perft i;
@@ -395,6 +398,7 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
         i.count = uint32_t(r);
         tt.put(stack().hash, i);
     }
+#endif
 
     return r;
 }

@@ -14,12 +14,17 @@ extern "C" {
 
     typedef uint32_t ch_move;
 
-    static int const CH_MIN_SCORE = -32000;
-    static int const CH_MAX_SCORE = +32000;
-
     typedef struct ch_system_info
     {
+        // return monotonic millisecond clock
         uint32_t(*get_ms)(void);
+
+        // sleep briefly
+        void(*thread_yield)(void);
+
+        // info is a UCI string like
+        // "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3"
+        void(*uci_info)(char const* info);
     } ch_init_info;
 
     void CHAPI ch_init(ch_system_info const* info);

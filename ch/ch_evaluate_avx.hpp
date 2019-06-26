@@ -2,7 +2,7 @@
 
 #include "ch_evaluate.hpp"
 
-#include "ch_evaluate_unaccel.hpp"
+#include "ch_evaluate_sse.hpp"
 
 #if CH_ENABLE_AVX
 namespace ch
@@ -13,7 +13,7 @@ namespace ch
     {
         static int evaluate(position const& p, color c)
         {
-            return evaluator<ACCEL_UNACCEL>::evaluate(p, c);
+            return evaluator<ACCEL_SSE>::evaluate(p, c);
         }
     };
 
