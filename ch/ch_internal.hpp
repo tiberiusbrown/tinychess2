@@ -264,11 +264,23 @@ static CH_FORCEINLINE void memzero(void* p, int n)
 {
     __stosb((unsigned char*)p, 0, n);
 }
+static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
+{
+    __movsd(
+        (unsigned long*)dst,
+        (unsigned long const*)src,
+        size_t(n));
+}
 #else
 static CH_FORCEINLINE void memzero(void* p, int n)
 {
     uint8_t* i = (uint8_t*)p;
     while(n-- > 0) *i++ = 0;
+}
+static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
+{
+    while(n-- > 0)
+        ((uint32_t*)dst)[n] = ((uint32_t const*)src)[n];
 }
 #endif
 

@@ -21,16 +21,6 @@ struct position
     uint64_t pinned_pieces;
     bool in_check;
 
-    // written to by negamax<>
-    // principal variation
-    std::array<move, 256> pv;
-    int num_pv;
-    // node counts
-    uint64_t nodes;
-
-    // transposition table
-    trans_table tt;
-
     static constexpr int const STACK_SIZE = 64;
     struct stack_node
     {
@@ -64,14 +54,14 @@ struct position
 
 #if CH_COLOR_TEMPLATE
     template<color c, acceleration accel>
-    uint64_t perft(int depth);
+    uint64_t perft(trans_table& tt, int depth);
 #else
     template<acceleration accel>
-    uint64_t perft(color c, int depth);
+    uint64_t perft(color c, trans_table& tt, int depth);
 #endif
 
     template<acceleration accel>
-    uint64_t root_perft(int depth, uint64_t* counts);
+    uint64_t root_perft(trans_table& tt, int depth, uint64_t* counts);
 };
 
 CH_OPT_SIZE void position::new_game()
@@ -221,8 +211,6 @@ void position::do_move(move const& mv)
     uint64_t cap_bb = (1ull << b);
     uint64_t p_bb = (1ull << a) | cap_bb;
 
-    ++nodes;
-
     assert(cap != WHITE + KING && cap != BLACK + KING);
 
     auto& st = stack_push();
@@ -363,10 +351,10 @@ void position::undo_move(move const& mv)
 
 #if CH_COLOR_TEMPLATE
 template<color c, acceleration accel>
-uint64_t position::perft(int depth)
+uint64_t position::perft(trans_table& tt, int depth)
 #else
 template<acceleration accel>
-uint64_t position::perft(color c, int depth)
+uint64_t position::perft(color c, trans_table& tt, int depth)
 #endif
 {
     move mvs[256];
@@ -393,9 +381,9 @@ uint64_t position::perft(color c, int depth)
     {
         do_move<accel>(mvs[n]);
 #if CH_COLOR_TEMPLATE
-        r += perft<opposite(c), accel>(depth - 1);
+        r += perft<opposite(c), accel>(tt, depth - 1);
 #else
-        r += perft<accel>(opposite(c), depth - 1);
+        r += perft<accel>(opposite(c), tt, depth - 1);
 #endif
         undo_move<accel>(mvs[n]);
     }
@@ -412,13 +400,11 @@ uint64_t position::perft(color c, int depth)
 }
 
 template<acceleration accel>
-uint64_t position::root_perft(int depth, uint64_t* counts)
+uint64_t position::root_perft(trans_table& tt, int depth, uint64_t* counts)
 {
     move mvs[256];
     uint64_t total = 0;
     int num;
-
-    tt.clear();
 
 #if CH_COLOR_TEMPLATE
     if(current_turn == WHITE)
@@ -437,11 +423,11 @@ uint64_t position::root_perft(int depth, uint64_t* counts)
         {
 #if CH_COLOR_TEMPLATE
             if(current_turn == WHITE)
-                count = perft<WHITE, accel>(depth - 1);
+                count = perft<WHITE, accel>(tt, depth - 1);
             else
-                count = perft<BLACK, accel>(depth - 1);
+                count = perft<BLACK, accel>(tt, depth - 1);
 #else
-            count = perft<accel>(current_turn, depth - 1);
+            count = perft<accel>(current_turn, tt, depth - 1);
 #endif
         }
         undo_move<accel>(mvs[n]);

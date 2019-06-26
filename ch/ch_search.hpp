@@ -6,6 +6,7 @@
 #include "ch_position.hpp"
 
 #include <algorithm>
+#include <array>
 
 namespace ch
 {
@@ -13,37 +14,66 @@ namespace ch
 static constexpr int const MIN_SCORE = -32000;
 static constexpr int const MAX_SCORE = +32000;
 
+static constexpr int const MAX_VARIATION = 256;
+
+struct principal_variation
+{
+    int pvlen;
+    std::array<move, MAX_VARIATION> pv;
+};
+
+struct search_data
+{
+    uint64_t nodes;
+    trans_table* tt;
+    position p;
+};
+
+namespace search_flags
+{
+    static constexpr int const ROOT = (1 << 0);
+}
 
 #if CH_COLOR_TEMPLATE
-template<color c, acceleration accel>
-int negamax(position& p, int depth, int alpha, int beta)
+template<color c, acceleration accel, int flags = 0> int negamax(
 #else
-template<acceleration accel>
-int negamax(color c, position& p, int depth, int alpha, int beta)
+template<acceleration accel, int flags = 0> int negamax(color c,
 #endif
+    search_data& d, principal_variation& pv,
+    int depth, int alpha, int beta)
 {
-    move best = INVALID_MOVE;
-    int alpha_orig = alpha;
-
-    if(depth == 0)
-        return evaluator<accel>::evaluate(p, c);
-
-    // transposition table lookup
     move hash_move = INVALID_MOVE;
-    if(depth > 1)
+    move best_move = INVALID_MOVE;
+    int alpha_orig = alpha;
+    int best = MIN_SCORE;
+    position& p = d.p;
+
+    principal_variation child_pv;
+
+    pv.pvlen = 0;
+    ++d.nodes;
+
+    if(!(flags & search_flags::ROOT))
     {
-        hash_info i;
-        if(p.tt.get(p.stack().hash, i) && i.depth >= depth)
+        if(depth == 0)
+            return evaluator<accel>::evaluate(p, c);
+
+        // transposition table lookup
+        if(depth > 1)
         {
-            if(i.flag == hash_info::EXACT)
-                return i.value;
-            else if(i.flag == hash_info::LOWER)
-                alpha = std::max<int>(alpha, i.value);
-            else if(i.flag == hash_info::UPPER)
-                beta = std::min<int>(beta, i.value);
-            if(alpha >= beta)
-                return i.value;
-            hash_move = i.best;
+            hash_info i;
+            if(d.tt->get(p.stack().hash, i) && i.depth >= depth)
+            {
+                if(i.flag == hash_info::EXACT)
+                    return i.value;
+                else if(i.flag == hash_info::LOWER)
+                    alpha = std::max<int>(alpha, i.value);
+                else if(i.flag == hash_info::UPPER)
+                    beta = std::min<int>(beta, i.value);
+                if(alpha >= beta)
+                    return i.value;
+                hash_move = i.best;
+            }
         }
     }
 
@@ -58,11 +88,12 @@ int negamax(color c, position& p, int depth, int alpha, int beta)
     {
         // stalemate?
         if(!p.in_check)
-            return 0; // TODO: stalemate eval
+            return 0;
         else
-            return MIN_SCORE;
+            return MIN_SCORE; // TODO: incorporate depth
     }
 
+    // TODO: integrate killer move heuristic here
     for(int n = 0; n < num; ++n)
     {
         if(mvs[n] == hash_move)
@@ -79,78 +110,63 @@ int negamax(color c, position& p, int depth, int alpha, int beta)
         p.do_move<accel>(mvs[n]);
         value = std::max(value,
 #if CH_COLOR_TEMPLATE
-            -negamax<opposite(c), accel>(p, depth - 1, -beta, -alpha));
+            -negamax<opposite(c), accel>(d, child_pv, depth - 1, -beta, -alpha));
 #else
-            -negamax<accel>(opposite(c), p, depth - 1, -beta, -alpha));
+            -negamax<accel>(opposite(c), d, child_pv, depth - 1, -beta, -alpha));
 #endif
         p.undo_move<accel>(mvs[n]);
 
-        if(value > alpha)
+        if(value > best)
         {
-            alpha = value;
-            best = mvs[n];
+            best = value;
+            best_move = mvs[n];
+            if(value > alpha)
+            {
+                alpha = value;
+                pv.pvlen = child_pv.pvlen + 1;
+                pv.pv[0] = best_move;
+                memcpy32(&pv.pv[1], &child_pv.pv[0], child_pv.pvlen);
+                if(alpha >= beta) break;
+            }
         }
-        if(alpha >= beta) break;
     }
 
-    // transposition table store
-    if(depth > 1)
+    if(!(flags & search_flags::ROOT))
     {
-        hash_info i;
-        i.value = int16_t(value);
-        if(value <= alpha_orig)
-            i.flag = hash_info::UPPER;
-        else if(value >= beta)
-            i.flag = hash_info::LOWER;
-        else
-            i.flag = hash_info::EXACT;
-        i.depth = int8_t(depth);
-        i.best = best;
-        p.tt.put(p.stack().hash, i);
+        // transposition table store
+        if(depth > 1)
+        {
+            hash_info i;
+            i.value = int16_t(value);
+            if(value <= alpha_orig)
+                i.flag = hash_info::UPPER;
+            else if(value >= beta)
+                i.flag = hash_info::LOWER;
+            else
+                i.flag = hash_info::EXACT;
+            i.depth = int8_t(depth);
+            i.best = best;
+            d.tt->put(p.stack().hash, i);
+        }
     }
 
     return value;
 }
 
 template<acceleration accel>
-int negamax_root(position& p, move& best, int depth, int alpha, int beta)
+int negamax_root(
+    search_data& d, principal_variation& pv,
+    int depth, int alpha, int beta)
 {
-    move mvs[256];
-    int num;
 #if CH_COLOR_TEMPLATE
-    if(p.current_turn == WHITE)
-        num = move_generator<WHITE, accel>::generate(mvs, p);
+    if(d.p.current_turn == WHITE)
+        return negamax<WHITE, accel, search_flags::ROOT>(d, pv, depth, alpha, beta);
     else
-        num = move_generator<BLACK, accel>::generate(mvs, p);
+        return negamax<BLACK, accel, search_flags::ROOT>(d, pv, depth, alpha, beta);
 #else
-    num = move_generator<accel>::generate(p.current_turn, mvs, p);
+    return negamax<accel, search_flags::ROOT>(p.current_turn,
+        d, pv, depth, alpha, beta);
 #endif
-
-    int value = MIN_SCORE;
-    best = INVALID_MOVE;
-
-    for(int n = 0; n < num; ++n)
-    {
-        p.do_move<accel>(mvs[n]);
-        value = std::max(value,
-#if CH_COLOR_TEMPLATE
-            p.current_turn == WHITE ?
-            -negamax<WHITE, accel>(p, depth - 1, -beta, -alpha) :
-            -negamax<BLACK, accel>(p, depth - 1, -beta, -alpha));
-#else
-            -negamax<accel>(p.current_turn, p, depth - 1, -beta, -alpha));
-#endif
-        p.undo_move<accel>(mvs[n]);
-
-        if(value > alpha)
-        {
-            alpha = value;
-            best = mvs[n];
-        }
-        if(alpha >= beta) break;
-    }
-
-    return value;
 }
 
 }

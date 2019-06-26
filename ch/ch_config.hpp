@@ -16,6 +16,8 @@
 
 #define CH_ENABLE_HASH 1
 
+#define CH_MAX_THREADS 8
+
 // force off magic bitboards for 32-bit targets (expensive multiply)
 #if CH_ARCH_32BIT
 #undef CH_ENABLE_MAGIC

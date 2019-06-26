@@ -12,6 +12,8 @@
 extern "C" {
 #endif
 
+    typedef uint32_t ch_move;
+
     static int const CH_MIN_SCORE = -32000;
     static int const CH_MAX_SCORE = +32000;
 
@@ -29,15 +31,14 @@ extern "C" {
     void CHAPI ch_load_fen(char const* fen);
 
     int CHAPI ch_evaluate(void);
-    int CHAPI ch_negamax(uint32_t* best, int depth, int alpha, int beta);
-    uint32_t CHAPI ch_depth_search(int depth);
-    uint32_t CHAPI ch_depth_search_iterative(int depth);
+
+    ch_move CHAPI ch_depth_search(int depth);
 
     // get node count from lasst search
     uint64_t CHAPI ch_get_nodes(void);
 
     // convert move to string
-    char const* CHAPI ch_extended_algebraic(uint32_t m);
+    char const* CHAPI ch_extended_algebraic(ch_move m);
 
     uint64_t CHAPI ch_perft(int depth, uint64_t counts[256]);
 
