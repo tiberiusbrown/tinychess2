@@ -14,6 +14,7 @@ struct move
     constexpr move(uint32_t d_) : d(d_) {}
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
+    constexpr move& operator+=(move const& m) { d += m.d; return *this; }
     static constexpr move from(int sq) { return sq << 8; }
     static constexpr move to(int sq) { return sq; }
     static constexpr move pawn_dmove(int a, int b) { return move(a, b) + pawn_dmove(); }

@@ -53,6 +53,58 @@ void CHAPI ch_load_fen(char const* fen)
     g_pos.load_fen(fen);
 }
 
+void CHAPI ch_do_move(ch_move m)
+{
+    using namespace ch;
+
+#if CH_ENABLE_AVX
+    if(ch::has_avx())
+        g_pos.do_move<ACCEL_AVX>(m);
+    else
+#endif
+#if CH_ENABLE_SSE
+        if(ch::has_sse())
+            g_pos.do_move<ACCEL_SSE>(m);
+        else
+#endif
+#if CH_ENABLE_UNACCEL
+            g_pos.do_move<ACCEL_UNACCEL>(m);
+#else
+            ;
+#endif
+
+    g_pos.stack_reset();
+}
+
+void CHAPI ch_do_move_str(char const* str)
+{
+    using namespace ch;
+    move m = ch::INVALID_MOVE;
+
+    m += move::from(('8' - str[1]) * 8 + str[0] - 'a');
+    m += move::to(('8' - str[3]) * 8 + str[2] - 'a');
+    switch(str[4])
+    {
+    case 'n':
+        m += move::pawn_promotion(g_pos.current_turn + KNIGHT);
+        break;
+    case 'b':
+        m += move::pawn_promotion(g_pos.current_turn + BISHOP);
+        break;
+    case 'r':
+        m += move::pawn_promotion(g_pos.current_turn + ROOK);
+        break;
+    case 'q':
+        m += move::pawn_promotion(g_pos.current_turn + QUEEN);
+        break;
+    }
+
+    // TODO: detect en passant moves
+    // TODO: detect castling
+
+    ch_do_move(m);
+}
+
 ch_move CHAPI ch_depth_search(int depth)
 {
 #if CH_ENABLE_AVX

@@ -48,10 +48,43 @@ void shutdown(int code)
 void start(void)
 {
     ch_system_info info = { 0 };
+
     ch_init(&info);
 
-    shutdown(0);    
+    ch_new_game();
+    ch_depth_search(6);
+
+    shutdown((int)ch_get_nodes());    
 }
+
+// I hate MSVC sometimes
+#ifdef _MSC_VER
+extern "C"
+{
+#pragma function(memset)
+    void *memset(void *dest, int c, size_t count)
+    {
+        char *bytes = (char *)dest;
+        while(count--)
+        {
+            *bytes++ = (char)c;
+        }
+        return dest;
+    }
+
+#pragma function(memcpy)
+    void *memcpy(void *dest, const void *src, size_t count)
+    {
+        char *dest8 = (char *)dest;
+        const char *src8 = (const char *)src;
+        while(count--)
+        {
+            *dest8++ = *src8++;
+        }
+        return dest;
+    }
+}
+#endif
 
 #endif
 

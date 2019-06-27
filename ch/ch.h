@@ -25,7 +25,7 @@ extern "C" {
         // info is a UCI string like
         // "info depth 2 score cp 214 time 1242 nodes 2124 nps 34928 pv e2e4 e7e5 g1f3"
         void(*uci_info)(char const* info);
-    } ch_init_info;
+    } ch_system_info;
 
     void CHAPI ch_init(ch_system_info const* info);
 
@@ -34,6 +34,10 @@ extern "C" {
 
     void CHAPI ch_new_game(void);
     void CHAPI ch_load_fen(char const* fen);
+
+    void CHAPI ch_do_move(ch_move m);
+    // extended algebraic, e.g. e7f8q
+    void CHAPI ch_do_move_str(char const* str);
 
     int CHAPI ch_evaluate(void);
 

@@ -199,8 +199,8 @@ static int negamax_root(
             d, d.pv, depth, alpha, beta, 0);
     }
 #else
-    return negamax<accel, search_flags::ROOT>(p.current_turn,
-        d, d.pv, depth, alpha, beta);
+    return negamax<accel, search_flags::ROOT>(d.p.current_turn,
+        d, d.pv, depth, alpha, beta, 0);
 #endif
 }
 

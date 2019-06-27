@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(tinychess2 C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 set(EDITORCONFIG "${CMAKE_CURRENT_SOURCE_DIR}/.editorconfig")
 set(EXETYPE)
 
@@ -10,7 +10,7 @@ if(MSVC)
     set(EXETYPE WIN32)
     set(CMAKE_CXX_FLAGS "/W4 /MT /DWIN32 /D_WINDOWS /FAcs /Gy /Gs65536 /wd4127")
     set(CMAKE_CXX_FLAGS_MINSIZEREL "/DNDEBUG /MT /O1 /Oi /Os /Oy /GS- /fp:fast /Gr")
-    set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /MT /Ox /Oi /Ot /Oy /Ob2 /GS- /fp:fast /Gr")
+    set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /MT /O2 /Oi /Ot /Oy /Ob2 /GS- /fp:fast /Gr")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /DEBUG /Zi")
     set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS}")
     set(CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
@@ -94,6 +94,9 @@ endif()
 
 add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
+
+add_executable(${PROJECT_NAME}_uci uci.cpp ${EDITORCONFIG})
+target_link_libraries(${PROJECT_NAME}_uci ch)
 
 if(FALSE)
 

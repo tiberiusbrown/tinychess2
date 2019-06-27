@@ -29,7 +29,7 @@ void print_bbs(uint64_t bbs[], int n)
 
 void print_position(position const& p)
 {
-    char const* const C = ".PNBRQKpnbrqk";
+    char const* const C = "PpNnBbRrQqKk.";
     for(int i = 0; i < 8; ++i)
     {
         uint64_t m = (1ull << (i * 8));
@@ -38,8 +38,11 @@ void print_position(position const& p)
         {
             for(bbi = 1; bbi < (int)p.bbs.size(); ++bbi)
                 if(p.bbs[bbi] & m) { printf("%c", C[bbi]); break; }
-            if(bbi >= (int)p.bbs.size()) printf("%c", C[0]);
+            if(bbi >= (int)p.bbs.size()) printf(".");
         }
+        printf("  ");
+        for(int k = 0; k < 8; ++k)
+            printf("%c", C[p.pieces[i * 8 + k]]);
         printf("\n");
     }
     printf("\n");

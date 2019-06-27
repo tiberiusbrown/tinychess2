@@ -40,6 +40,14 @@ struct position
         return stack();
     }
     inline void stack_pop() { --stack_index; }
+    void stack_reset()
+    {
+        if(stack_index > 0)
+        {
+            stack_data[0] = stack_data[stack_index];
+            stack_index = 0;
+        }
+    }
 
     color current_turn;
 
