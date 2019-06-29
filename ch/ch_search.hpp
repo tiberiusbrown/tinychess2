@@ -91,9 +91,10 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
     int value;
 
     principal_variation child_pv;
+    child_pv.pvlen = 0;
 
     pv.pvlen = 0;
-    ++d.nodes;
+    //++d.nodes;
 
     if(!(flags & search_flags::ROOT))
     {
@@ -251,12 +252,19 @@ template<acceleration accel>
 static int aspiration_window(
     search_data& d, int depth, int prev_score)
 {
-    int delta = 14;
+    // TODO: move constants to a common location
+    constexpr int ASPIRATION_BASE_DELTA = 20;
+    constexpr int ASPIRATION_MIN_DEPTH = 4;
+
+    int delta = ASPIRATION_BASE_DELTA;
+    int alpha = depth < ASPIRATION_MIN_DEPTH ? MIN_SCORE :
+        std::max(MIN_SCORE, prev_score - delta);
+    int beta = depth < ASPIRATION_MIN_DEPTH ? MAX_SCORE :
+        std::min(MAX_SCORE, prev_score + delta);
 
     for(;;)
     {
-        int alpha = prev_score - delta;
-        int beta = prev_score + delta;
+
         int value = negamax_root<accel>(d, depth, alpha, beta);
 
         if(value > alpha && value < beta)
@@ -265,13 +273,21 @@ static int aspiration_window(
         if(value <= alpha)
         {
             beta = (alpha + beta) / 2;
-            alpha = std::max(-MIN_SCORE, alpha - delta);
+            alpha = std::max(MIN_SCORE, alpha - delta);
         }
 
         if(value >= beta)
+        {
             beta = std::min(MAX_SCORE, beta + delta);
+        }
 
+#if 0
+        // ethereal
         delta += delta / 2;
+#else
+        // stockfish
+        delta += delta / 4 + 5;
+#endif
     }
 }
 
@@ -279,7 +295,7 @@ template<acceleration accel>
 static move iterative_deepening(
     search_data& d, position const& p)
 {
-    int depth = 2;
+    int depth = 1;
     int prev_score;
     d.p = p;
     d.nodes = 0;
@@ -290,8 +306,7 @@ static move iterative_deepening(
         d.depth = depth;
         d.score = prev_score;
         if(depth >= d.limits.depth) break;
-        if(depth > 4)
-            send_info(d);
+        send_info(d);
         ++depth;
     }
     send_info(d);

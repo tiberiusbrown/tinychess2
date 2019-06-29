@@ -266,7 +266,7 @@ void position::do_move(move const& mv)
         }
         else if(mv.is_en_passant())
         {
-            int sq = (mv >> 16) & 0xff;
+            int sq = mv.en_passant_sq(); // (mv >> 24) & 0xff;
             st.cap_piece = pieces[sq];
             bbs[pieces[sq]] ^= (1ull << sq);
             pieces[sq] = EMPTY;
@@ -274,7 +274,7 @@ void position::do_move(move const& mv)
         }
         else if(mv.is_promotion())
         {
-            int t = (mv >> 16) & 0xff;
+            int t = mv.promotion_piece(); // (mv >> 24) & 0xff;
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);
             bbs[t] ^= cap_bb;
@@ -333,14 +333,14 @@ void position::undo_move(move const& mv)
         }
         else if(mv.is_en_passant())
         {
-            int sq = (mv >> 16) & 0xff;
+            int sq = mv.en_passant_sq(); // (mv >> 24) & 0xff;
             pieces[sq] = uint8_t(cap);
             bbs[pieces[sq]] ^= (1ull << sq);
             cap = EMPTY;
         }
         else if(mv.is_promotion())
         {
-            int t = (mv >> 16) & 0xff;
+            int t = mv.promotion_piece(); // (mv >> 24) & 0xff;
             p = (is_black(p) ? BLACK : WHITE) + PAWN;
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);

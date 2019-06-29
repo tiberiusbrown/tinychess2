@@ -36,11 +36,7 @@ static void search_info(
         << "info"
         << " depth " << depth
         << " seldepth " << seldepth
-        << " time " << mstime
-        << " nodes " << nodes
-        << " pv";
-    for(int n = 0; n < pvnum; ++n)
-        std::cout << " " << ch_extended_algebraic(pv[n]);
+        << " time " << mstime;
     std::cout << " score ";
     if(CH_MATE_SCORE - score < 256)
         std::cout << "mate " << (CH_MATE_SCORE - score + 1) / 2;
@@ -50,7 +46,11 @@ static void search_info(
         std::cout << "cp " << score;
     std::cout
         << " nps " << nps
-        << std::endl;
+        << " nodes " << nodes
+        << " pv";
+    for(int n = 0; n < pvnum; ++n)
+        std::cout << " " << ch_extended_algebraic(pv[n]);
+    std::cout << std::endl;
 }
 
 static ch_system_info const SYSINF =
@@ -163,7 +163,6 @@ int main(void)
                 limits.depth = clamp(atoi(
                     line.c_str() + line.find(" depth ", 0) + 7), 2, 64);
             ch_move m = ch_search(&limits);
-            ch_do_move(m);
             std::cout << "bestmove " << ch_extended_algebraic(m) << std::endl;
         }
         else if(line == "eval")
