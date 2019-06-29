@@ -16,6 +16,28 @@
 static ch::trans_table g_tt;
 static ch::position g_pos;
 static ch::search_data g_sd[CH_MAX_THREADS];
+static ch::move g_moves[256];
+static int g_num_moves;
+
+static void update_moves(void)
+{
+    using namespace ch;
+#if CH_ENABLE_AVX
+    if(has_avx())
+        g_num_moves = generate_moves_color<ACCEL_AVX>(g_pos.current_turn, g_moves, g_pos);
+    else
+#endif
+#if CH_ENABLE_SSE
+    if(ch::has_sse())
+        g_num_moves = generate_moves_color<ACCEL_SSE>(g_pos.current_turn, g_moves, g_pos);
+    else
+#endif
+#if CH_ENABLE_UNACCEL
+        g_num_moves = generate_moves_color<ACCEL_UNACCEL>(g_pos.current_turn, g_moves, g_pos);
+#else
+        ;
+#endif
+}
 
 extern "C"
 {
@@ -36,6 +58,7 @@ void CHAPI ch_init(ch_system_info const* info)
         g_sd[n].nodes = 0;
     }
     g_pos.new_game();
+    update_moves();
 }
 
 void CHAPI ch_set_hash(void* mem, int size_megabyte_log2)
@@ -46,34 +69,51 @@ void CHAPI ch_set_hash(void* mem, int size_megabyte_log2)
 void CHAPI ch_new_game()
 {
     g_pos.new_game();
+    update_moves();
 }
 
 void CHAPI ch_load_fen(char const* fen)
 {
     g_pos.load_fen(fen);
+    update_moves();
 }
 
 void CHAPI ch_do_move(ch_move m)
 {
     using namespace ch;
 
+    // validate move
+    {
+        int valid = 0;
+        for(int n = 0; !valid && n < g_num_moves; ++n)
+            if(m == g_moves[n])
+                valid = 1;
+        if(!valid)
+        {
+            printf("uci info string invalid move: %u %s\n",
+                m, move(m).extended_algebraic());
+            return;
+        }
+    }
+
 #if CH_ENABLE_AVX
-    if(ch::has_avx())
+    if(has_avx())
         g_pos.do_move<ACCEL_AVX>(m);
     else
 #endif
 #if CH_ENABLE_SSE
-        if(ch::has_sse())
-            g_pos.do_move<ACCEL_SSE>(m);
-        else
+    if(has_sse())
+        g_pos.do_move<ACCEL_SSE>(m);
+    else
 #endif
 #if CH_ENABLE_UNACCEL
-            g_pos.do_move<ACCEL_UNACCEL>(m);
+        g_pos.do_move<ACCEL_UNACCEL>(m);
 #else
-            ;
+        ;
 #endif
 
     g_pos.stack_reset();
+    update_moves();
 }
 
 void CHAPI ch_do_move_str(char const* str)
@@ -97,28 +137,70 @@ void CHAPI ch_do_move_str(char const* str)
     case 'q':
         m += move::pawn_promotion(g_pos.current_turn + QUEEN);
         break;
+    default:
+        // check for castling or en passant moves
+        for(int n = 0; ; ++n)
+        {
+            if(n >= g_num_moves)
+                return;
+            if((m & 0xFFFF) == (g_moves[n] & 0xFFFF))
+            {
+                m = g_moves[n];
+                break;
+            }
+        }
+        break;
     }
-
-    // TODO: detect en passant moves
-    // TODO: detect castling
 
     ch_do_move(m);
 }
 
-ch_move CHAPI ch_depth_search(int depth)
+int CHAPI ch_evaluate(void)
 {
+    using namespace ch;
+#if CH_ENABLE_AVX
+    if(has_avx())
+        return evaluator<ACCEL_AVX>::evaluate(g_pos, g_pos.current_turn);
+    else
+#endif
+#if CH_ENABLE_SSE
+    if(has_sse())
+        return evaluator<ACCEL_SSE>::evaluate(g_pos, g_pos.current_turn);
+    else
+#endif
+#if CH_ENABLE_UNACCEL
+        return evaluator<ACCEL_UNACCEL>::evaluate(g_pos, g_pos.current_turn);
+#else
+        return 0;
+#endif
+}
+
+ch_move CHAPI ch_search(ch_search_limits const* limits)
+{
+    uint32_t start_time = ch::get_ms();
+    ch_search_limits newlimits = *limits;
+    if(newlimits.depth <= 0) newlimits.depth = INT_MAX;
+    if(newlimits.mstime <= 0) newlimits.mstime = INT_MAX;
+    if(newlimits.remtime <= 0) newlimits.remtime = INT_MAX;
+    if(newlimits.inctime <= 0) newlimits.inctime = INT_MAX;
+    for(int n = 0; n < CH_MAX_THREADS; ++n)
+    {
+        g_sd[n].start_time = start_time;
+        g_sd[n].limits = newlimits;
+    }
+    g_tt.clear();
 #if CH_ENABLE_AVX
     if(ch::has_avx())
-        return ch::iterative_deepening<ch::ACCEL_AVX>(g_sd[0], g_pos, depth);
+        return ch::iterative_deepening<ch::ACCEL_AVX>(g_sd[0], g_pos);
     else
 #endif
 #if CH_ENABLE_SSE
     if(ch::has_sse())
-        return ch::iterative_deepening<ch::ACCEL_SSE>(g_sd[0], g_pos, depth);
+        return ch::iterative_deepening<ch::ACCEL_SSE>(g_sd[0], g_pos);
     else
 #endif
 #if CH_ENABLE_UNACCEL
-        return ch::iterative_deepening<ch::ACCEL_UNACCEL>(g_sd[0], g_pos, depth);
+        return ch::iterative_deepening<ch::ACCEL_UNACCEL>(g_sd[0], g_pos);
 #else
         return 0;
 #endif
@@ -139,6 +221,9 @@ char const* CHAPI ch_extended_algebraic(uint32_t m)
 
 uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 {
+#if CH_ENABLE_HASH_PERFT
+    g_tt.clear();
+#endif
 #if CH_ENABLE_AVX
     if(ch::has_avx())
         return g_pos.root_perft<ch::ACCEL_AVX>(g_tt, depth, counts);

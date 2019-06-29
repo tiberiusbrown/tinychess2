@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ch_config.hpp"
+#include "ch_config.h"
 #if CH_ENABLE_MAGIC
 
 #include "ch_bb.hpp"

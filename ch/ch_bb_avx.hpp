@@ -1,10 +1,13 @@
 #pragma once
 
+#include "ch_internal.hpp"
+
+#if CH_ENABLE_AVX
+
 #include <immintrin.h>
 
 #include "ch_bb.hpp"
 #include "ch_bb_sse.hpp"
-#include "ch_internal.hpp"
 
 namespace ch
 {
@@ -102,6 +105,6 @@ static inline __m256i slide_attack_s_e_sw_se(__m256i bb, __m256i empty)
     return shift_s_e_sw_se(slide_fill_s_e_sw_se(bb, empty));
 }
 
-
-
 }
+
+#endif

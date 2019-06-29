@@ -3,7 +3,6 @@
 #include "ch_internal.hpp"
 
 #include "ch_bb.hpp"
-#include "ch_config.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_position.hpp"
 

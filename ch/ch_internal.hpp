@@ -9,7 +9,7 @@
 #include <immintrin.h>
 
 #include "ch.h"
-#include "ch_config.hpp"
+#include "ch_config.h"
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -258,6 +258,29 @@ static inline constexpr bool has_sse() { return false; }
 bool has_avx();
 
 static ch_system_info system;
+static uint32_t get_ms()
+{
+    return system.get_ms ? system.get_ms() : 0;
+}
+static void thread_yield()
+{
+    if(system.thread_yield) thread_yield();
+}
+static CH_FORCEINLINE void search_info(
+    int depth,
+    int seldepth,
+    uint64_t nodes,
+    int mstime,
+    ch_move const* pv,
+    int pvnum,
+    int score,
+    uint64_t nps
+)
+{
+    if(!system.search_info) return;
+    system.search_info(
+        depth, seldepth, nodes, mstime, pv, pvnum, score, nps);
+}
 
 #ifdef _MSC_VER
 static CH_FORCEINLINE void memzero(void* p, int n)

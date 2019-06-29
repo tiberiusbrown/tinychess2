@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ch_config.hpp"
+#include "ch_internal.hpp"
 
 #if CH_ENABLE_SSE
 

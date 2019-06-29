@@ -8,7 +8,7 @@
 namespace ch
 {
 
-#ifndef NDEBUG
+#if !defined(NDEBUG)
 void print_bbs(uint64_t bbs[], int n)
 {
     for(int i = 0; i < 8; ++i)
@@ -36,9 +36,9 @@ void print_position(position const& p)
         int bbi;
         for(int k = 0; k < 8; ++k, m <<= 1)
         {
-            for(bbi = 1; bbi < (int)p.bbs.size(); ++bbi)
+            for(bbi = 0; bbi < (int)p.bbs.size() - 1; ++bbi)
                 if(p.bbs[bbi] & m) { printf("%c", C[bbi]); break; }
-            if(bbi >= (int)p.bbs.size()) printf(".");
+            if(bbi >= (int)p.bbs.size() - 1) printf(".");
         }
         printf("  ");
         for(int k = 0; k < 8; ++k)

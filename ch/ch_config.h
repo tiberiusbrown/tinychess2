@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ch_arch.hpp"
+#include "ch_arch.h"
 
 // color is templated instead of passed as argument
 #define CH_COLOR_TEMPLATE 1

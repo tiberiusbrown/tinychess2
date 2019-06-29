@@ -21,16 +21,43 @@ static void thread_yield(void)
     std::this_thread::yield();
 }
 
-static void uci_info(char const* info)
+static void search_info(
+    int depth,
+    int seldepth,
+    uint64_t nodes,
+    int mstime,
+    ch_move const* pv,
+    int pvnum,
+    int score,
+    uint64_t nps
+    )
 {
-    std::cout << info << std::endl;
+    std::cout
+        << "info"
+        << " depth " << depth
+        << " seldepth " << seldepth
+        << " time " << mstime
+        << " nodes " << nodes
+        << " pv";
+    for(int n = 0; n < pvnum; ++n)
+        std::cout << " " << ch_extended_algebraic(pv[n]);
+    std::cout << " score ";
+    if(CH_MATE_SCORE - score < 256)
+        std::cout << "mate " << (CH_MATE_SCORE - score + 1) / 2;
+    else if(CH_MATED_SCORE - score > -256)
+        std::cout << "mate " << (CH_MATED_SCORE - score - 1) / 2;
+    else
+        std::cout << "cp " << score;
+    std::cout
+        << " nps " << nps
+        << std::endl;
 }
 
 static ch_system_info const SYSINF =
 {
     &get_ms,
     &thread_yield,
-    &uci_info,
+    &search_info,
 };
 
 static bool startswith(std::string const& str, char const* x)
@@ -46,9 +73,37 @@ static bool contains(std::string const& str, char const* x)
     return str.find(x, 0) != std::string::npos;
 }
 
+template<class T> T clamp(T x, T a, T b)
+{
+    return x < a ? a : x > b ? b : x;
+}
+
+static void* hash_mem;
+static void set_hash_mem(int megabytes)
+{
+    int mpow = 0;
+    megabytes = clamp(megabytes, 0, 4096);
+    free(hash_mem);
+    if(megabytes == 0)
+    {
+        hash_mem = NULL;
+        ch_set_hash(NULL, 0);
+        return;
+    }
+    while((1 << mpow) <= megabytes)
+        ++mpow;
+    --mpow;
+    hash_mem = malloc((1 << mpow) << 20);
+    if(!hash_mem)
+        hash_mem = malloc(64 << 20);
+    ch_set_hash(hash_mem, mpow);
+}
+
 int main(void)
 {
+    hash_mem = NULL;
     ch_init(&SYSINF);
+    set_hash_mem(64);
     ch_new_game();
 
     for(;;)
@@ -66,14 +121,29 @@ int main(void)
         {
             std::cout
                 << "id name CHRISTINE 0.1" << std::endl
-                << "id author Peter Brown" << std::endl;
+                << "id author Peter Brown" << std::endl
+                << "option name Hash type spin default 64 min 0 max 4096" << std::endl
+                << "uciok" << std::endl;
+        }
+        else if(startswith(line, "setoption "))
+        {
+            if(contains(line, " name "))
+            {
+                size_t m = line.find(" name ", 0) + 6;
+                size_t n = line.find(" value ", m);
+                if(n != std::string::npos)
+                {
+                    if(contains(line, "Hash"))
+                        set_hash_mem(atoi(line.c_str() + n + 7));
+                }
+            }
         }
         else if(startswith(line, "position"))
         {
             if(contains(line, "startpos"))
                 ch_new_game();
             else if(contains(line, "fen "))
-                ch_load_fen(&line[line.find("fen ", 0) + 4]);
+                ch_load_fen(line.c_str() + line.find("fen ", 0) + 4);
             if(contains(line, "moves "))
             {
                 std::stringstream moves_ss(line.substr(line.find("moves ") + 6));
@@ -88,12 +158,29 @@ int main(void)
         }
         else if(startswith(line, "go"))
         {
-            ch_move m = ch_depth_search(4);
+            ch_search_limits limits = { 0 };
+            if(contains(line, " depth "))
+                limits.depth = clamp(atoi(
+                    line.c_str() + line.find(" depth ", 0) + 7), 2, 64);
+            ch_move m = ch_search(&limits);
             ch_do_move(m);
-            std::cout << "info nodes " << ch_get_nodes() << std::endl;
             std::cout << "bestmove " << ch_extended_algebraic(m) << std::endl;
         }
+        else if(line == "eval")
+        {
+            std::cout << ch_evaluate() << std::endl;
+        }
+        else if(startswith(line, "perft "))
+        {
+            int depth = atoi(line.c_str() + 6);
+            depth = clamp(depth, 1, 64);
+            uint64_t counts[256] = { 0 };
+            uint64_t t = ch_perft(depth, counts);
+            std::cout << t << std::endl;
+        }
     }
+
+    free(hash_mem);
 
 	return 0;
 }
