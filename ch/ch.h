@@ -53,6 +53,9 @@ extern "C" {
     // mem must be at least 8-byte aligned
     void CHAPI ch_set_hash(void* mem, int size_megabyte_log2);
 
+    // reset hash table and heuristics (ucinewgame)
+    void CHAPI ch_clear_caches(void);
+
     void CHAPI ch_new_game(void);
     void CHAPI ch_load_fen(char const* fen);
 

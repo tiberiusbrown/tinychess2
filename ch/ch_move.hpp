@@ -4,6 +4,8 @@
 
 #include "ch_internal.hpp"
 
+// TODO: sort key broken on endiannesses that don't have MSB come last
+
 namespace ch
 {
 
@@ -15,7 +17,8 @@ struct move
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
     constexpr move& operator+=(move const& m) { d += m.d; return *this; }
-    constexpr bool operator<(move const& m) { return d < m.d; }
+    constexpr bool operator<(move const& m) { return int32_t(d) < int32_t(m.d); }
+    constexpr int8_t& sort_key() { return *((int8_t*)&d + 3); }
     static constexpr move from(int sq) { return sq << 8; }
     static constexpr move to(int sq) { return sq; }
     static constexpr move pawn_dmove(int a, int b) { return move(a, b) + pawn_dmove(); }

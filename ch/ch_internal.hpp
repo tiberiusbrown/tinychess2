@@ -285,7 +285,11 @@ static CH_FORCEINLINE void search_info(
 #ifdef _MSC_VER
 static CH_FORCEINLINE void memzero(void* p, int n)
 {
-    __stosb((unsigned char*)p, 0, n);
+    __stosb((unsigned char*)p, 0, size_t(n));
+}
+static CH_FORCEINLINE void memzero32(void* p, int n)
+{
+    __stosd((unsigned long*)p, 0, size_t(n));
 }
 static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
 {
@@ -298,6 +302,11 @@ static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
 static CH_FORCEINLINE void memzero(void* p, int n)
 {
     uint8_t* i = (uint8_t*)p;
+    while(n-- > 0) *i++ = 0;
+}
+static CH_FORCEINLINE void memzero32(void* p, int n)
+{
+    uint32_t* i = (uint32_t*)p;
     while(n-- > 0) *i++ = 0;
 }
 static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)

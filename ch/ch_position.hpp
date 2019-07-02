@@ -21,13 +21,14 @@ struct position
     uint64_t pinned_pieces;
     bool in_check;
 
-    static constexpr int const STACK_SIZE = 64;
-    struct stack_node
+    static constexpr int const STACK_SIZE = 256;
+    CH_ALIGN(16) struct stack_node
     {
         uint64_t hash;
-        int cap_piece;
-        uint16_t ep_sq;
-        uint16_t castling_rights;
+        move prev_move;
+        int16_t cap_piece;
+        uint8_t ep_sq;
+        uint8_t castling_rights;
     };
     std::array<stack_node, STACK_SIZE> stack_data;
     int stack_index;
@@ -59,6 +60,14 @@ struct position
 
     template<acceleration accel>
     void undo_move(move const& mv);
+
+    void do_null_move();
+    void undo_null_move();
+
+    CH_FORCEINLINE bool move_is_tactical(move mv) const
+    {
+        return pieces[mv.to()] != EMPTY;
+    }
 
 #if CH_COLOR_TEMPLATE
     template<color c, acceleration accel>
@@ -185,7 +194,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
         }
         if(ep_rank >= 1 && ep_file >= 0)
         {
-            stack().ep_sq = uint16_t((8 - ep_rank) * 8 + ep_file);
+            stack().ep_sq = uint8_t((8 - ep_rank) * 8 + ep_file);
             hash ^= hash_enp[stack().ep_sq & 7];
         }
     }
@@ -209,6 +218,22 @@ static constexpr uint8_t const CASTLING_SPOILERS[64] =
     0, 0, CASTLE_WK_MASK,
 };
 
+void position::do_null_move()
+{
+    auto& st = stack_push();
+    st.cap_piece = EMPTY;
+    st.prev_move = INVALID_MOVE;
+    st.hash ^= hash_turn;
+    st.ep_sq = 0;
+    current_turn = opposite(current_turn);
+}
+
+void position::undo_null_move()
+{
+    stack_pop();
+    current_turn = opposite(current_turn);
+}
+
 template<acceleration accel>
 void position::do_move(move const& mv)
 {
@@ -222,7 +247,8 @@ void position::do_move(move const& mv)
     assert(cap != WHITE + KING && cap != BLACK + KING);
 
     auto& st = stack_push();
-    st.cap_piece = cap;
+    st.cap_piece = int16_t(cap);
+    st.prev_move = mv;
 
     {
         uint16_t diff_castling_rights = st.castling_rights;
@@ -246,7 +272,7 @@ void position::do_move(move const& mv)
         if(mv.is_pawn_dmove())
         {
             st.hash ^= hash_enp[b & 7];
-            st.ep_sq = uint16_t(b);
+            st.ep_sq = uint8_t(b);
         }
         else if(mv.is_castleq())
         {
@@ -266,7 +292,7 @@ void position::do_move(move const& mv)
         }
         else if(mv.is_en_passant())
         {
-            int sq = mv.en_passant_sq(); // (mv >> 24) & 0xff;
+            int sq = mv.en_passant_sq();
             st.cap_piece = pieces[sq];
             bbs[pieces[sq]] ^= (1ull << sq);
             pieces[sq] = EMPTY;
@@ -274,7 +300,7 @@ void position::do_move(move const& mv)
         }
         else if(mv.is_promotion())
         {
-            int t = mv.promotion_piece(); // (mv >> 24) & 0xff;
+            int t = mv.promotion_piece();
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);
             bbs[t] ^= cap_bb;
@@ -333,14 +359,14 @@ void position::undo_move(move const& mv)
         }
         else if(mv.is_en_passant())
         {
-            int sq = mv.en_passant_sq(); // (mv >> 24) & 0xff;
+            int sq = mv.en_passant_sq();
             pieces[sq] = uint8_t(cap);
             bbs[pieces[sq]] ^= (1ull << sq);
             cap = EMPTY;
         }
         else if(mv.is_promotion())
         {
-            int t = mv.promotion_piece(); // (mv >> 24) & 0xff;
+            int t = mv.promotion_piece();
             p = (is_black(p) ? BLACK : WHITE) + PAWN;
             bbs[cap] ^= cap_bb;
             bbs[p] ^= (1ull << a);
@@ -365,8 +391,7 @@ template<acceleration accel>
 uint64_t position::perft(color c, trans_table& tt, int depth)
 #endif
 {
-    move mvs[256];
-    int num;
+    move_list mvs;
 
 #if CH_ENABLE_HASH_PERFT
     // transposition table lookup
@@ -379,23 +404,23 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
 #endif
 
 #if CH_COLOR_TEMPLATE
-    num = move_generator<c, accel>::generate(mvs, *this);
+    mvs.generate<c, accel>(*this);
 #else
-    num = move_generator<accel>::generate(c, mvs, *this);
+    mvs.generate<accel>(c, *this);
 #endif
     if(depth <= 1)
-        return num;
+        return mvs.size();
 
     uint64_t r = 0;
-    for(int n = 0; n < num; ++n)
+    for(move mv : mvs)
     {
-        do_move<accel>(mvs[n]);
+        do_move<accel>(mv);
 #if CH_COLOR_TEMPLATE
         r += perft<opposite(c), accel>(tt, depth - 1);
 #else
         r += perft<accel>(opposite(c), tt, depth - 1);
 #endif
-        undo_move<accel>(mvs[n]);
+        undo_move<accel>(mv);
     }
 
 #if CH_ENABLE_HASH_PERFT
@@ -414,23 +439,15 @@ uint64_t position::perft(color c, trans_table& tt, int depth)
 template<acceleration accel>
 uint64_t position::root_perft(trans_table& tt, int depth, uint64_t* counts)
 {
-    move mvs[256];
     uint64_t total = 0;
-    int num;
+    move_list mvs;
 
-#if CH_COLOR_TEMPLATE
-    if(current_turn == WHITE)
-        num = move_generator<WHITE, accel>::generate(mvs, *this);
-    else
-        num = move_generator<BLACK, accel>::generate(mvs, *this);
-#else
-    num = move_generator<accel>::generate(current_turn, mvs, *this);
-#endif
+    mvs.generate<accel>(current_turn, *this);
 
-    for(int n = 0; n < num; ++n)
+    for(move mv : mvs)
     {
         uint64_t count = 1;
-        do_move<accel>(mvs[n]);
+        do_move<accel>(mv);
         if(depth > 1)
         {
 #if CH_COLOR_TEMPLATE
@@ -442,7 +459,7 @@ uint64_t position::root_perft(trans_table& tt, int depth, uint64_t* counts)
             count = perft<accel>(current_turn, tt, depth - 1);
 #endif
         }
-        undo_move<accel>(mvs[n]);
+        undo_move<accel>(mv);
         total += count;
         *counts++ = count;
     }

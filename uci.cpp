@@ -1,9 +1,10 @@
 #include "ch/ch.h"
 
 #include <stdio.h>
-#include <time.h>
+//#include <time.h>
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -11,9 +12,13 @@
 #include <thread>
 #include <vector>
 
+static std::chrono::steady_clock::time_point start_time;
+
 static uint32_t get_ms(void)
 {
-    return clock() * 1000 / CLOCKS_PER_SEC;
+    //return clock() * 1000 / CLOCKS_PER_SEC;
+    return (uint32_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - start_time).count();
 }
 
 static void thread_yield(void)
@@ -106,6 +111,8 @@ int main(void)
     set_hash_mem(64);
     ch_new_game();
 
+    start_time = std::chrono::steady_clock::now();
+
     for(;;)
     {
         std::string line;
@@ -124,6 +131,10 @@ int main(void)
                 << "id author Peter Brown" << std::endl
                 << "option name Hash type spin default 64 min 0 max 4096" << std::endl
                 << "uciok" << std::endl;
+        }
+        else if(line == "ucinewgame")
+        {
+            ch_clear_caches();
         }
         else if(startswith(line, "setoption "))
         {
