@@ -22,10 +22,12 @@
 
 #define CH_ENABLE_NULL_MOVE 1
 
+#define CH_ENABLE_QUIESCENCE 1
+
 // causes failure to find mate in 4 (at depth 8) for:
 // 1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0
 // (finds it at depth 9 instead)
-#define CH_ENABLE_LATE_MOVE_REDUCTION 0
+#define CH_ENABLE_LATE_MOVE_REDUCTION 1
 
 #define CH_MAX_THREADS 8
 

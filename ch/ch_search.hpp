@@ -37,6 +37,7 @@ struct search_data
     history_heuristic* hh;
     position p;
     principal_variation pv;
+    std::array<move, MAX_VARIATION> mvstack;
     std::array<std::array<move, CH_NUM_KILLERS>, MAX_VARIATION> killers;
     int score;
     int depth;
@@ -131,17 +132,56 @@ static void send_info(search_data& d)
 }
 
 #if CH_COLOR_TEMPLATE
+template<color c>
+CH_FORCEINLINE bool quiesce_pawn_recapture(position const& p, int sq)
+#else
+CH_FORCEINLINE bool quiesce_pawn_recapture(color c, position const& p, int sq)
+#endif
+{
+    uint64_t sqbb = 1ull << sq;
+    if(c == WHITE)
+    {
+        if(p.bbs[BLACK + PAWN] & (shift_nw(sqbb) | shift_ne(sqbb)))
+            return true;
+    }
+    else
+    {
+        if(p.bbs[WHITE + PAWN] & (shift_sw(sqbb) | shift_se(sqbb)))
+            return true;
+    }
+    return false;
+}
+
+#if CH_COLOR_TEMPLATE
+template<color c>
+CH_FORCEINLINE bool quiesce_bad_capture(position const& p, move mv)
+#else
+CH_FORCEINLINE bool quiesce_bad_capture(color c, position const& p, move mv)
+#endif
+{
+    int pc = p.pieces[mv.from()];
+    int cap = p.pieces[mv.to()];
+    static constexpr int const VALS[10] = { 1, 1, 3, 3, 3, 3, 5, 5, 9, 9 };
+    if(VALS[cap] - VALS[pc] >= 0) return false;
+    if(VALS[cap] - VALS[pc] < -2 &&
+#if CH_COLOR_TEMPLATE
+        quiesce_pawn_recapture<c>(p, mv.to()))
+#else
+        quiesce_pawn_recapture(c, p, mv.to()))
+#endif
+        return true;
+    return false;
+}
+
+#if CH_COLOR_TEMPLATE
 template<color c, acceleration accel> static int quiesce(
 #else
 template<acceleration accel> static int quiesce(color c,
 #endif
-    search_data& d, principal_variation& pv,
-    int depth, int alpha, int beta, int height)
+    search_data& d, int depth, int alpha, int beta, int height)
 {
     position& p = d.p;
     move_list mvs;
-    principal_variation child_pv;
-    child_pv.pvlen = 0;
     int value = MIN_SCORE;
 
     int stand_pat = evaluator<accel>::evaluate(p, c);
@@ -163,6 +203,13 @@ template<acceleration accel> static int quiesce(color c,
         if(!p.move_is_tactical(mv))
             continue;
 
+#if CH_COLOR_TEMPLATE
+        if(quiesce_bad_capture<c>(p, mv) && !mv.is_promotion())
+#else
+        if(quiesce_bad_capture(c, p, mv) && !mv.is_promotion())
+#endif
+            continue;
+
         p.do_move<accel>(mv);
         value = std::max(value,
 #if CH_COLOR_TEMPLATE
@@ -170,16 +217,12 @@ template<acceleration accel> static int quiesce(color c,
 #else
             -quiesce<accel>(opposite(c),
 #endif
-                d, child_pv, depth - 1, -beta, -alpha, height + 1));
+                d, depth - 1, -beta, -alpha, height + 1));
         p.undo_move<accel>(mv);
 
         if(value > alpha)
         {
             alpha = value;
-
-            pv.pvlen = child_pv.pvlen + 1;
-            pv.pv[0] = mv;
-            memcpy32(&pv.pv[1], &child_pv.pv[0], child_pv.pvlen);
 
             if(alpha >= beta)
                 return value;
@@ -250,10 +293,13 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
     }
 
 #if CH_ENABLE_NULL_MOVE
-    if(!(flags & search_flags::NULLMOVE) && !p.in_check && depth > 5)
+    if(!(flags & search_flags::NULLMOVE) &&
+        !p.in_check && depth > 5 &&
+        d.mvstack[height - 2] != INVALID_MOVE)
     {
         // null move pruning
         child_pv.pv[0] = INVALID_MOVE;
+        d.mvstack[height] = INVALID_MOVE;
         p.do_null_move();
         value =
 #if CH_COLOR_TEMPLATE
@@ -261,14 +307,13 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
 #else
             -negamax<accel, search_flags::NULLMOVE>(opposite(c),
 #endif
-                d, child_pv, depth - 4, -beta, -alpha, height + 1);
+                d, child_pv, depth - 4, -beta, -beta + 1, height + 1);
         p.undo_null_move();
         if(value >= beta)
             return beta;
     }
-    else
 #endif
-        value = MIN_SCORE;
+    value = MIN_SCORE;
 
     if(depth > 1)
     {
@@ -295,6 +340,8 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
             d.killers[height + 1][n] = INVALID_MOVE;
     }
 
+    constexpr int child_flags =
+        flags & ~search_flags::ROOT;
     for(int n = 0; n < mvs.size(); ++n)
     {
         move mv = mvs[n];
@@ -311,36 +358,36 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
 #endif
         
         p.do_move<accel>(mv);
+        d.mvstack[height] = mv;
         child_pv.pv[0] = mv;
         if(tail)
         {
+#if CH_ENABLE_QUIESCENCE
             if(!quiet)
             {
                 // TODO: quiesce
 #if CH_COLOR_TEMPLATE
-                value = -quiesce<opposite(c), accel>(
+                value = std::max(value, -quiesce<opposite(c), accel>(
 #else
-                value = -quiesce<accel>(opposite(c),
+                value = std::max(value, -quiesce<accel>(opposite(c),
 #endif
-                    d, child_pv, depth - 1, -beta, -alpha, height + 1);
+                    d, depth - 1, -beta, -alpha, height + 1));
             }
             else
+#endif
             {
                 value = std::max(value, evaluator<accel>::evaluate(p, c));
                 ++d.nodes;
             }
         }
         else
-        {
-            constexpr int child_flags =
-                flags & ~search_flags::ROOT;
-            value = std::max(value,
+        {        
 #if CH_COLOR_TEMPLATE
-                -negamax<opposite(c), accel, child_flags>(
+            value = std::max(value, -negamax<opposite(c), accel, child_flags>(
 #else
-                -negamax<accel, child_flags>(opposite(c),
+            value = std::max(value, -negamax<accel, child_flags>(opposite(c),
 #endif
-                    d, child_pv, depth - reduction, -beta, -alpha, height + 1));
+                d, child_pv, depth - reduction, -beta, -alpha, height + 1));
         }
         p.undo_move<accel>(mv);
 
@@ -481,6 +528,7 @@ static move iterative_deepening(
     prev_score = ch::evaluator<accel>::evaluate(p, p.current_turn);
     for(;;)
     {
+        d.seldepth = 0;
         prev_score = aspiration_window<accel>(d, depth, prev_score);
         d.depth = depth;
         d.score = prev_score;
