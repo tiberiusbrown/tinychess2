@@ -1,12 +1,10 @@
 #pragma once
 
 #include "ch_internal.hpp"
-
 #include "ch_genmoves.hpp"
-
 #include "ch_hash.hpp"
-
 #include "ch_move.hpp"
+#include "ch_move_list.hpp"
 
 namespace ch
 {
@@ -22,7 +20,7 @@ struct position
     bool in_check;
 
     static constexpr int const STACK_SIZE = 256;
-    CH_ALIGN(16) struct stack_node
+    struct CH_ALIGN(16) stack_node
     {
         uint64_t hash;
         move prev_move;

@@ -170,7 +170,7 @@ CH_FORCEINLINE move* generate_en_passant_moves(color c,
 #endif
         king_sq, all_pieces, enemy_orth_sliders, enemy_diag_sliders))
     {
-        *m++ = move::en_passant(ep_sq) + move(ep_sq - 1, dest);
+        *m++ = move::en_passant() + move(ep_sq - 1, dest);
     }
 #if CH_COLOR_TEMPLATE
     if(is_en_passant_legal<c>(shift_e(ep) & p.bbs[c + PAWN], ep,
@@ -179,7 +179,7 @@ CH_FORCEINLINE move* generate_en_passant_moves(color c,
 #endif
         king_sq, all_pieces, enemy_orth_sliders, enemy_diag_sliders))
     {
-        *m++ = move::en_passant(ep_sq) + move(ep_sq + 1, dest);
+        *m++ = move::en_passant() + move(ep_sq + 1, dest);
     }
     return m;
 }

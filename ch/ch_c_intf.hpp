@@ -37,7 +37,7 @@ static void update_moves(void)
 #if CH_ENABLE_UNACCEL
         g_moves.generate<ACCEL_UNACCEL>(g_pos.current_turn, g_pos);
 #else
-        ;
+    { }
 #endif
 }
 
@@ -118,7 +118,7 @@ void CHAPI ch_do_move(ch_move m)
 #if CH_ENABLE_UNACCEL
         g_pos.do_move<ACCEL_UNACCEL>(m);
 #else
-        ;
+    { }
 #endif
 
     g_pos.stack_reset();

@@ -276,7 +276,6 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
     }
     else
     {
-        move countermove = d.hh->get_countermove(parent_move);
         for(int i = 0, n = 0; n < mvs.size(); ++n)
         {
             if(mvs[n] == hash_move ||

@@ -16,7 +16,7 @@ struct move
     constexpr move(uint32_t d_) : d(d_) {}
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
-    constexpr move& operator+=(move const& m) { d += m.d; return *this; }
+    move& operator+=(move const& m) { d += m.d; return *this; }
     constexpr bool operator<(move const& m) { return int32_t(d) < int32_t(m.d); }
     constexpr int8_t& sort_key() { return *((int8_t*)&d + 3); }
     static constexpr move from(int sq) { return sq << 8; }
@@ -27,13 +27,9 @@ struct move
     static constexpr move castle_q(int k) { return MOVE_CASTLEQ + move(k, k - 2); }
     static constexpr move castle_k(int k) { return MOVE_CASTLEK + move(k, k + 2); }
     static constexpr move en_passant() { return MOVE_EN_PASSANT; }
-    //static constexpr move en_passant(int sq) { return MOVE_EN_PASSANT + (sq << 24); }
-    static constexpr move en_passant(int sq) { (void)sq; return MOVE_EN_PASSANT; }
     constexpr int en_passant_sq() const { return ((d >> 8) & 0x38) | (d & 7); }
     static constexpr move pawn_dmove() { return MOVE_PAWN_DMOVE; }
-    //static constexpr move pawn_promotion(int t) { return MOVE_PROMOTION + (t << 24); }
     static constexpr move pawn_promotion(int t) { return MOVE_PROMOTION + ((t - 2) << 16); }
-    //constexpr int promotion_piece() const { return d >> 24; }
     constexpr int promotion_piece() const { return ((d >> 16) & 7) + 2; }
     constexpr bool is_special() const { return (d & 0x00FF0000) != 0; }
     constexpr bool is_castleq() const { return (d & MOVE_CASTLEQ) != 0; }
