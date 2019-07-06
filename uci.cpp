@@ -108,7 +108,7 @@ int main(void)
 {
     hash_mem = NULL;
     ch_init(&SYSINF);
-    set_hash_mem(64);
+    set_hash_mem(256);
     ch_new_game();
 
     start_time = std::chrono::steady_clock::now();

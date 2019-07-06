@@ -49,11 +49,11 @@ struct search_data
 
 static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
 {
-    1, 1,
-    3, 3,
-    3, 3,
-    5, 5,
-    9, 9,
+    1 * 4, 1 * 4,
+    3 * 4, 3 * 4,
+    3 * 4, 3 * 4,
+    5 * 4, 5 * 4,
+    9 * 4, 9 * 4,
 };
 
 static CH_FORCEINLINE void order_moves(
@@ -85,17 +85,24 @@ static CH_FORCEINLINE void order_moves(
         }
         else if(mv.to() == prev_to)
         {
-            x = INT8_MAX - 1 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
+            x = INT8_MAX - 2 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
+        }
+        else if(mv.is_promotion())
+        {
+            x = MOVE_ORDER_PIECEVALS[mv.promotion_piece()]
+                - MOVE_ORDER_PIECEVALS[PAWN];
+            if(d.p.pieces[mv.to()] != EMPTY)
+                x += MOVE_ORDER_PIECEVALS[d.p.pieces[mv.to()]];
+            x += 64;
         }
         else if(d.p.pieces[mv.to()] != EMPTY)
         {
-            x = 64
-                + MOVE_ORDER_PIECEVALS[d.p.pieces[mv.to()]]
+            x = MOVE_ORDER_PIECEVALS[d.p.pieces[mv.to()]]
                 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
+            x += 64;
         }
         else
         {
-            // TODO?
             x = 0;
 #if CH_ENABLE_HISTORY_HEURISTIC
             x += d.hh->get_hh_score(d.p, mv);
@@ -249,11 +256,10 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
     move best_move = INVALID_MOVE;
     move parent_move = pv.pv[0];
     int hh_increment = depth * depth;
-    bool tail = (depth <= 1 || height >= MAX_VARIATION - 1);
+    bool const tail = (depth <= 1 || height >= MAX_VARIATION - 1);
 
     principal_variation child_pv;
     child_pv.pvlen = 0;
-
     pv.pvlen = 0;
 
     if(!(flags & search_flags::ROOT))
@@ -295,7 +301,7 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
 #if CH_ENABLE_NULL_MOVE
     if(!(flags & search_flags::NULLMOVE) &&
         !p.in_check && depth > 5 &&
-        d.mvstack[height - 2] != INVALID_MOVE)
+        (height < 2 || d.mvstack[height - 2] != INVALID_MOVE))
     {
         // null move pruning
         child_pv.pv[0] = INVALID_MOVE;
@@ -412,12 +418,16 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
                         break;
 
                     // history updates
-                    if(mv != hash_move && mv != d.killers[height][0])
                     {
-                        // store killer move
-                        for(int m = 0; m < CH_NUM_KILLERS - 1; ++m)
-                            d.killers[height][m + 1] = d.killers[height][m];
-                        d.killers[height][0] = mv;
+                        auto& k = d.killers[height];
+                        if(mv != hash_move && std::find(
+                            k.begin(), k.end(), mv) == k.end())
+                        {
+                            // store killer move
+                            for(int m = 0; m < CH_NUM_KILLERS - 1; ++m)
+                                k[m + 1] = k[m];
+                            d.killers[height][0] = mv;
+                        }
                     }
 #if CH_ENABLE_HISTORY_HEURISTIC
                     if(quiet)
@@ -434,7 +444,7 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
     if(!(flags & search_flags::NULLMOVE))
     {
         // transposition table store
-        if(depth > 1)
+        //if(depth > 1)
         {
             hash_info i;
             i.value = int16_t(value);

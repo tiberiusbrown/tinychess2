@@ -38,7 +38,7 @@ struct move_list
 #if 1
         struct greater
         {
-            bool operator()(move const &a, move const &b) const { return b < a; }
+            bool operator()(move const &a, move const &b) const { return int32_t(a.d) > int32_t(b.d); }
         };
         std::sort(begin(), end(), greater());
 #else
