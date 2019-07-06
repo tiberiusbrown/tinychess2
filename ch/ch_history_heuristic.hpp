@@ -13,29 +13,29 @@ namespace ch
 struct history_heuristic
 {
     // butterfly
-    std::array<std::array<std::atomic_uint32_t, 64>, 12> bf;
+    std::array<std::array<std::atomic_uint32_t, 64>, 64> bf;
 
     //  relative history
-    std::array<std::array<std::atomic_uint32_t, 64>, 12> hh;
+    std::array<std::array<std::atomic_uint32_t, 64>, 64> hh;
 
     // countermove
     std::array<std::array<std::atomic_uint32_t, 64>, 64> cm;
 
     void clear()
     {
-        memzero32(&bf[0][0], 64 * 12);
-        memzero32(&hh[0][0], 64 * 12);
+        memzero32(&bf[0][0], 64 * 64);
+        memzero32(&hh[0][0], 64 * 64);
         memzero32(&cm[0][0], 64 * 64);
     }
 
     CH_FORCEINLINE void increment_hh(position const& p, move mv, int inc)
     {
-        hh[p.pieces[mv.from()]][mv.to()] += inc;
+        hh[mv.from()][mv.to()] += inc;
     }
 
     CH_FORCEINLINE void increment_bf(position const& p, move mv, int inc)
     {
-        bf[p.pieces[mv.from()]][mv.to()] += inc;
+        bf[mv.from()][mv.to()] += inc;
     }
 
     CH_FORCEINLINE void set_countermove(move mv, move cmv)
@@ -46,7 +46,7 @@ struct history_heuristic
     CH_FORCEINLINE int get_hh_score(position const& p, move mv) const
     {
         static constexpr int const HISTORY_HEURISTIC_SCALE = 32;
-        int pc = p.pieces[mv.from()];
+        int pc = mv.from();
         int to = mv.to();
         int den = bf[pc][to];
         int num = hh[pc][to];
