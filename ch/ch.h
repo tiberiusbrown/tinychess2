@@ -32,8 +32,6 @@ extern "C" {
             int seldepth,
             uint64_t nodes,
             int mstime,
-            ch_move const* pv,
-            int pvnum,
             int score,
             uint64_t nps
             );

@@ -48,6 +48,8 @@ struct position
         }
     }
 
+    uint64_t hash() const { return stack().hash; }
+
     color current_turn;
 
     void new_game();
@@ -91,6 +93,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
 
     stack_index = 0;
     stack().cap_piece = EMPTY;
+    stack().prev_move = NULL_MOVE;
     uint64_t& hash = stack().hash;
     hash = 0ull;
 
@@ -220,7 +223,7 @@ void position::do_null_move()
 {
     auto& st = stack_push();
     st.cap_piece = EMPTY;
-    st.prev_move = INVALID_MOVE;
+    st.prev_move = NULL_MOVE;
     st.hash ^= hash_turn;
     st.ep_sq = 0;
     current_turn = opposite(current_turn);

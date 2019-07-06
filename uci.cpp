@@ -31,8 +31,6 @@ static void search_info(
     int seldepth,
     uint64_t nodes,
     int mstime,
-    ch_move const* pv,
-    int pvnum,
     int score,
     uint64_t nps
     )
@@ -51,10 +49,7 @@ static void search_info(
         std::cout << "cp " << score;
     std::cout
         << " nps " << nps
-        << " nodes " << nodes
-        << " pv";
-    for(int n = 0; n < pvnum; ++n)
-        std::cout << " " << ch_extended_algebraic(pv[n]);
+        << " nodes " << nodes;
     std::cout << std::endl;
 }
 

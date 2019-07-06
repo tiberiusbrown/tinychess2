@@ -46,7 +46,7 @@ private:
     static constexpr uint32_t const MOVE_PROMOTION  = 0x00080000;
 };
 
-static constexpr move const INVALID_MOVE = 0;
+static constexpr move const NULL_MOVE = 0;
 
 char const* move::extended_algebraic() const
 {

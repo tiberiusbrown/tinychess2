@@ -128,7 +128,7 @@ void CHAPI ch_do_move(ch_move m)
 void CHAPI ch_do_move_str(char const* str)
 {
     using namespace ch;
-    move m = ch::INVALID_MOVE;
+    move m = ch::NULL_MOVE;
 
     m += move::from(('8' - str[1]) * 8 + str[0] - 'a');
     m += move::to(('8' - str[3]) * 8 + str[2] - 'a');

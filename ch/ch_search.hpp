@@ -22,7 +22,7 @@ static constexpr int const MAX_SCORE = +32000;
 static constexpr int const MATED_SCORE = CH_MATED_SCORE;
 static constexpr int const MATE_SCORE = CH_MATE_SCORE;
 
-static constexpr int const MAX_VARIATION = 256;
+static constexpr int const MAX_VARIATION = 128;
 
 struct principal_variation
 {
@@ -36,7 +36,7 @@ struct search_data
     trans_table* tt;
     history_heuristic* hh;
     position p;
-    principal_variation pv;
+    move best;
     std::array<move, MAX_VARIATION> mvstack;
     std::array<std::array<move, CH_NUM_KILLERS>, MAX_VARIATION> killers;
     int score;
@@ -60,10 +60,9 @@ static CH_FORCEINLINE void order_moves(
     move_list& mvs,
     search_data const& d,
     move const& hashmove,
-    move const& parent_move,
     std::array<move, CH_NUM_KILLERS> const& killers)
 {
-    int prev_to = d.p.stack().prev_move.to();
+    move parent_move = d.p.stack().prev_move;
     move countermove = d.hh->get_countermove(parent_move);
 
     for(move& mv : mvs)
@@ -79,11 +78,13 @@ static CH_FORCEINLINE void order_moves(
         {
             x = INT8_MAX - 1;
         }
+#if CH_ENABLE_COUNTERMOVE_HEURISTIC
         else if(mv == countermove)
         {
             x = INT8_MAX - 2;
         }
-        else if(mv.to() == prev_to)
+#endif
+        else if(mv.to() == parent_move.to())
         {
             x = INT8_MAX - 2 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
         }
@@ -115,12 +116,6 @@ static CH_FORCEINLINE void order_moves(
     mvs.sort();
 }
 
-namespace search_flags
-{
-    static constexpr int const ROOT     = (1 << 0);
-    static constexpr int const NULLMOVE = (1 << 1);
-}
-
 static void send_info(search_data& d)
 {
     d.info_time = get_ms();
@@ -131,8 +126,6 @@ static void send_info(search_data& d)
         std::max(d.depth, d.seldepth),
         d.nodes,
         mstime,
-        (ch_move const*)&d.pv.pv[0],
-        d.pv.pvlen,
         d.score,
         mstime ? d.nodes * 1000 / mstime : 0
     );
@@ -189,12 +182,11 @@ template<acceleration accel> static int quiesce(color c,
 {
     position& p = d.p;
     move_list mvs;
-    int value = MIN_SCORE;
 
     int stand_pat = evaluator<accel>::evaluate(p, c);
+    ++d.nodes;
     if(stand_pat >= beta)
         return beta;
-    alpha = std::max(alpha, stand_pat);
 
     d.seldepth = std::max(d.seldepth, height);
 
@@ -204,6 +196,18 @@ template<acceleration accel> static int quiesce(color c,
 #else
     mvs.generate<accel>(c, p);
 #endif
+
+    //{
+    //    bool promotion = false;
+    //    for(move mv : mvs)
+    //        if(mv.is_promotion()) { promotion = true; break; }
+    //    int delta = 975;
+    //    if(promotion) delta += 775;
+    //    if(stand_pat + delta < alpha)
+    //        return alpha;
+    //}
+
+    alpha = std::max(alpha, stand_pat);
 
     for(move mv : mvs)
     {
@@ -218,222 +222,236 @@ template<acceleration accel> static int quiesce(color c,
             continue;
 
         p.do_move<accel>(mv);
-        value = std::max(value,
 #if CH_COLOR_TEMPLATE
-            -quiesce<opposite(c), accel>(
+        int value = -quiesce<opposite(c), accel>(
 #else
-            -quiesce<accel>(opposite(c),
+        int value = -quiesce<accel>(opposite(c),
 #endif
-                d, depth - 1, -beta, -alpha, height + 1));
+            d, depth - 1, -beta, -alpha, height + 1);
         p.undo_move<accel>(mv);
 
         if(value > alpha)
         {
+            if(value >= beta)
+                return beta;
             alpha = value;
-
-            if(alpha >= beta)
-                return value;
         }
     }
 
     return alpha;
 }
 
+enum { NODE_PV = 0, NODE_CUT = 1, NODE_ALL = -1 };
+
 #if CH_COLOR_TEMPLATE
-template<color c, acceleration accel, int flags = 0> static int negamax(
+template<color c, acceleration accel> static int negamax(
 #else
-template<acceleration accel, int flags = 0> static int negamax(color c,
+template<acceleration accel> static int negamax(color c,
 #endif
-    search_data& d, principal_variation& pv,
-    int depth, int alpha, int beta, int height)
+    search_data& d,
+    int depth, int alpha, int beta, int height, int node_type)
 {
-    move hash_move = INVALID_MOVE;
-    int alpha_orig = alpha;
-    int best = MIN_SCORE;
-    position& p = d.p;
-    move_list mvs;
-    int value;
-    move best_move = INVALID_MOVE;
-    move parent_move = pv.pv[0];
-    int hh_increment = depth * depth;
-    bool const tail = (depth <= 1 || height >= MAX_VARIATION - 1);
+    move hash_move = NULL_MOVE;
 
-    principal_variation child_pv;
-    child_pv.pvlen = 0;
-    pv.pvlen = 0;
-
-    if(!(flags & search_flags::ROOT))
-    {
-        // transposition table lookup
-        if(depth > 1)
-        {
-            hash_info i;
-            if(d.tt->get(p.stack().hash, i) && i.depth >= depth)
-            {
-                if(i.flag == hash_info::EXACT)
-                    return i.value;
-                else if(i.flag == hash_info::LOWER)
-                    alpha = std::max<int>(alpha, i.value);
-                else if(i.flag == hash_info::UPPER)
-                    beta = std::min<int>(beta, i.value);
-                if(alpha >= beta)
-                    return i.value;
-                hash_move = i.best;
-            }
-        }
-    }
-
-#if CH_COLOR_TEMPLATE
-    mvs.generate<c, accel>(p);
-#else
-    mvs.generate<accel>(c, p);
-#endif
-
-    if(mvs.empty())
-    {
-        // stalemate or checkmate?
-        if(!p.in_check)
-            return 0;
-        else
-            return MATED_SCORE + height;
-    }
-
-#if CH_ENABLE_NULL_MOVE
-    if(!(flags & search_flags::NULLMOVE) &&
-        !p.in_check && depth > 5 &&
-        (height < 2 || d.mvstack[height - 2] != INVALID_MOVE))
-    {
-        // null move pruning
-        child_pv.pv[0] = INVALID_MOVE;
-        d.mvstack[height] = INVALID_MOVE;
-        p.do_null_move();
-        value =
-#if CH_COLOR_TEMPLATE
-            -negamax<opposite(c), accel, search_flags::NULLMOVE>(
-#else
-            -negamax<accel, search_flags::NULLMOVE>(opposite(c),
-#endif
-                d, child_pv, depth - 4, -beta, -beta + 1, height + 1);
-        p.undo_null_move();
-        if(value >= beta)
-            return beta;
-    }
-#endif
-    value = MIN_SCORE;
-
+#if CH_ENABLE_HASH
+    // transposition table lookup
     if(depth > 1)
     {
-        order_moves(mvs, d, hash_move, parent_move, d.killers[height]);
+        hash_info i;
+        if(d.tt->get(d.p.hash(), i) && i.depth >= depth)
+        {
+            if(i.flag == hash_info::EXACT)
+                return i.value;
+            else if(i.flag == hash_info::LOWER)
+                alpha = std::max<int>(alpha, i.value);
+            else if(i.flag == hash_info::UPPER)
+                beta = std::min<int>(beta, i.value);
+            if(alpha >= beta)
+                return i.value;
+            hash_move = i.best;
+        }
     }
-    else
+#endif
+
+    move_list mvs;
+#if CH_COLOR_TEMPLATE
+    mvs.generate<c, accel>(d.p);
+#else
+    mvs.generate<accel>(c, d.p);
+#endif
+    if(mvs.empty())
+        return d.p.in_check ? MATED_SCORE + height : 0;
+
+#if CH_ENABLE_NULL_MOVE
+    if(!d.p.in_check && depth > 5 &&
+        (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
+        (height < 2 || d.mvstack[height - 2] != NULL_MOVE))
+    {
+        // null move pruning
+        d.mvstack[height] = NULL_MOVE;
+        d.p.do_null_move();
+#if CH_COLOR_TEMPLATE
+        int value = -negamax<opposite(c), accel>(
+#else
+        int value = -negamax<accel>(opposite(c),
+#endif
+            d, depth - 4, -beta, -beta + 1, height + 1, -node_type);
+        d.p.undo_null_move();
+        if(value >= beta)
+            return beta;
+
+        // VERY EXPERIMENTAL
+        alpha = std::max(alpha, value);
+    }
+#endif
+
+    bool const tail = (depth <= 1);
+
+    if(tail)
     {
         for(int i = 0, n = 0; n < mvs.size(); ++n)
         {
-            if(mvs[n] == hash_move ||
-                std::find(
+            if(mvs[n] == hash_move
+#if CH_ENABLE_KILLERS
+                || std::find(
                     d.killers[height].begin(),
                     d.killers[height].end(),
-                    mvs[n]) != d.killers[height].end())
+                    mvs[n]) != d.killers[height].end()
+#endif
+                )
             {
                 std::swap(mvs[i++], mvs[n]);
             }
         }
     }
-
-    if(!(flags & search_flags::NULLMOVE))
+    else
     {
-        for(int n = 0; n < CH_NUM_KILLERS; ++n)
-            d.killers[height + 1][n] = INVALID_MOVE;
+        order_moves(mvs, d, hash_move, d.killers[height]);
+        mvs.sort();
     }
 
-    constexpr int child_flags =
-        flags & ~search_flags::ROOT;
+    int value = MIN_SCORE;
+    int best = MIN_SCORE;
+    move best_move = NULL_MOVE;
+    int hh_increment = depth * depth;
+    int alpha_orig = alpha;
+
+#if CH_ENABLE_HISTORY_HEURISTIC
+    if(!tail)
+        for(move mv : mvs)
+            if(!d.p.move_is_tactical(mv))
+                d.hh->increment_bf(d.p, mv, hh_increment);
+#endif
+
+    bool const can_reduce = (node_type != NODE_PV && depth > 2);
     for(int n = 0; n < mvs.size(); ++n)
     {
         move mv = mvs[n];
-        bool quiet = !p.move_is_tactical(mv);
+        bool const quiet = d.p.move_is_tactical(mv);
+
+        d.mvstack[height] = mv;
+        d.p.do_move<accel>(mv);
 
         int reduction = 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-        if(!(flags & search_flags::NULLMOVE))
+        if(node_type != NODE_PV)
         {
             // stupid simple late move reduction
-            if(n >= 6 && depth > 2 && !p.move_is_tactical(mv))
+            if(can_reduce && quiet && n >= 6)
                 reduction = depth / 3;
         }
 #endif
-        
-        p.do_move<accel>(mv);
-        d.mvstack[height] = mv;
-        child_pv.pv[0] = mv;
+
         if(tail)
         {
+            int v;
 #if CH_ENABLE_QUIESCENCE
             if(!quiet)
             {
-                // TODO: quiesce
 #if CH_COLOR_TEMPLATE
-                value = std::max(value, -quiesce<opposite(c), accel>(
+                v = -quiesce<opposite(c), accel>(
 #else
-                value = std::max(value, -quiesce<accel>(opposite(c),
+                v = -quiesce<accel>(opposite(c),
 #endif
-                    d, depth - 1, -beta, -alpha, height + 1));
+                    d, depth - reduction, -beta, -alpha, height + 1);
             }
             else
 #endif
             {
-                value = std::max(value, evaluator<accel>::evaluate(p, c));
                 ++d.nodes;
+                v = evaluator<accel>::evaluate(d.p, opposite(c));
             }
+            value = std::max(value, v);
         }
-        else
-        {        
+#if CH_ENABLE_PVS
+        else if(n > 0)
+        {
+            int v;
 #if CH_COLOR_TEMPLATE
-            value = std::max(value, -negamax<opposite(c), accel, child_flags>(
+            v = -negamax<opposite(c), accel>(
 #else
-            value = std::max(value, -negamax<accel, child_flags>(opposite(c),
+            v = -negamax<accel>(opposite(c),
 #endif
-                d, child_pv, depth - reduction, -beta, -alpha, height + 1));
+                d, depth - reduction, -alpha - 1, -alpha, height + 1,
+                node_type == NODE_CUT ? NODE_ALL : NODE_CUT);
+            if((v > alpha && v < beta) ||
+                (node_type == NODE_PV && v == beta && beta == alpha + 1))
+            {
+                if(v == alpha + 1)
+                    v = alpha;
+#if CH_COLOR_TEMPLATE
+                v = -negamax<opposite(c), accel>(
+#else
+                v = -negamax<accel>(opposite(c),
+#endif
+                    d, depth - reduction, -beta, -v, height + 1, node_type);
+            }
+            value = std::max(value, v);
         }
-        p.undo_move<accel>(mv);
-
-#if CH_ENABLE_HISTORY_HEURISTIC
-        if(!(flags & search_flags::NULLMOVE) && quiet)
-            d.hh->increment_bf(p, mv, hh_increment);
 #endif
+        else
+        {
+#if CH_COLOR_TEMPLATE
+            value = std::max(value, -negamax<opposite(c), accel>(
+#else
+            value = std::max(value, -negamax<accel>(opposite(c),
+#endif
+                d, depth - reduction, -beta, -alpha, height + 1, -node_type));
+        }
+
+        d.p.undo_move<accel>(mv);
 
         if(value > best)
         {
             best = value;
             best_move = mv;
+            if(height == 0)
+                d.best = mv;
             if(value > alpha)
             {
                 alpha = value;
-                pv.pvlen = child_pv.pvlen + 1;
-                pv.pv[0] = mv;
-                memcpy32(&pv.pv[1], &child_pv.pv[0], child_pv.pvlen);
                 if(alpha >= beta)
                 {
-                    if((flags & search_flags::NULLMOVE) != 0)
-                        break;
-
                     // history updates
+#if CH_ENABLE_KILLERS
                     {
                         auto& k = d.killers[height];
                         if(mv != hash_move && std::find(
                             k.begin(), k.end(), mv) == k.end())
                         {
-                            // store killer move
                             for(int m = 0; m < CH_NUM_KILLERS - 1; ++m)
                                 k[m + 1] = k[m];
-                            d.killers[height][0] = mv;
+                            k[0] = mv;
                         }
                     }
+#endif
 #if CH_ENABLE_HISTORY_HEURISTIC
                     if(quiet)
-                        d.hh->increment_hh(p, mv, hh_increment);
+                        d.hh->increment_hh(d.p, mv, hh_increment);
+#endif
+#if CH_ENABLE_COUNTERMOVE_HEURISTIC
                     if(height > 0)
-                        d.hh->set_countermove(parent_move, mv);
+                        d.hh->set_countermove(d.p.stack().prev_move, mv);
 #endif
                     break;
                 }
@@ -441,24 +459,23 @@ template<acceleration accel, int flags = 0> static int negamax(color c,
         }
     }
 
-    if(!(flags & search_flags::NULLMOVE))
+#if CH_ENABLE_HASH
+    // transposition table store
+    if(depth > 1)
     {
-        // transposition table store
-        //if(depth > 1)
-        {
-            hash_info i;
-            i.value = int16_t(value);
-            if(value <= alpha_orig)
-                i.flag = hash_info::UPPER;
-            else if(value >= beta)
-                i.flag = hash_info::LOWER;
-            else
-                i.flag = hash_info::EXACT;
-            i.depth = int8_t(depth);
-            i.best = best_move;
-            d.tt->put(p.stack().hash, i);
-        }
+        hash_info i;
+        i.value = int16_t(value);
+        if(value <= alpha_orig)
+            i.flag = hash_info::UPPER;
+        else if(value >= beta)
+            i.flag = hash_info::LOWER;
+        else
+            i.flag = hash_info::EXACT;
+        i.depth = int8_t(depth);
+        i.best = best_move;
+        d.tt->put(d.p.hash(), i);
     }
+#endif
 
     return value;
 }
@@ -470,17 +487,17 @@ static int negamax_root(
 #if CH_COLOR_TEMPLATE
     if(d.p.current_turn == WHITE)
     {
-        return negamax<WHITE, accel, search_flags::ROOT>(
-            d, d.pv, depth, alpha, beta, 0);
+        return negamax<WHITE, accel>(
+            d, depth, alpha, beta, 0, NODE_PV);
     }
     else
     {
-        return negamax<BLACK, accel, search_flags::ROOT>(
-            d, d.pv, depth, alpha, beta, 0);
+        return negamax<BLACK, accel>(
+            d, depth, alpha, beta, 0, NODE_PV);
     }
 #else
-    return negamax<accel, search_flags::ROOT>(d.p.current_turn,
-        d, d.pv, depth, alpha, beta, 0);
+    return negamax<accel>(d.p.current_turn,
+        d, depth, alpha, beta, 0, NODE_PV);
 #endif
 }
 
@@ -547,7 +564,7 @@ static move iterative_deepening(
         ++depth;
     }
     send_info(d);
-    return d.pv.pv[0];
+    return d.best;
 }
 
 }
