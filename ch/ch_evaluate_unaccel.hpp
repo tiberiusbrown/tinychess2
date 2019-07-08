@@ -7,7 +7,7 @@
 namespace ch
 {
 
-static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int8_t const table[64])
+static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int16_t const table[64])
 {
     int r = 0;
     while(pieces)
@@ -15,7 +15,7 @@ static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int8_t const table[6
     return r;
 }
 
-static CH_FORCEINLINE int eval_piece_table_flipped(uint64_t pieces, int8_t const table[64])
+static CH_FORCEINLINE int eval_piece_table_flipped(uint64_t pieces, int16_t const table[64])
 {
     int r = 0;
     while(pieces)
@@ -30,20 +30,17 @@ struct evaluator<ACCEL_UNACCEL>
     {
         int x = 0;
 
-        for(int i = 0; i < 10; ++i)
-            x += popcnt(p.bbs[i]) * PIECE_VALUES[i];
+        x += eval_piece_table(p.bbs[WHITE + PAWN  ], table_pawn  );
+        x += eval_piece_table(p.bbs[WHITE + KNIGHT], table_knight);
+        x += eval_piece_table(p.bbs[WHITE + BISHOP], table_bishop);
+        x += eval_piece_table(p.bbs[WHITE + ROOK  ], table_rook  );
+        x += eval_piece_table(p.bbs[WHITE + QUEEN ], table_queen );
 
-        x += eval_piece_table(p.bbs[WHITE + PAWN  ], TABLE_PAWN  );
-        x += eval_piece_table(p.bbs[WHITE + KNIGHT], TABLE_KNIGHT);
-        x += eval_piece_table(p.bbs[WHITE + BISHOP], TABLE_BISHOP);
-        x += eval_piece_table(p.bbs[WHITE + ROOK  ], TABLE_ROOK  );
-        x += eval_piece_table(p.bbs[WHITE + QUEEN ], TABLE_QUEEN );
-
-        x -= eval_piece_table_flipped(p.bbs[BLACK + PAWN  ], TABLE_PAWN  );
-        x -= eval_piece_table_flipped(p.bbs[BLACK + KNIGHT], TABLE_KNIGHT);
-        x -= eval_piece_table_flipped(p.bbs[BLACK + BISHOP], TABLE_BISHOP);
-        x -= eval_piece_table_flipped(p.bbs[BLACK + ROOK  ], TABLE_ROOK  );
-        x -= eval_piece_table_flipped(p.bbs[BLACK + QUEEN ], TABLE_QUEEN );
+        x -= eval_piece_table_flipped(p.bbs[BLACK + PAWN  ], table_pawn  );
+        x -= eval_piece_table_flipped(p.bbs[BLACK + KNIGHT], table_knight);
+        x -= eval_piece_table_flipped(p.bbs[BLACK + BISHOP], table_bishop);
+        x -= eval_piece_table_flipped(p.bbs[BLACK + ROOK  ], table_rook  );
+        x -= eval_piece_table_flipped(p.bbs[BLACK + QUEEN ], table_queen );
 
         return c == WHITE ? x : -x;
     }

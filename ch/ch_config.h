@@ -2,6 +2,23 @@
 
 #include "ch_arch.h"
 
+/*
+
+GOALS:
+
+Mate in 7 (h5h7 g8h7 e4f6 h7h6 e5g4 ...)
+Might need to order checking moves high and/or have special check quiescence?
+Stockfish finds the mate in 7 at depth 16 in less than 100 ms
+rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11
+
+IMPLEMENT:
+
+Move picker class (like Stockfish) that can score/pick in stages
+Incrementally updated piece-square position value
+Record and report statistics (number of fail-highs in PVS, etc)
+
+*/
+
 // color is templated instead of passed as argument
 #define CH_COLOR_TEMPLATE 1
 
@@ -21,16 +38,15 @@
 #define CH_ENABLE_HISTORY_HEURISTIC 1
 #define CH_ENABLE_COUNTERMOVE_HEURISTIC 1
 
-#define CH_ENABLE_NULL_MOVE 1
+// no zw protection right now
+#define CH_ENABLE_NULL_MOVE 0
 
 #define CH_ENABLE_QUIESCENCE 1
 
 #define CH_ENABLE_PVS 1
 
-// causes failure to find mate in 4 (at depth 8) for:
-// 1r2k1r1/pbppnp1p/1b3P2/8/Q7/B1PB1q2/P4PPP/3R2K1 w - - 1 0
-// (finds it at depth 9 instead)
-#define CH_ENABLE_LATE_MOVE_REDUCTION 1
+// causes delays in finding mates right now
+#define CH_ENABLE_LATE_MOVE_REDUCTION 0
 
 #define CH_MAX_THREADS 8
 

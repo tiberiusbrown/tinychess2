@@ -70,6 +70,21 @@ struct position
     }
 
 #if CH_COLOR_TEMPLATE
+    template<color c>
+    CH_FORCEINLINE bool has_piece_better_than_pawn() const
+#else
+    CH_FORCEINLINE bool has_piece_better_than_pawn(color c) const
+#endif
+    {
+        return (
+            bbs[c + KNIGHT] |
+            bbs[c + BISHOP] |
+            bbs[c + ROOK] |
+            bbs[c + QUEEN]
+            ) != 0;
+    }
+
+#if CH_COLOR_TEMPLATE
     template<color c, acceleration accel>
     uint64_t perft(trans_table& tt, int depth);
 #else

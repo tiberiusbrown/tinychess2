@@ -17,8 +17,8 @@ struct move
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
     move& operator+=(move const& m) { d += m.d; return *this; }
-    constexpr bool operator<(move const& m) { return int32_t(d) < int32_t(m.d); }
-    constexpr int8_t& sort_key() { return *((int8_t*)&d + 3); }
+    constexpr bool operator<(move const& m) { return d < m.d; }
+    constexpr uint8_t& sort_key() { return *((uint8_t*)&d + 3); }
     static constexpr move from(int sq) { return sq << 8; }
     static constexpr move to(int sq) { return sq; }
     static constexpr move pawn_dmove(int a, int b) { return move(a, b) + pawn_dmove(); }
@@ -38,6 +38,7 @@ struct move
     constexpr bool is_pawn_dmove() const { return (d & MOVE_PAWN_DMOVE) != 0; }
     constexpr bool is_promotion() const { return (d & MOVE_PROMOTION) != 0; }
     char const* extended_algebraic() const;
+    constexpr bool is_similar_to(move const& m) const { return (d & 0xffff) == (m.d & 0xffff); }
 private:
     static constexpr uint32_t const MOVE_PAWN_DMOVE = 0x00800000;
     static constexpr uint32_t const MOVE_EN_PASSANT = 0x00400000;

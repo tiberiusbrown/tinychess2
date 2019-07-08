@@ -56,6 +56,16 @@ static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
     9 * 4, 9 * 4,
 };
 
+static CH_FORCEINLINE bool is_killer(
+    std::array<move, CH_NUM_KILLERS> const& killers,
+    move const& mv)
+{
+    for(int i = 0; i < CH_NUM_KILLERS; ++i)
+        if(mv.is_similar_to(killers[i]))
+            return true;
+    return false;
+}
+
 static CH_FORCEINLINE void order_moves(
     move_list& mvs,
     search_data const& d,
@@ -69,24 +79,9 @@ static CH_FORCEINLINE void order_moves(
     {
         int x;
 
-        if(mv == hashmove)
+        if(mv.is_similar_to(hashmove))
         {
-            x = INT8_MAX;
-        }
-        else if(std::find(
-            killers.begin(), killers.end(), mv) != killers.end())
-        {
-            x = INT8_MAX - 1;
-        }
-#if CH_ENABLE_COUNTERMOVE_HEURISTIC
-        else if(mv == countermove)
-        {
-            x = INT8_MAX - 2;
-        }
-#endif
-        else if(mv.to() == parent_move.to())
-        {
-            x = INT8_MAX - 2 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
+            x = 127;
         }
         else if(mv.is_promotion())
         {
@@ -102,15 +97,29 @@ static CH_FORCEINLINE void order_moves(
                 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
             x += 64;
         }
+        else if(is_killer(killers, mv))
+        {
+            x = 62;
+        }
+#if CH_ENABLE_COUNTERMOVE_HEURISTIC
+        else if(mv.is_similar_to(countermove))
+        {
+            x = 61;
+        }
+#endif
+        else if(mv.to() == parent_move.to())
+        {
+            x = 60 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
+        }
         else
         {
             x = 0;
 #if CH_ENABLE_HISTORY_HEURISTIC
-            x += d.hh->get_hh_score(d.p, mv);
+            x += d.hh->get_hh_score(mv);
 #endif
         }
 
-        mv.sort_key() = int8_t(x);
+        mv.sort_key() = uint8_t(x);
     }
 
     mvs.sort();
@@ -252,6 +261,7 @@ template<acceleration accel> static int negamax(color c,
     int depth, int alpha, int beta, int height, int node_type)
 {
     move hash_move = NULL_MOVE;
+    int alpha_orig = alpha;
 
 #if CH_ENABLE_HASH
     // transposition table lookup
@@ -260,14 +270,24 @@ template<acceleration accel> static int negamax(color c,
         hash_info i;
         if(d.tt->get(d.p.hash(), i) && i.depth >= depth)
         {
+            int v = i.value;
+            if(v >= MATE_SCORE - 256)
+                v -= height;
+            if(v <= MATED_SCORE + 256)
+                v += height;
             if(i.flag == hash_info::EXACT)
-                return i.value;
+            {
+                if(height > 0)
+                    return v;
+                alpha = v;
+                beta = v + 1;
+            }
             else if(i.flag == hash_info::LOWER)
-                alpha = std::max<int>(alpha, i.value);
+                alpha = std::max<int>(alpha, v);
             else if(i.flag == hash_info::UPPER)
-                beta = std::min<int>(beta, i.value);
+                beta = std::min<int>(beta, v);
             if(alpha >= beta)
-                return i.value;
+                return v;
             hash_move = i.best;
         }
     }
@@ -282,12 +302,18 @@ template<acceleration accel> static int negamax(color c,
     if(mvs.empty())
         return d.p.in_check ? MATED_SCORE + height : 0;
 
+    // null move pruning
 #if CH_ENABLE_NULL_MOVE
-    if(!d.p.in_check && depth > 5 &&
+    if(!d.p.in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
-        (height < 2 || d.mvstack[height - 2] != NULL_MOVE))
+        (height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
+#if CH_COLOR_TEMPLATE
+        d.p.has_piece_better_than_pawn<c>()
+#else
+        d.p.has_piece_better_than_pawn(c)
+#endif
+        )
     {
-        // null move pruning
         d.mvstack[height] = NULL_MOVE;
         d.p.do_null_move();
 #if CH_COLOR_TEMPLATE
@@ -295,13 +321,10 @@ template<acceleration accel> static int negamax(color c,
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth - 4, -beta, -beta + 1, height + 1, -node_type);
+            d, depth - 2, -beta, -beta + 1, height + 1, -node_type);
         d.p.undo_null_move();
         if(value >= beta)
             return beta;
-
-        // VERY EXPERIMENTAL
-        alpha = std::max(alpha, value);
     }
 #endif
 
@@ -311,12 +334,9 @@ template<acceleration accel> static int negamax(color c,
     {
         for(int i = 0, n = 0; n < mvs.size(); ++n)
         {
-            if(mvs[n] == hash_move
+            if(mvs[n].is_similar_to(hash_move)
 #if CH_ENABLE_KILLERS
-                || std::find(
-                    d.killers[height].begin(),
-                    d.killers[height].end(),
-                    mvs[n]) != d.killers[height].end()
+                || is_killer(d.killers[height], mvs[n])
 #endif
                 )
             {
@@ -334,32 +354,28 @@ template<acceleration accel> static int negamax(color c,
     int best = MIN_SCORE;
     move best_move = NULL_MOVE;
     int hh_increment = depth * depth;
-    int alpha_orig = alpha;
 
 #if CH_ENABLE_HISTORY_HEURISTIC
     if(!tail)
         for(move mv : mvs)
             if(!d.p.move_is_tactical(mv))
-                d.hh->increment_bf(d.p, mv, hh_increment);
+                d.hh->increment_bf(mv, hh_increment);
 #endif
 
-    bool const can_reduce = (node_type != NODE_PV && depth > 2);
+    bool const can_reduce = (node_type != NODE_PV && depth > 5);
     for(int n = 0; n < mvs.size(); ++n)
     {
         move mv = mvs[n];
-        bool const quiet = d.p.move_is_tactical(mv);
+        bool const quiet = !d.p.move_is_tactical(mv);
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
 
         int reduction = 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-        if(node_type != NODE_PV)
-        {
-            // stupid simple late move reduction
-            if(can_reduce && quiet && n >= 6)
-                reduction = depth / 3;
-        }
+        // stupid simple late move reduction
+        if(can_reduce && quiet && n >= 6)
+            reduction = depth / 3;
 #endif
 
         if(tail)
@@ -379,7 +395,7 @@ template<acceleration accel> static int negamax(color c,
 #endif
             {
                 ++d.nodes;
-                v = evaluator<accel>::evaluate(d.p, opposite(c));
+                v = evaluator<accel>::evaluate(d.p, c);
             }
             value = std::max(value, v);
         }
@@ -423,10 +439,10 @@ template<acceleration accel> static int negamax(color c,
 
         if(value > best)
         {
-            best = value;
-            best_move = mv;
             if(height == 0)
                 d.best = mv;
+            best = value;
+            best_move = mv;
             if(value > alpha)
             {
                 alpha = value;
@@ -436,8 +452,9 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_KILLERS
                     {
                         auto& k = d.killers[height];
-                        if(mv != hash_move && std::find(
-                            k.begin(), k.end(), mv) == k.end())
+                        if(quiet &&
+                            !mv.is_similar_to(hash_move) &&
+                            !is_killer(k, mv))
                         {
                             for(int m = 0; m < CH_NUM_KILLERS - 1; ++m)
                                 k[m + 1] = k[m];
@@ -447,7 +464,7 @@ template<acceleration accel> static int negamax(color c,
 #endif
 #if CH_ENABLE_HISTORY_HEURISTIC
                     if(quiet)
-                        d.hh->increment_hh(d.p, mv, hh_increment);
+                        d.hh->increment_hh(mv, hh_increment);
 #endif
 #if CH_ENABLE_COUNTERMOVE_HEURISTIC
                     if(height > 0)
@@ -464,7 +481,10 @@ template<acceleration accel> static int negamax(color c,
     if(depth > 1)
     {
         hash_info i;
-        i.value = int16_t(value);
+        i.value = int16_t(
+            value <= MATED_SCORE + 256 ? value - height :
+            value >= MATE_SCORE - 256 ? value + height :
+            value);
         if(value <= alpha_orig)
             i.flag = hash_info::UPPER;
         else if(value >= beta)

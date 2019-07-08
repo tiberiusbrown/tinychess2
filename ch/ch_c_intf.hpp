@@ -53,6 +53,7 @@ void CHAPI ch_init(ch_system_info const* info)
     ch::init_magic();
 #endif
     ch::init_hashes();
+    ch::init_evaluator();
     g_tt.set_memory(nullptr, 0);
     for(int n = 0; n < CH_MAX_THREADS; ++n)
     {
@@ -62,6 +63,7 @@ void CHAPI ch_init(ch_system_info const* info)
     }
     g_pos.new_game();
     update_moves();
+    ch_clear_caches();
 }
 
 void CHAPI ch_set_hash(void* mem, int size_megabyte_log2)
@@ -73,6 +75,8 @@ void CHAPI ch_clear_caches(void)
 {
     g_tt.clear();
     g_hh.clear();
+    for(int n = 0; n < CH_MAX_THREADS; ++n)
+        memzero32(&g_sd[n].killers[0][0], sizeof(g_sd[n].killers) / 4);
 }
 
 void CHAPI ch_new_game()

@@ -23,17 +23,17 @@ struct history_heuristic
 
     void clear()
     {
-        memzero32(&bf[0][0], 64 * 64);
-        memzero32(&hh[0][0], 64 * 64);
-        memzero32(&cm[0][0], 64 * 64);
+        memzero32(&bf[0][0], sizeof(bf) / sizeof(bf[0][0]));
+        memzero32(&hh[0][0], sizeof(hh) / sizeof(hh[0][0]));
+        memzero32(&cm[0][0], sizeof(cm) / sizeof(cm[0][0]));
     }
 
-    CH_FORCEINLINE void increment_hh(position const& p, move mv, int inc)
+    CH_FORCEINLINE void increment_hh(move mv, int inc)
     {
         hh[mv.from()][mv.to()] += inc;
     }
 
-    CH_FORCEINLINE void increment_bf(position const& p, move mv, int inc)
+    CH_FORCEINLINE void increment_bf(move mv, int inc)
     {
         bf[mv.from()][mv.to()] += inc;
     }
@@ -43,7 +43,7 @@ struct history_heuristic
         cm[mv.from()][mv.to()] = cmv;
     }
 
-    CH_FORCEINLINE int get_hh_score(position const& p, move mv) const
+    CH_FORCEINLINE int get_hh_score(move mv) const
     {
         static constexpr int const HISTORY_HEURISTIC_SCALE = 32;
         int pc = mv.from();

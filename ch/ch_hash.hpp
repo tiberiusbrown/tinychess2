@@ -90,7 +90,7 @@ public:
     {
 #if CH_ENABLE_HASH
         if(entries)
-            memzero(entries, int(mask + 1) * 16);
+            memzero32(entries, int(mask + 1) * sizeof(entry) / 4);
 #endif
     }
 
