@@ -23,7 +23,7 @@ static uint32_t get_ms(void)
 
 static void thread_yield(void)
 {
-    std::this_thread::yield();
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
 }
 
 static void search_info(
@@ -53,11 +53,17 @@ static void search_info(
     std::cout << std::endl;
 }
 
+static void best_move(ch_move m)
+{
+    std::cout << "bestmove " << ch_extended_algebraic(m) << std::endl;
+}
+
 static ch_system_info const SYSINF =
 {
     &get_ms,
     &thread_yield,
     &search_info,
+    &best_move,
 };
 
 static bool startswith(std::string const& str, char const* x)
@@ -105,6 +111,8 @@ int main(void)
     ch_init(&SYSINF);
     set_hash_mem(256);
     ch_new_game();
+
+    std::thread thrd1(&ch_thread_start);
 
     start_time = std::chrono::steady_clock::now();
 
@@ -168,8 +176,11 @@ int main(void)
             if(contains(line, " depth "))
                 limits.depth = clamp(atoi(
                     line.c_str() + line.find(" depth ", 0) + 7), 2, 64);
-            ch_move m = ch_search(&limits);
-            std::cout << "bestmove " << ch_extended_algebraic(m) << std::endl;
+            ch_search(&limits);
+        }
+        else if(startswith(line, "stop"))
+        {
+            ch_stop();
         }
         else if(line == "eval")
         {
@@ -184,6 +195,8 @@ int main(void)
             std::cout << t << std::endl;
         }
     }
+
+    ch_kill_threads();
 
     free(hash_mem);
 

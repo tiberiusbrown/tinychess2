@@ -11,11 +11,19 @@ Might need to order checking moves high and/or have special check quiescence?
 Stockfish finds the mate in 7 at depth 16 in less than 100 ms
 rn3rk1/pbppq1pp/1p2pb2/4N2Q/3PN3/3B4/PPP2PPP/R3K2R w KQ - 7 11
 
+Mate in 8
+Stockfish finds it at depth 15 in less than 20 ms
+8/7K/8/8/8/8/R7/7k w - - 0 1
+
 IMPLEMENT:
 
+Lazy SMP properly synchonized iterative deepening
 Move picker class (like Stockfish) that can score/pick in stages
 Incrementally updated piece-square position value
 Record and report statistics (number of fail-highs in PVS, etc)
+Moves that give check in quiescence? (depth-limited)
+Simplified ABDADA:
+    http://www.tckerrigan.com/Chess/Parallel_Search/Simplified_ABDADA/simplified_abdada.html
 
 */
 

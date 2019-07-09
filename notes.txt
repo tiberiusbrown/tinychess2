@@ -23,17 +23,3 @@ Lazy SMP
     
     aborting helper threads:
         set abort flag for each helper and wait for each to stop searching 
-
-Implement These
-=================================
-	DONE Full move ordering (insertion sort)
-		Relative History Heuristic
-	Late Move Reductions
-	Null Move Pruning
-	Quiescence search
-		Optimized tactical-only move generation?
-	
-Maybe Implement These
-=================================
-	Static Exchange Evaluation
-	

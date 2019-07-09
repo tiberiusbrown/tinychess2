@@ -14,12 +14,16 @@
 #include "ch_position.hpp"
 #include "ch_search.hpp"
 
+#include <atomic>
 
 static ch::trans_table g_tt;
 static ch::position g_pos;
 static ch::search_data g_sd[CH_MAX_THREADS];
 static ch::move_list g_moves;
 static ch::history_heuristic g_hh;
+
+// thread management
+static std::atomic_int g_num_threads;
 
 static void update_moves(void)
 {
@@ -60,10 +64,115 @@ void CHAPI ch_init(ch_system_info const* info)
         g_sd[n].tt = &g_tt;
         g_sd[n].hh = &g_hh;
         g_sd[n].nodes = 0;
+        g_sd[n].stop = true;
+        g_sd[n].stopped = false;
+        g_sd[n].kill = false;
+        g_sd[n].killed = false;
+        g_sd[n].data_index = n;
+        g_sd[n].num_threads = 1;
     }
+    g_num_threads = 0;
     g_pos.new_game();
     update_moves();
     ch_clear_caches();
+}
+
+static void helper_start_search(ch::search_data& d)
+{
+    ch::move mv;
+    d.stopped = false;
+#if CH_ENABLE_AVX
+    if(ch::has_avx())
+        mv = ch::iterative_deepening<ch::ACCEL_AVX>(d, g_pos);
+    else
+#endif
+#if CH_ENABLE_SSE
+    if(ch::has_sse())
+        mv = ch::iterative_deepening<ch::ACCEL_SSE>(d, g_pos);
+    else
+#endif
+#if CH_ENABLE_UNACCEL
+        mv = ch::iterative_deepening<ch::ACCEL_UNACCEL>(d, g_pos);
+#else
+        mv = ch::NULL_MOVE;
+#endif
+    if(d.data_index == 0 && ch::system.best_move)
+        ch::system.best_move(mv);
+    d.stop = true;
+}
+
+void CHAPI ch_thread_start(void)
+{
+    int index = g_num_threads.fetch_add(1, std::memory_order_relaxed);
+    if(index >= CH_MAX_THREADS)
+    {
+        g_num_threads -= 1;
+        return;
+    }
+    ch::search_data& d = g_sd[index];
+
+    for(;;)
+    {
+        d.stopped = true;
+        while(d.stop && !d.kill)
+            ch::thread_yield();
+        if(d.kill) break;
+        helper_start_search(d);
+    }
+    d.killed = true;
+}
+
+static void helper_stop_threads()
+{
+    int n = g_num_threads;
+    for(int i = n - 1; i >= 0; --i)
+        g_sd[i].stop = true;
+    int num_stopped = 0;
+    do
+    {
+        for(int i = n - 1; i >= 0; --i)
+        {
+            if(g_sd[i].stopped)
+            {
+                g_sd[i].stopped = false;
+                ++num_stopped;
+                break;
+            }
+        }
+    } while(num_stopped < n);
+}
+
+static void helper_start_threads()
+{
+    int n = g_num_threads;
+    for(int i = 0; i < n; ++i)
+    {
+        g_sd[i].num_threads = n;
+        g_sd[i].depth = 0;
+    }
+    while(n-- > 0)
+        g_sd[n].stop = false;
+}
+
+void CHAPI ch_kill_threads(void)
+{
+    int n = g_num_threads;
+    for(int i = n - 1; i >= 0; --i)
+        g_sd[i].kill = g_sd[i].stop = true;
+    int num_killed = 0;
+    do
+    {
+        for(int i = n - 1; i >= 0; --i)
+        {
+            if(g_sd[i].killed)
+            {
+                g_sd[i].killed = g_sd[i].kill = false;
+                ++num_killed;
+                break;
+            }
+        }
+    } while(num_killed < n);
+    g_num_threads = 0;
 }
 
 void CHAPI ch_set_hash(void* mem, int size_megabyte_log2)
@@ -188,9 +297,10 @@ int CHAPI ch_evaluate(void)
 #endif
 }
 
-ch_move CHAPI ch_search(ch_search_limits const* limits)
+void CHAPI ch_search(ch_search_limits const* limits)
 {
     uint32_t start_time = ch::get_ms();
+    helper_stop_threads();
 #if CH_ENABLE_HISTORY_HEURISTIC
     g_hh.clear();
 #endif
@@ -204,21 +314,15 @@ ch_move CHAPI ch_search(ch_search_limits const* limits)
         g_sd[n].start_time = start_time;
         g_sd[n].limits = newlimits;
     }
-#if CH_ENABLE_AVX
-    if(ch::has_avx())
-        return ch::iterative_deepening<ch::ACCEL_AVX>(g_sd[0], g_pos);
+    if(g_num_threads == 0)
+        helper_start_search(g_sd[0]);
     else
-#endif
-#if CH_ENABLE_SSE
-    if(ch::has_sse())
-        return ch::iterative_deepening<ch::ACCEL_SSE>(g_sd[0], g_pos);
-    else
-#endif
-#if CH_ENABLE_UNACCEL
-        return ch::iterative_deepening<ch::ACCEL_UNACCEL>(g_sd[0], g_pos);
-#else
-        return 0;
-#endif
+        helper_start_threads();
+}
+
+void CHAPI ch_stop(void)
+{
+    helper_stop_threads();
 }
 
 uint64_t CHAPI ch_get_nodes(void)

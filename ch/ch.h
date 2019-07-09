@@ -23,7 +23,7 @@ extern "C" {
         // return monotonic millisecond clock
         uint32_t(*get_ms)(void);
 
-        // sleep briefly
+        // sleep this thread briefly or yield to scheduler
         void(*thread_yield)(void);
 
         // sent periodically during search
@@ -35,24 +35,38 @@ extern "C" {
             int score,
             uint64_t nps
             );
+
+        // callback for when a search has ended
+        void(*best_move)(ch_move m);
     } ch_system_info;
 
     typedef struct ch_search_limits
     {
-        int depth;
-        int mstime;
+        // hard limits
+        int depth;   // stop at a given depth in plies
+        int mstime;  // stop after a given number of milliseconds
+
+        // TODO: if remtime is nonzero, time management will be used
         int remtime;
         int inctime;
     } ch_search_limits;
 
     void CHAPI ch_init(ch_system_info const* info);
 
-    void CHAPI ch_thread_func(int index);
+    // if this method is not called, searches will not be run in
+    // the background. create as many threads as desired with this
+    // method as the thread entry.
+    void CHAPI ch_thread_start(void);
+    
+    // kill all threads. this can be used to change the number of
+    // threads: first kill threads, then create new ones with
+    // ch_thread_start entries.
+    void CHAPI ch_kill_threads(void);
 
     // mem must be at least 8-byte aligned
     void CHAPI ch_set_hash(void* mem, int size_megabyte_log2);
 
-    // reset hash table and heuristics (ucinewgame)
+    // clear any hash tables and heuristics (ucinewgame)
     void CHAPI ch_clear_caches(void);
 
     void CHAPI ch_new_game(void);
@@ -64,7 +78,9 @@ extern "C" {
 
     int CHAPI ch_evaluate(void);
 
-    ch_move CHAPI ch_search(ch_search_limits const* limits);
+    void CHAPI ch_search(ch_search_limits const* limits);
+
+    void CHAPI ch_stop(void);
 
     // get node count from last search
     uint64_t CHAPI ch_get_nodes(void);

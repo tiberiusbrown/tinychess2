@@ -15,8 +15,12 @@ struct position
     CH_ALIGN(64) std::array<uint64_t, NUM_BB> bbs;
 
     // written to by move_generator<>::generate
+
+    // squares that enemy is attacking (king is x-rayed)
     uint64_t attacked_nonking;
+    // friendly pieces that are pinned against king
     uint64_t pinned_pieces;
+    // whether the side to move is in check
     bool in_check;
 
     static constexpr int const STACK_SIZE = 256;

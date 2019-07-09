@@ -45,6 +45,9 @@ struct search_data
     uint32_t start_time;
     uint32_t info_time;
     ch_search_limits limits;
+    int data_index;
+    int num_threads;
+    std::atomic_bool stop, stopped, kill, killed;
 };
 
 static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
@@ -262,6 +265,9 @@ template<acceleration accel> static int negamax(color c,
 {
     move hash_move = NULL_MOVE;
     int alpha_orig = alpha;
+
+    if(d.stop)
+        return 0;
 
 #if CH_ENABLE_HASH
     // transposition table lookup
@@ -535,7 +541,7 @@ static int aspiration_window(
     int beta = depth < ASPIRATION_MIN_DEPTH ? MAX_SCORE :
         std::min(MAX_SCORE, prev_score + delta);
 
-    for(;;)
+    while(!d.stop)
     {
 
         int value = negamax_root<accel>(d, depth, alpha, beta);
@@ -562,6 +568,27 @@ static int aspiration_window(
         delta += delta / 4 + 5;
 #endif
     }
+
+    return 0;
+}
+
+static int get_next_depth(
+    search_data const& d, int default_depth)
+{
+    search_data const* ds = &d - d.data_index;
+    int num_above_depth = 0;
+    int max_reached_depth = 0;
+    for(int n = 0; n < d.num_threads; ++n)
+    {
+        if(n == d.data_index) continue;
+        if(ds[n].depth >= default_depth)
+            ++num_above_depth;
+        max_reached_depth = std::max(max_reached_depth, ds[n].depth);
+    }
+    if(num_above_depth >= (d.num_threads + 1) / 2 ||
+        default_depth < max_reached_depth - 1)
+        return get_next_depth(d, default_depth + 1);
+    return default_depth;
 }
 
 template<acceleration accel>
@@ -579,11 +606,12 @@ static move iterative_deepening(
         prev_score = aspiration_window<accel>(d, depth, prev_score);
         d.depth = depth;
         d.score = prev_score;
-        if(depth >= d.limits.depth) break;
-        send_info(d);
-        ++depth;
+        if(d.stop || depth >= d.limits.depth) break;
+        if(d.data_index == 0) send_info(d);
+        depth = get_next_depth(d, depth + 1);
     }
-    send_info(d);
+    if(d.data_index == 0 && !d.stop)
+        send_info(d);
     return d.best;
 }
 

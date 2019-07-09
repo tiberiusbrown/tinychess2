@@ -264,7 +264,7 @@ static uint32_t get_ms()
 }
 static void thread_yield()
 {
-    if(system.thread_yield) thread_yield();
+    if(system.thread_yield) system.thread_yield();
 }
 static CH_FORCEINLINE void search_info(
     int depth,
