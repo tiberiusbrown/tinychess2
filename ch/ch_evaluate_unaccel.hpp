@@ -42,7 +42,9 @@ struct evaluator<ACCEL_UNACCEL>
         x -= eval_piece_table_flipped(p.bbs[BLACK + ROOK  ], table_rook  );
         x -= eval_piece_table_flipped(p.bbs[BLACK + QUEEN ], table_queen );
 
-        return c == WHITE ? x : -x;
+        x = (c == WHITE ? x : -x);
+
+        return x;
     }
 };
 

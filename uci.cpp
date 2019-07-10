@@ -198,6 +198,8 @@ int main(void)
 
     ch_kill_threads();
 
+    thrd1.join();
+
     free(hash_mem);
 
 	return 0;
