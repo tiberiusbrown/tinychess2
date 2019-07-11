@@ -47,6 +47,7 @@ elseif(UNIX)
     set(COMMON_FLAGS "${COMMON_FLAGS} -mpopcnt -msse2 -mavx -mavx2 -mbmi -mbmi2")
     set(COMMON_FLAGS "${COMMON_FLAGS} -fno-tree-vectorize")
     set(COMMON_FLAGS "${COMMON_FLAGS} -Wall -Wextra")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -std=c++11")
 
 	if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 6)
 		set(COMMON_FLAGS "${COMMON_FLAGS} -fno-plt")

@@ -331,6 +331,7 @@ template<acceleration accel> static int negamax(color c,
         d.p.undo_null_move();
         if(value >= beta)
             return beta;
+        alpha = std::max(alpha, value - 10);
     }
 #endif
 

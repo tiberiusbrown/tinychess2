@@ -13,13 +13,13 @@ namespace ch
 struct history_heuristic
 {
     // butterfly
-    std::array<std::array<std::atomic_uint32_t, 64>, 64> bf;
+    std::array<std::array<std::atomic<uint32_t>, 64>, 64> bf;
 
     //  relative history
-    std::array<std::array<std::atomic_uint32_t, 64>, 64> hh;
+    std::array<std::array<std::atomic<uint32_t>, 64>, 64> hh;
 
     // countermove
-    std::array<std::array<std::atomic_uint32_t, 64>, 64> cm;
+    std::array<std::array<std::atomic<uint32_t>, 64>, 64> cm;
 
     void clear()
     {

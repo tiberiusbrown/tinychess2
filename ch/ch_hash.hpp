@@ -79,8 +79,8 @@ class trans_table
 private:
     struct entry
     {
-        std::atomic_uint64_t hash;
-        std::atomic_uint64_t info;
+        std::atomic<uint64_t> hash;
+        std::atomic<uint64_t> info;
     };
 
 public:
