@@ -365,10 +365,13 @@ template<acceleration accel> static int negamax(color c,
 #endif
             d, depth - 4, -beta, -beta + 1, height + 1, -node_type);
         d.p.undo_null_move();
-        if(value >= beta)
-            return beta;
-        static constexpr int NULL_MOVE_OFFSET = 0;
-        alpha = std::max(alpha, value - NULL_MOVE_OFFSET);
+        if(value > MATED_SCORE + 256 && value < MATE_SCORE - 256)
+        {
+            if(value >= beta)
+                return beta;
+            static constexpr int NULL_MOVE_OFFSET = 0;
+            alpha = std::max(alpha, value - NULL_MOVE_OFFSET);
+        }
     }
 #endif
 
