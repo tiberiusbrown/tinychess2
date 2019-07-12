@@ -3,6 +3,7 @@
 #include <atomic>
 #include <stdint.h>
 
+#include "ch_config.h"
 #include "ch_internal.hpp"
 #include "ch_move.hpp"
 #include "ch_random.hpp"
@@ -59,14 +60,45 @@ static constexpr uint8_t TTFLAG_EXACT = 1;
 static constexpr uint8_t TTFLAG_LOWER = 2;
 static constexpr uint8_t TTFLAG_UPPER = 4;
 
+// specialize this to override
+template<class T>
+CH_FORCEINLINE bool hash_info_should_overwrite(
+    T const& new_info, T const& old_info)
+{
+    (void)new_info;
+    (void)old_info;
+    return true;
+}
+
 struct hash_info
 {
-    move best;
+    uint16_t best;
     int16_t value;
     int8_t depth;
+    uint8_t age;
     uint8_t flag;
-    enum { EXACT, LOWER, UPPER };
+    uint8_t pro_piece;
+    enum { LOWER, UPPER, EXACT };
+    move get_best() const
+    {
+        move r = best;
+        if(pro_piece != EMPTY)
+            r += move::pawn_promotion(pro_piece);
+        return r;
+    }
 };
+
+template<>
+CH_FORCEINLINE bool hash_info_should_overwrite(
+    hash_info const& new_info, hash_info const& old_info)
+{
+    int da = int(int8_t(new_info.age - old_info.age));
+    int dd = int(int8_t(new_info.depth - old_info.depth));
+    int score = dd * 2 + da * 8;
+    score += (new_info.flag == hash_info::EXACT) * 2;
+    score -= (old_info.flag == hash_info::EXACT) * 1;
+    return score >= 0;
+}
 
 struct hash_info_perft
 {
@@ -77,6 +109,8 @@ struct hash_info_perft
 class trans_table
 {
 private:
+    static constexpr int const NUM_BUCKETS = 1 << CH_HASH_BUCKETS_POW;
+
     struct entry
     {
         std::atomic<uint64_t> hash;
@@ -99,7 +133,8 @@ public:
         entries = (entry*)mem;
         if(entries)
         {
-            mask = (1ull << (mem_size_mb_log2 + 20 - 4)) - 1;
+            mask = ((1ull << (mem_size_mb_log2 + 20 - 4 -
+                CH_HASH_BUCKETS_POW)) - 1) << CH_HASH_BUCKETS_POW;
             clear();
         }
     }
@@ -111,18 +146,23 @@ public:
         static_assert(sizeof(T) == 8, "hash info not 8 bytes");
         if(!entries)
             return false;
-        entry const& e = entries[hash & mask];
-        union
+        uint64_t index = hash & mask;
+        for(int i = 0; i < NUM_BUCKETS; ++i)
         {
-            uint64_t b;
-            T i;
-        } u;
-        uint64_t a = e.hash.load();
-        u.b = e.info.load();
-        if(a != (hash ^ u.b))
-            return false;
-        info = u.i;
-        return true;
+            entry const& e = entries[index + i];
+            uint64_t h = e.hash.load();
+            union
+            {
+                uint64_t b;
+                T i;
+            } u;
+            u.b = e.info.load();
+            if(hash != (h ^ u.b))
+                continue;
+            info = u.i;
+            return true;
+        }
+        return false;
 #else
         (void)hash;
         (void)info;
@@ -137,15 +177,46 @@ public:
         static_assert(sizeof(T) == 8, "hash info not 8 bytes");
         if(!entries)
             return;
-        entry& e = entries[hash & mask];
+
         union
         {
             uint64_t b;
             T i;
         } u;
-        u.i = info;
-        e.hash.store(hash ^ u.b);
-        e.info.store(u.b);
+
+        uint64_t index = hash & mask;
+
+        // look for exact hash match first
+        for(int i = 0; i < NUM_BUCKETS; ++i)
+        {
+            entry& e = entries[index + i];
+            uint64_t h = e.hash.load();
+            u.b = e.info.load();
+            if(hash == (h ^ u.b))
+            {
+                if(hash_info_should_overwrite<T>(info, u.i))
+                {
+                    u.i = info;
+                    e.hash.store(hash ^ u.b);
+                    e.info.store(u.b);
+                }
+                return;
+            }
+        }
+
+        // overwrite any available
+        for(int i = 0; i < NUM_BUCKETS; ++i)
+        {
+            entry& e = entries[index + i];
+            u.b = e.info.load();
+            if(hash_info_should_overwrite<T>(info, u.i))
+            {
+                u.i = info;
+                e.hash.store(hash ^ u.b);
+                e.info.store(u.b);
+                return;
+            }
+        }
 #else
         (void)hash;
         (void)info;

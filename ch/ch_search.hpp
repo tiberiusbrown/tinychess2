@@ -128,10 +128,44 @@ static CH_FORCEINLINE void order_moves(
     mvs.sort();
 }
 
+template<acceleration accel>
 static void send_info(search_data& d)
 {
     d.info_time = get_ms();
     int mstime = int(d.info_time - d.start_time);
+
+    // extract principal variation
+    move pv[256];
+    move cur = d.best;
+    cur.sort_key() = 0;
+    pv[0] = cur;
+    int pvlen = 1;
+    while(pvlen < d.depth)
+    {
+        move_list mvs;
+        mvs.generate<accel>(d.p.current_turn, d.p);
+        bool found = false;
+        for(move mv : mvs)
+        {
+            if(mv == cur)
+            {
+                found = true;
+                break;
+            }
+        }
+        if(!found) break;
+        d.p.do_move<accel>(cur);
+        hash_info i;
+        if(!d.tt->get(d.p.hash(), i))
+        {
+            d.p.undo_move<accel>(cur);
+            break;
+        }
+        cur = i.get_best();
+        pv[pvlen++] = cur;
+    }
+    for(int n = pvlen - 2; n >= 0; --n)
+        d.p.undo_move<accel>(pv[n]);
 
     search_info(
         d.depth,
@@ -139,7 +173,9 @@ static void send_info(search_data& d)
         d.nodes,
         mstime,
         d.score,
-        mstime ? d.nodes * 1000 / mstime : 0
+        mstime ? d.nodes * 1000 / mstime : 0,
+        (ch_move*)pv,
+        pvlen
     );
 }
 
@@ -294,7 +330,7 @@ template<acceleration accel> static int negamax(color c,
                 beta = std::min<int>(beta, v);
             if(alpha >= beta)
                 return v;
-            hash_move = i.best;
+            hash_move = i.get_best();
         }
     }
 #endif
@@ -312,7 +348,7 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_NULL_MOVE
     if(!d.p.in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
-        (height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
+        //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
 #if CH_COLOR_TEMPLATE
         d.p.has_piece_better_than_pawn<c>()
 #else
@@ -327,11 +363,12 @@ template<acceleration accel> static int negamax(color c,
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth - 2, -beta, -beta + 1, height + 1, -node_type);
+            d, depth - 4, -beta, -beta + 1, height + 1, -node_type);
         d.p.undo_null_move();
         if(value >= beta)
             return beta;
-        alpha = std::max(alpha, value - 10);
+        static constexpr int NULL_MOVE_OFFSET = 0;
+        alpha = std::max(alpha, value - NULL_MOVE_OFFSET);
     }
 #endif
 
@@ -474,7 +511,7 @@ template<acceleration accel> static int negamax(color c,
                         d.hh->increment_hh(mv, hh_increment);
 #endif
 #if CH_ENABLE_COUNTERMOVE_HEURISTIC
-                    if(height > 0)
+                    if(quiet && height > 0)
                         d.hh->set_countermove(d.p.stack().prev_move, mv);
 #endif
                     break;
@@ -499,7 +536,10 @@ template<acceleration accel> static int negamax(color c,
         else
             i.flag = hash_info::EXACT;
         i.depth = int8_t(depth);
-        i.best = best_move;
+        i.best = uint16_t(best_move);
+        i.age = uint8_t(d.p.age);
+        i.pro_piece = uint8_t(best_move.is_promotion() ?
+            best_move.promotion_piece() : EMPTY);
         d.tt->put(d.p.hash(), i);
     }
 #endif
@@ -608,11 +648,11 @@ static move iterative_deepening(
         d.depth = depth;
         d.score = prev_score;
         if(d.stop || depth >= d.limits.depth) break;
-        if(d.data_index == 0) send_info(d);
+        if(d.data_index == 0) send_info<accel>(d);
         depth = get_next_depth(d, depth + 1);
     }
     if(d.data_index == 0 && !d.stop)
-        send_info(d);
+        send_info<accel>(d);
     return d.best;
 }
 

@@ -33,7 +33,9 @@ extern "C" {
             uint64_t nodes,
             int mstime,
             int score,
-            uint64_t nps
+            uint64_t nps,
+            ch_move* pv,
+            int pvlen
             );
 
         // callback for when a search has ended

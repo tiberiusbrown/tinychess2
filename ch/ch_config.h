@@ -42,12 +42,18 @@ Simplified ABDADA:
 // enable transposition table
 #define CH_ENABLE_HASH 1
 #define CH_ENABLE_HASH_PERFT 1
+#define CH_HASH_BUCKETS_POW 2
 
-#define CH_ENABLE_HISTORY_HEURISTIC 0
+#define CH_ENABLE_HISTORY_HEURISTIC 1
+
+// seems to hinder right now (?)
 #define CH_ENABLE_COUNTERMOVE_HEURISTIC 0
 
 // no zw protection right now
-#define CH_ENABLE_NULL_MOVE 0
+// also messes up mate scores (?)
+// position fen R6R/1r3pp1/4p1kp/3pP3/1r2qPP1/7P/1P1Q3K/8 w - - 1 0
+// go depth 7
+#define CH_ENABLE_NULL_MOVE 1
 
 #define CH_ENABLE_QUIESCENCE 1
 

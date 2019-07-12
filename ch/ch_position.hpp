@@ -23,6 +23,8 @@ struct position
     // whether the side to move is in check
     bool in_check;
 
+    int age;
+
     static constexpr int const STACK_SIZE = 256;
     struct CH_ALIGN(16) stack_node
     {
@@ -164,7 +166,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
         switch(c)
         {
         case 'w': case 'W': current_turn = WHITE; break;
-        case 'b': case 'B': current_turn = BLACK; break;
+        case 'b': case 'B': current_turn = BLACK; hash ^= hash_turn; break;
         default:
             break;
         }
@@ -218,6 +220,8 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
             hash ^= hash_enp[stack().ep_sq & 7];
         }
     }
+
+    age = 0;
 }
 
 static constexpr uint8_t const CASTLING_SPOILERS[64] =

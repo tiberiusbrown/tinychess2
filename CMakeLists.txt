@@ -97,7 +97,10 @@ add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
 
 add_executable(${PROJECT_NAME}_uci uci.cpp ${EDITORCONFIG})
-target_link_libraries(${PROJECT_NAME}_uci ch pthread)
+target_link_libraries(${PROJECT_NAME}_uci ch)
+if(UNIX)
+    target_link_libraries(${PROJECT_NAME}_uci pthread)
+endif()
 
 if(FALSE)
 

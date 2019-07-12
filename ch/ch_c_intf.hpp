@@ -98,7 +98,6 @@ static void helper_start_search(ch::search_data& d)
 #endif
     if(d.data_index == 0 && ch::system.best_move)
         ch::system.best_move(mv);
-    d.stop = true;
 }
 
 void CHAPI ch_thread_start(void)
@@ -113,10 +112,12 @@ void CHAPI ch_thread_start(void)
 
     for(;;)
     {
+        d.stop = true;
         d.stopped = true;
         while(d.stop && !d.kill)
             ch::thread_yield();
         if(d.kill) break;
+        d.stopped = false;
         helper_start_search(d);
     }
     d.killed = true;
@@ -134,7 +135,6 @@ static void helper_stop_threads()
         {
             if(g_sd[i].stopped)
             {
-                g_sd[i].stopped = false;
                 ++num_stopped;
                 break;
             }
@@ -235,6 +235,7 @@ void CHAPI ch_do_move(ch_move m)
 #endif
 
     g_pos.stack_reset();
+    g_pos.age += 1;
     update_moves();
 }
 

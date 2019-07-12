@@ -272,12 +272,14 @@ static CH_FORCEINLINE void search_info(
     uint64_t nodes,
     int mstime,
     int score,
-    uint64_t nps
+    uint64_t nps,
+    ch_move* pv,
+    int pvlen
 )
 {
     if(!system.search_info) return;
     system.search_info(
-        depth, seldepth, nodes, mstime, score, nps);
+        depth, seldepth, nodes, mstime, score, nps, pv, pvlen);
 }
 
 #ifdef _MSC_VER

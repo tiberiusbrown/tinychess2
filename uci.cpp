@@ -32,8 +32,10 @@ static void search_info(
     uint64_t nodes,
     int mstime,
     int score,
-    uint64_t nps
-    )
+    uint64_t nps,
+    ch_move* pv,
+    int pvlen
+)
 {
     std::cout
         << "info"
@@ -49,7 +51,10 @@ static void search_info(
         std::cout << "cp " << score;
     std::cout
         << " nps " << nps
-        << " nodes " << nodes;
+        << " nodes " << nodes
+        << " pv";
+    for(int i = 0; i < pvlen; ++i)
+        std::cout << " " << ch_extended_algebraic(pv[i]);
     std::cout << std::endl;
 }
 
