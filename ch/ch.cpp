@@ -4,9 +4,7 @@
 
 #include "ch_c_intf.hpp"
 #include "ch_cpuid.hpp"
-#include "ch_evaluate_unaccel.hpp"
-#include "ch_evaluate_sse.hpp"
-#include "ch_evaluate_avx.hpp"
+#include "ch_evaluate.hpp"
 #include "ch_genmoves_unaccel.hpp"
 #include "ch_genmoves_sse.hpp"
 #include "ch_genmoves_avx.hpp"

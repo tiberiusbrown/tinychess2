@@ -5,6 +5,7 @@
 #include "ch_evaluate.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_history_heuristic.hpp"
+#include "ch_move_picker.hpp"
 #include "ch_position.hpp"
 
 #include <algorithm>
@@ -36,7 +37,7 @@ struct search_data
     trans_table* tt;
     history_heuristic* hh;
     position p;
-    move best;
+    std::array<move, MAX_VARIATION> best;
     std::array<move, MAX_VARIATION> mvstack;
     std::array<std::array<move, CH_NUM_KILLERS>, MAX_VARIATION> killers;
     int score;
@@ -48,6 +49,21 @@ struct search_data
     int data_index;
     int num_threads;
     std::atomic_bool stop, stopped, kill, killed;
+
+    bool time_limit_reached() const
+    {
+        if(limits.mstime > 0)
+            if(int(get_ms() - start_time) >= limits.mstime)
+                return true;
+        return false;
+    }
+
+    bool any_limit_reached() const
+    {
+        if(stop || depth >= limits.depth)
+            return true;
+        return time_limit_reached();
+    }
 };
 
 static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
@@ -58,16 +74,6 @@ static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
     5 * 4, 5 * 4,
     9 * 4, 9 * 4,
 };
-
-static CH_FORCEINLINE bool is_killer(
-    std::array<move, CH_NUM_KILLERS> const& killers,
-    move const& mv)
-{
-    for(int i = 0; i < CH_NUM_KILLERS; ++i)
-        if(mv.is_similar_to(killers[i]))
-            return true;
-    return false;
-}
 
 static CH_FORCEINLINE void order_moves(
     move_list& mvs,
@@ -100,7 +106,7 @@ static CH_FORCEINLINE void order_moves(
                 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
             x += 64;
         }
-        else if(is_killer(killers, mv))
+        else if(mv.is_killer(killers))
         {
             x = 62;
         }
@@ -136,7 +142,7 @@ static void send_info(search_data& d)
 
     // extract principal variation
     move pv[256];
-    move cur = d.best;
+    move cur = d.best[0];
     cur.sort_key() = 0;
     pv[0] = cur;
     int pvlen = 1;
@@ -179,47 +185,38 @@ static void send_info(search_data& d)
     );
 }
 
-#if CH_COLOR_TEMPLATE
-template<color c>
-CH_FORCEINLINE bool quiesce_pawn_recapture(position const& p, int sq)
-#else
-CH_FORCEINLINE bool quiesce_pawn_recapture(color c, position const& p, int sq)
-#endif
-{
-    uint64_t sqbb = 1ull << sq;
-    if(c == WHITE)
-    {
-        if(p.bbs[BLACK + PAWN] & (shift_nw(sqbb) | shift_ne(sqbb)))
-            return true;
-    }
-    else
-    {
-        if(p.bbs[WHITE + PAWN] & (shift_sw(sqbb) | shift_se(sqbb)))
-            return true;
-    }
-    return false;
-}
-
-#if CH_COLOR_TEMPLATE
-template<color c>
-CH_FORCEINLINE bool quiesce_bad_capture(position const& p, move mv)
-#else
-CH_FORCEINLINE bool quiesce_bad_capture(color c, position const& p, move mv)
-#endif
-{
-    int pc = p.pieces[mv.from()];
-    int cap = p.pieces[mv.to()];
-    static constexpr int const VALS[10] = { 1, 1, 3, 3, 3, 3, 5, 5, 9, 9 };
-    if(VALS[cap] - VALS[pc] >= 0) return false;
-    if(VALS[cap] - VALS[pc] < -2 &&
-#if CH_COLOR_TEMPLATE
-        quiesce_pawn_recapture<c>(p, mv.to()))
-#else
-        quiesce_pawn_recapture(c, p, mv.to()))
-#endif
-        return true;
-    return false;
-}
+//#if CH_COLOR_TEMPLATE
+//template<color c>
+//CH_FORCEINLINE bool quiesce_pawn_recapture(position const& p, int sq)
+//#else
+//CH_FORCEINLINE bool quiesce_pawn_recapture(color c, position const& p, int sq)
+//#endif
+//{
+//    if(masks[sq].pawn_attacks[c] & p.bbs[opposite(c) + PAWN])
+//        return true;
+//    return false;
+//}
+//
+//#if CH_COLOR_TEMPLATE
+//template<color c>
+//CH_FORCEINLINE bool quiesce_bad_capture(position const& p, move mv)
+//#else
+//CH_FORCEINLINE bool quiesce_bad_capture(color c, position const& p, move mv)
+//#endif
+//{
+//    int pc = p.pieces[mv.from()];
+//    int cap = p.pieces[mv.to()];
+//    static constexpr int const VALS[10] = { 1, 1, 3, 3, 3, 3, 5, 5, 9, 9 };
+//    if(VALS[cap] - VALS[pc] >= 0) return false;
+//    if(VALS[cap] - VALS[pc] < -2 &&
+//#if CH_COLOR_TEMPLATE
+//        quiesce_pawn_recapture<c>(p, mv.to()))
+//#else
+//        quiesce_pawn_recapture(c, p, mv.to()))
+//#endif
+//        return true;
+//    return false;
+//}
 
 #if CH_COLOR_TEMPLATE
 template<color c, acceleration accel> static int quiesce(
@@ -259,14 +256,10 @@ template<acceleration accel> static int quiesce(color c,
 
     for(move mv : mvs)
     {
-        if(!p.move_is_tactical(mv))
+        if(!p.move_is_promotion_or_capture(mv))
             continue;
 
-#if CH_COLOR_TEMPLATE
-        if(quiesce_bad_capture<c>(p, mv) && !mv.is_promotion())
-#else
-        if(quiesce_bad_capture(c, p, mv) && !mv.is_promotion())
-#endif
+        if(see<accel>(mv, p) < 0)
             continue;
 
         p.do_move<accel>(mv);
@@ -305,31 +298,51 @@ template<acceleration accel> static int negamax(color c,
     if(d.stop)
         return 0;
 
+    if(depth > 2 && d.time_limit_reached())
+    {
+        d.stop = true;
+        return 0;
+    }
+
+    if(d.p.is_draw_by_insufficient_material())
+        return 0;
+
+    // mate distance pruning
+    {
+        alpha = std::max(alpha, MATED_SCORE + height);
+        beta = std::min(beta, MATE_SCORE - height);
+        if(alpha >= beta)
+            return alpha;
+    }
+
 #if CH_ENABLE_HASH
     // transposition table lookup
     if(depth > 1)
     {
         hash_info i;
-        if(d.tt->get(d.p.hash(), i) && i.depth >= depth)
+        if(d.tt->get(d.p.hash(), i))
         {
-            int v = i.value;
-            if(v >= MATE_SCORE - 256)
-                v -= height;
-            if(v <= MATED_SCORE + 256)
-                v += height;
-            if(i.flag == hash_info::EXACT)
+            if(i.depth >= depth)
             {
-                if(height > 0)
+                int v = i.value;
+                if(v >= MATE_SCORE - 256)
+                    v -= height;
+                if(v <= MATED_SCORE + 256)
+                    v += height;
+                if(i.flag == hash_info::EXACT)
+                {
+                    if(height > 0)
+                        return v;
+                    alpha = v;
+                    beta = v + 1;
+                }
+                else if(i.flag == hash_info::LOWER)
+                    alpha = std::max<int>(alpha, v);
+                else if(i.flag == hash_info::UPPER)
+                    beta = std::min<int>(beta, v);
+                if(alpha >= beta)
                     return v;
-                alpha = v;
-                beta = v + 1;
             }
-            else if(i.flag == hash_info::LOWER)
-                alpha = std::max<int>(alpha, v);
-            else if(i.flag == hash_info::UPPER)
-                beta = std::min<int>(beta, v);
-            if(alpha >= beta)
-                return v;
             hash_move = i.get_best();
         }
     }
@@ -344,8 +357,31 @@ template<acceleration accel> static int negamax(color c,
     if(mvs.empty())
         return d.p.in_check ? MATED_SCORE + height : 0;
 
-    // null move pruning
+    int static_eval = evaluator<accel>::evaluate(d.p, c);
+
+    if(height >= MAX_VARIATION)
+        return static_eval;
+
+#if CH_ENABLE_RAZORING
+    if(node_type == NODE_ALL)
+    {
+        static constexpr int RAZOR_MARGIN = 50;
+        if(depth == 2 && static_eval + RAZOR_MARGIN <= alpha)
+            --depth;
+    }
+#endif
+
+#if CH_ENABLE_FUTILITY_PRUNING
+    // futility pruning
+    if(node_type != NODE_PV && depth < 7)
+    {
+        if(static_eval >= beta + 64 * depth)
+            return static_eval;
+    }
+#endif
+
 #if CH_ENABLE_NULL_MOVE
+    // null move pruning
     if(!d.p.in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
@@ -363,27 +399,46 @@ template<acceleration accel> static int negamax(color c,
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth - 4, -beta, -beta + 1, height + 1, -node_type);
+            d, depth - 4, -beta, -beta + 1, height + 1, NODE_PV);
+        //d, depth - 4, -beta, -alpha, height + 1, -node_type);
         d.p.undo_null_move();
-        if(value > MATED_SCORE + 256 && value < MATE_SCORE - 256)
+        if(value >= beta)
         {
-            if(value >= beta)
-                return beta;
-            static constexpr int NULL_MOVE_OFFSET = 0;
-            alpha = std::max(alpha, value - NULL_MOVE_OFFSET);
+            if(value >= MATE_SCORE - 256)
+                value = beta;
+            return value;
         }
+    }
+#endif
+
+#if CH_ENABLE_IID
+    // internal iterative deepening
+    if(hash_move == NULL && node_type != NODE_CUT && depth > 5)
+    {
+#if CH_COLOR_TEMPLATE
+        negamax<c, accel>(
+#else
+        negamax<accel>(c,
+#endif
+            d, depth - 3, alpha, beta, height, node_type);
+        hash_move = d.best[height];
     }
 #endif
 
     bool const tail = (depth <= 1);
 
+#if CH_ENABLE_MOVE_PICKER
+    move_picker picker(
+        mvs, d.p, hash_move,
+        d.killers[height], d.hh, depth);
+#else
     if(tail)
     {
         for(int i = 0, n = 0; n < mvs.size(); ++n)
         {
             if(mvs[n].is_similar_to(hash_move)
 #if CH_ENABLE_KILLERS
-                || is_killer(d.killers[height], mvs[n])
+                || mvs[n].is_killer(d.killers[height])
 #endif
                 )
             {
@@ -396,6 +451,7 @@ template<acceleration accel> static int negamax(color c,
         order_moves(mvs, d, hash_move, d.killers[height]);
         mvs.sort();
     }
+#endif
 
     int value = MIN_SCORE;
     int best = MIN_SCORE;
@@ -405,15 +461,26 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_HISTORY_HEURISTIC
     if(!tail)
         for(move mv : mvs)
-            if(!d.p.move_is_tactical(mv))
+            if(!d.p.move_is_capture(mv))
                 d.hh->increment_bf(mv, hh_increment);
 #endif
 
+#if CH_ENABLE_LATE_MOVE_REDUCTION
     bool const can_reduce = (node_type != NODE_PV && depth > 5);
+#endif
+#if CH_ENABLE_MOVE_PICKER
+    for(int n = 0;; ++n)
+    {
+        move mv = picker.get();
+
+        if(mv == NULL_MOVE)
+            break;
+#else
     for(int n = 0; n < mvs.size(); ++n)
     {
         move mv = mvs[n];
-        bool const quiet = !d.p.move_is_tactical(mv);
+#endif
+        bool const quiet = !d.p.move_is_capture(mv);
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
@@ -422,14 +489,14 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_LATE_MOVE_REDUCTION
         // stupid simple late move reduction
         if(can_reduce && quiet && n >= 6)
-            reduction = depth / 3;
+            reduction = depth / 5 + n / 12;
 #endif
 
         if(tail)
         {
             int v;
 #if CH_ENABLE_QUIESCENCE
-            if(!quiet)
+            if(CH_QUIESCE_ON_QUIETS || !quiet)
             {
 #if CH_COLOR_TEMPLATE
                 v = -quiesce<opposite(c), accel>(
@@ -468,6 +535,18 @@ template<acceleration accel> static int negamax(color c,
                 v = -negamax<accel>(opposite(c),
 #endif
                     d, depth - reduction, -beta, -v, height + 1, node_type);
+
+#if CH_ENABLE_LATE_MOVE_REDUCTION
+                if(v > alpha)
+                {
+#if CH_COLOR_TEMPLATE
+                    v = -negamax<opposite(c), accel>(
+#else
+                    v = -negamax<accel>(opposite(c),
+#endif
+                        d, depth - 1, -beta, -v, height + 1, node_type);
+                }
+#endif
             }
             value = std::max(value, v);
         }
@@ -486,8 +565,6 @@ template<acceleration accel> static int negamax(color c,
 
         if(value > best)
         {
-            if(height == 0)
-                d.best = mv;
             best = value;
             best_move = mv;
             if(value > alpha)
@@ -501,7 +578,7 @@ template<acceleration accel> static int negamax(color c,
                         auto& k = d.killers[height];
                         if(quiet &&
                             !mv.is_similar_to(hash_move) &&
-                            !is_killer(k, mv))
+                            !mv.is_killer(k))
                         {
                             for(int m = 0; m < CH_NUM_KILLERS - 1; ++m)
                                 k[m + 1] = k[m];
@@ -545,6 +622,8 @@ template<acceleration accel> static int negamax(color c,
             best_move.promotion_piece() : EMPTY);
         d.tt->put(d.p.hash(), i);
     }
+    if(!d.stop)
+        d.best[height] = best_move;
 #endif
 
     return value;
@@ -650,13 +729,13 @@ static move iterative_deepening(
         prev_score = aspiration_window<accel>(d, depth, prev_score);
         d.depth = depth;
         d.score = prev_score;
-        if(d.stop || depth >= d.limits.depth) break;
+        if(d.any_limit_reached()) break;
         if(d.data_index == 0) send_info<accel>(d);
         depth = get_next_depth(d, depth + 1);
     }
     if(d.data_index == 0 && !d.stop)
         send_info<accel>(d);
-    return d.best;
+    return d.best[0];
 }
 
 }

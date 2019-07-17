@@ -66,7 +66,7 @@ CH_OPT_SIZE static void init_magic()
     {
         uint64_t p = (1ull << i);
         uint64_t mask = magic_bishop_rays[i];
-        int n = (1 << popcnt(mask));
+        int n = (1 << popcnt<ACCEL_UNACCEL>(mask));
         for(int j = 0; j < n; ++j)
         {
             uint64_t occ = sw_pdep(uint64_t(j), mask);
@@ -88,7 +88,7 @@ CH_OPT_SIZE static void init_magic()
     {
         uint64_t p = (1ull << i);
         uint64_t mask = magic_rook_rays[i];
-        int n = (1 << popcnt(mask));
+        int n = (1 << popcnt<ACCEL_UNACCEL>(mask));
         for(int j = 0; j < n; ++j)
         {
             uint64_t occ = sw_pdep(uint64_t(j), mask);

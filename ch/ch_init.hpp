@@ -32,8 +32,8 @@ CH_OPT_SIZE static void init()
         masks[i].diag_anti[0] = d ^ s;
         masks[i].diag_anti[1] = a ^ s;
 
-        masks[i].white_pawn_attacks = shift_nw(s) | shift_ne(s);
-        masks[i].black_pawn_attacks = shift_sw(s) | shift_se(s);
+        masks[i].pawn_attacks[WHITE] = shift_nw(s) | shift_ne(s);
+        masks[i].pawn_attacks[BLACK] = shift_sw(s) | shift_se(s);
     }
 
     // simple first rank attacks by occupancy

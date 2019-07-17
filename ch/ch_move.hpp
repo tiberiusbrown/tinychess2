@@ -2,6 +2,8 @@
 
 #include <stdint.h>
 
+#include <array>
+
 #include "ch_internal.hpp"
 
 // TODO: sort key broken on endiannesses that don't have MSB come last
@@ -39,6 +41,18 @@ struct move
     constexpr bool is_promotion() const { return (d & MOVE_PROMOTION) != 0; }
     char const* extended_algebraic() const;
     constexpr bool is_similar_to(move const& m) const { return (d & 0xffff) == (m.d & 0xffff); }
+
+
+    CH_FORCEINLINE bool is_killer(
+        std::array<move, CH_NUM_KILLERS> const& killers)
+    {
+        for(int i = 0; i < CH_NUM_KILLERS; ++i)
+            if(is_similar_to(killers[i]))
+                return true;
+        return false;
+    }
+
+
 private:
     static constexpr uint32_t const MOVE_PAWN_DMOVE = 0x00800000;
     static constexpr uint32_t const MOVE_EN_PASSANT = 0x00400000;

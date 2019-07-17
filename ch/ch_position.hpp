@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ch_evaluator.hpp"
 #include "ch_internal.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_hash.hpp"
@@ -16,6 +17,8 @@ struct position
 
     // written to by move_generator<>::generate
 
+    // all pieces of a color
+    uint64_t bb_alls[2];
     // squares that enemy is attacking (king is x-rayed)
     uint64_t attacked_nonking;
     // friendly pieces that are pinned against king
@@ -30,6 +33,8 @@ struct position
     {
         uint64_t hash;
         move prev_move;
+        int piece_vals[2];
+        uint32_t UNUSED;
         int16_t cap_piece;
         uint8_t ep_sq;
         uint8_t castling_rights;
@@ -70,9 +75,36 @@ struct position
     void do_null_move();
     void undo_null_move();
 
-    CH_FORCEINLINE bool move_is_tactical(move mv) const
+    CH_FORCEINLINE bool move_is_capture(move mv) const
     {
         return pieces[mv.to()] != EMPTY;
+    }
+    CH_FORCEINLINE bool move_is_promotion_or_capture(move mv) const
+    {
+        return mv.is_promotion() || move_is_capture(mv);
+    }
+    CH_FORCEINLINE bool move_is_geq_capture(move mv) const
+    {
+        int cap = pieces[mv.to()];
+        if(cap == EMPTY) return false;
+        int pc = pieces[mv.from()];
+        return (cap & ~1) >= (pc & ~1);
+    }
+    CH_FORCEINLINE bool move_is_promotion_or_geq_capture(move mv) const
+    {
+        return mv.is_promotion() || move_is_geq_capture(mv);
+    }
+
+    CH_FORCEINLINE bool is_draw_by_insufficient_material() const
+    {
+        if((bbs[WHITE + PAWN] | bbs[BLACK + PAWN]) != 0)
+            return false;
+        int const* v = stack().piece_vals;
+        if(v[0] == 0)
+            return v[1] < PIECE_VALUES[ROOK];
+        else if(v[1] == 0)
+            return v[0] < PIECE_VALUES[ROOK];
+        return false;
     }
 
 #if CH_COLOR_TEMPLATE
@@ -222,6 +254,14 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     }
 
     age = 0;
+
+    {
+        int* v = stack().piece_vals;
+        v[0] = v[1] = 0;
+        for(int i : { WHITE, BLACK })
+            for(int p : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN })
+                v[i] += popcnt<ACCEL_UNACCEL>(bbs[i + p]) * PIECE_VALUES[i + p];
+    }
 }
 
 static constexpr uint8_t const CASTLING_SPOILERS[64] =
@@ -248,7 +288,11 @@ void position::do_null_move()
     st.cap_piece = EMPTY;
     st.prev_move = NULL_MOVE;
     st.hash ^= hash_turn;
-    st.ep_sq = 0;
+    if(st.ep_sq)
+    {
+        st.hash ^= hash_enp[st.ep_sq & 7];
+        st.ep_sq = 0;
+    }
     current_turn = opposite(current_turn);
 }
 
@@ -273,6 +317,9 @@ void position::do_move(move const& mv)
     auto& st = stack_push();
     st.cap_piece = int16_t(cap);
     st.prev_move = mv;
+
+    int& my_vals = st.piece_vals[p & 1];
+    int& enemy_vals = st.piece_vals[~p & 1];
 
     {
         uint16_t diff_castling_rights = st.castling_rights;
@@ -321,6 +368,7 @@ void position::do_move(move const& mv)
             bbs[pieces[sq]] ^= (1ull << sq);
             pieces[sq] = EMPTY;
             st.hash ^= hashes[st.cap_piece][sq];
+            enemy_vals -= PIECE_VALUES[PAWN];
         }
         else if(mv.is_promotion())
         {
@@ -335,6 +383,7 @@ void position::do_move(move const& mv)
                 hashes[t][b] ^
                 hashes[cap][b]
                 );
+            my_vals += PIECE_VALUES[t] - PIECE_VALUES[PAWN];
             return;
         }
     }
@@ -343,6 +392,8 @@ void position::do_move(move const& mv)
     bbs[p] ^= p_bb;
     pieces[a] = EMPTY;
     pieces[b] = uint8_t(p);
+
+    enemy_vals -= PIECE_VALUES[cap];
 
     st.hash ^= (
         hashes[p][a] ^

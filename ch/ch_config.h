@@ -17,13 +17,15 @@ Stockfish finds it at depth 15 in less than 20 ms
 
 IMPLEMENT:
 
-Lazy SMP properly synchonized iterative deepening
 Move picker class (like Stockfish) that can score/pick in stages
-Incrementally updated piece-square position value
-Record and report statistics (number of fail-highs in PVS, etc)
+Specialized quiescence move generator
+Proper PV tracking (i.e., not with hash)
+Incrementally updated piece-square position value?
 Moves that give check in quiescence? (depth-limited)
+Record and report statistics (number of fail-highs in PVS, etc)
 Simplified ABDADA:
     http://www.tckerrigan.com/Chess/Parallel_Search/Simplified_ABDADA/simplified_abdada.html
+Lazy SMP properly synchonized iterative deepening?
 
 */
 
@@ -50,17 +52,26 @@ Simplified ABDADA:
 #define CH_ENABLE_COUNTERMOVE_HEURISTIC 0
 
 // no zw protection right now
-// also messes up mate scores (?)
-// position fen R6R/1r3pp1/4p1kp/3pP3/1r2qPP1/7P/1P1Q3K/8 w - - 1 0
-// go depth 7
+// actually screws everything up right now (?)
 #define CH_ENABLE_NULL_MOVE 1
 
+#define CH_ENABLE_FUTILITY_PRUNING 1
+
 #define CH_ENABLE_QUIESCENCE 1
+#define CH_QUIESCE_ON_QUIETS 1
 
 #define CH_ENABLE_PVS 1
 
+// internal iterative deepening
+#define CH_ENABLE_IID 1
+
+#define CH_ENABLE_MOVE_PICKER 0
+
 // causes delays in finding mates right now
-#define CH_ENABLE_LATE_MOVE_REDUCTION 0
+// also increases nodes sometimes! i think from hash behavior
+#define CH_ENABLE_LATE_MOVE_REDUCTION 1
+
+#define CH_ENABLE_RAZORING 1
 
 #define CH_MAX_THREADS 8
 

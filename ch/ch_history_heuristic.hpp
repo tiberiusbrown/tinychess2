@@ -45,7 +45,7 @@ struct history_heuristic
 
     CH_FORCEINLINE int get_hh_score(move mv) const
     {
-        static constexpr int const HISTORY_HEURISTIC_SCALE = 32;
+        static constexpr int const HISTORY_HEURISTIC_SCALE = 128;
         int pc = mv.from();
         int to = mv.to();
         int den = bf[pc][to];

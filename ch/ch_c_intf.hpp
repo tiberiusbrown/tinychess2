@@ -2,9 +2,7 @@
 
 #include "ch.h"
 #include "ch_cpuid.hpp"
-#include "ch_evaluate_unaccel.hpp"
-#include "ch_evaluate_sse.hpp"
-#include "ch_evaluate_avx.hpp"
+#include "ch_evaluate.hpp"
 #include "ch_hash.hpp"
 #include "ch_history_heuristic.hpp"
 #include "ch_init.hpp"

@@ -180,7 +180,10 @@ int main(void)
             ch_search_limits limits = { 0 };
             if(contains(line, " depth "))
                 limits.depth = clamp(atoi(
-                    line.c_str() + line.find(" depth ", 0) + 7), 2, 64);
+                    line.c_str() + line.find(" depth ", 0) + 7), 1, 64);
+            if(contains(line, " movetime "))
+                limits.mstime = atoi(
+                    line.c_str() + line.find(" movetime ", 0) + 10);
             ch_search(&limits);
         }
         else if(startswith(line, "stop"))

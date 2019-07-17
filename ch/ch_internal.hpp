@@ -104,29 +104,8 @@ static constexpr color opposite(color c)
     return color(BLACK - c);
 };
 
-inline int msb(uint64_t x)
-{
-    assert(x != 0);
-#ifdef _MSC_VER
-    unsigned long i;
-#if CH_ARCH_32BIT
-    if(uint32_t(x >> 32) != 0)
-    {
-        _BitScanReverse(&i, uint32_t(x));
-        return i;
-    }
-    _BitScanReverse(&i, uint32_t(x));
-    return i + 32;
-#else
-    _BitScanReverse64(&i, x);
-    return i;
-#endif
-#else
-    return __builtin_clzll(x);
-#endif
-}
-
-inline int lsb(uint64_t x)
+template<acceleration accel>
+CH_FORCEINLINE int lsb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
@@ -147,60 +126,56 @@ inline int lsb(uint64_t x)
     return __builtin_ctzll(x);
 #endif
 }
+
+template<acceleration accel>
 CH_FORCEINLINE int pop_lsb(uint64_t& x)
 {
-    int i = lsb(x);
+    int i = lsb<accel>(x);
     x &= x - 1;
     return i;
 }
+template<acceleration accel>
 CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
 {
     return x & uint64_t(-int64_t(x));
 }
+template<acceleration accel>
 CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
 {
-    uint64_t r = lsb_mask(x);
+    uint64_t r = lsb_mask<accel>(x);
     x ^= r;
     return r;
 }
 
-CH_FORCEINLINE int pop_lsb_avx(uint64_t& x)
+template<>
+CH_FORCEINLINE int pop_lsb<ACCEL_AVX>(uint64_t& x)
 {
 #if CH_ARCH_32BIT
     return pop_lsb(x);
 #else
-    int i = lsb(x);
+    int i = lsb<ACCEL_AVX>(x);
     x = _blsr_u64(x);
     return i;
 #endif
 }
-CH_FORCEINLINE uint64_t lsb_mask_avx(uint64_t x)
+template<>
+CH_FORCEINLINE uint64_t lsb_mask<ACCEL_AVX>(uint64_t x)
 {
 #if CH_ARCH_32BIT
-    return lsb_mask(x);
+    return lsb_mask<ACCEL_UNACCEL>(x);
 #else
     return _blsi_u64(x);
 #endif
 }
-CH_FORCEINLINE uint64_t pop_lsb_mask_avx(uint64_t& x)
+template<>
+CH_FORCEINLINE uint64_t pop_lsb_mask<ACCEL_AVX>(uint64_t& x)
 {
-    uint64_t r = lsb_mask_avx(x);
+    uint64_t r = lsb_mask<ACCEL_AVX>(x);
     x ^= r;
     return r;
 }
-CH_FORCEINLINE int popcnt_avx(uint64_t x)
-{
-#ifdef _MSC_VER
-#if CH_ARCH_32BIT
-    return int(__popcnt(uint32_t(x))) + int(__popcnt(uint32_t(x >> 32)));
-#else
-    return int(__popcnt64(x));
-#endif
-#else
-    return __builtin_popcountll(x);
-#endif
-}
 
+template<acceleration accel>
 CH_FORCEINLINE static int popcnt(uint64_t x)
 {
     static constexpr uint64_t const k1 = 0x5555555555555555ull;
@@ -214,10 +189,34 @@ CH_FORCEINLINE static int popcnt(uint64_t x)
     return (int)x;
 }
 
-inline bool more_than_one(uint64_t x)
+template<>
+CH_FORCEINLINE int popcnt<ACCEL_SSE>(uint64_t x)
 {
-    assert(x != 0);
+#ifdef _MSC_VER
+#if CH_ARCH_32BIT
+    return int(__popcnt(uint32_t(x))) + int(__popcnt(uint32_t(x >> 32)));
+#else
+    return int(__popcnt64(x));
+#endif
+#else
+    return __builtin_popcountll(x);
+#endif
+}
+template<>
+CH_FORCEINLINE int popcnt<ACCEL_AVX>(uint64_t x)
+{
+    return popcnt<ACCEL_SSE>(x);
+}
+
+template<acceleration accel>
+CH_FORCEINLINE bool more_than_one(uint64_t x)
+{
     return (x & (x - 1)) != 0;
+}
+template<>
+CH_FORCEINLINE bool more_than_one<ACCEL_AVX>(uint64_t x)
+{
+    return _blsr_u64(x) != 0;
 }
 
 void print_bbs(uint64_t bbs[], int n);
@@ -230,8 +229,7 @@ struct precomputed_mask_data
     uint64_t king_attacks;
     uint64_t rook_pseudo_attacks;
     uint64_t bishop_pseudo_attacks;
-    uint64_t white_pawn_attacks;
-    uint64_t black_pawn_attacks;
+    uint64_t pawn_attacks[2]; // white, black
 
     // for hyperbola quintessence
     uint64_t singleton;

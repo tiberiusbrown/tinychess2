@@ -33,24 +33,13 @@ struct move_list
     }
 #endif
 
+    struct sort_descending
+    {
+        bool operator()(move const &a, move const &b) const { return a.d > b.d; }
+    };
     void sort()
     {
-#if 1
-        struct greater
-        {
-            bool operator()(move const &a, move const &b) const { return a.d > b.d; }
-        };
-        std::sort(begin(), end(), greater());
-#else
-        for(int j, i = 1; i < n; ++i)
-
-        {
-            move x = m[i];
-            for(j = i - 1; j >= 0 && m[j] < x; --j)
-                m[j + 1] = m[j];
-            m[j + 1] = x;
-        }
-#endif
+        std::sort(begin(), end(), sort_descending());
     }
 
     constexpr int size() const { return n; }
@@ -60,6 +49,17 @@ struct move_list
     std::array<move, 256>::iterator end() { return m.begin() + n; }
     std::array<move, 256>::const_iterator begin() const { return m.begin(); }
     std::array<move, 256>::const_iterator end() const { return m.begin() + n; }
+
+    CH_FORCEINLINE move pop_back()
+    {
+        assert(n > 0);
+        return m[--n];
+    }
+    CH_FORCEINLINE void pop_n(int num)
+    {
+        assert(n >= num);
+        n -= num;
+    }
 
 private:
 
