@@ -12,7 +12,7 @@ namespace ch
 {
 
 template<acceleration accel>
-static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int16_t const table[64])
+static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int8_t const table[64])
 {
     int r = 0;
     while(pieces)
@@ -21,7 +21,7 @@ static CH_FORCEINLINE int eval_piece_table(uint64_t pieces, int16_t const table[
 }
 
 template<acceleration accel>
-static CH_FORCEINLINE int eval_piece_table_flipped(uint64_t pieces, int16_t const table[64])
+static CH_FORCEINLINE int eval_piece_table_flipped(uint64_t pieces, int8_t const table[64])
 {
     int r = 0;
     while(pieces)
@@ -129,6 +129,9 @@ struct evaluator
     {
         int x = 0;
 
+        x += p.stack().piece_vals[WHITE];
+        x -= p.stack().piece_vals[BLACK];
+
         // phase: 0 is false, 256 is true
         int mg, eg;
         {
@@ -148,19 +151,20 @@ struct evaluator
         {
             int d = 0;
 
-            d += eval_piece_table<accel>(p.bbs[WHITE + PAWN], table_pawn);
-            d += eval_piece_table<accel>(p.bbs[WHITE + KNIGHT], table_knight);
-            d += eval_piece_table<accel>(p.bbs[WHITE + BISHOP], table_bishop);
-            d += eval_piece_table<accel>(p.bbs[WHITE + ROOK], table_rook);
-            d += eval_piece_table<accel>(p.bbs[WHITE + QUEEN], table_queen);
+            d += eval_piece_table<accel>(p.bbs[WHITE + KNIGHT], INIT_TABLE_KNIGHT);
+            d += eval_piece_table<accel>(p.bbs[WHITE + BISHOP], INIT_TABLE_BISHOP);
+            d += eval_piece_table<accel>(p.bbs[WHITE + ROOK], INIT_TABLE_ROOK);
+            d += eval_piece_table<accel>(p.bbs[WHITE + QUEEN], INIT_TABLE_QUEEN);
 
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + PAWN], table_pawn);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + KNIGHT], table_knight);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + BISHOP], table_bishop);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + ROOK], table_rook);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + QUEEN], table_queen);
+            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + KNIGHT], INIT_TABLE_KNIGHT);
+            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + BISHOP], INIT_TABLE_BISHOP);
+            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + ROOK], INIT_TABLE_ROOK);
+            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + QUEEN], INIT_TABLE_QUEEN);
 
-            x += d;
+            x += d * mg / 256;
+
+            x += eval_piece_table<accel>(p.bbs[WHITE + PAWN], INIT_TABLE_PAWN);
+            x -= eval_piece_table_flipped<accel>(p.bbs[BLACK + PAWN], INIT_TABLE_PAWN);
         }
 
         {
