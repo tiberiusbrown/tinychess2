@@ -133,7 +133,7 @@ struct evaluator
         int mg, eg;
         {
             static constexpr int const EG_MAT = 650;
-            static constexpr int const MG_MAT = EG_MAT + 1024 + 512;
+            static constexpr int const MG_MAT = EG_MAT + 2048;
             mg = std::max(
                 p.stack().piece_vals[WHITE],
                 p.stack().piece_vals[BLACK]);

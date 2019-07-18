@@ -304,6 +304,14 @@ template<acceleration accel> static int negamax(color c,
         return 0;
     }
 
+    {
+        int count = d.p.repetition_count();
+        if(count >= 2)
+            return 0;
+        if(count >= 1 && height > 2)
+            return 0;
+    }
+
     if(d.p.is_draw_by_insufficient_material())
         return 0;
 
@@ -400,7 +408,7 @@ template<acceleration accel> static int negamax(color c,
         int value = -negamax<accel>(opposite(c),
 #endif
             d, depth - 4, -beta, -beta + 1, height + 1, NODE_PV);
-        //d, depth - 4, -beta, -alpha, height + 1, -node_type);
+            //d, depth - 4, -beta, -alpha, height + 1, -node_type);
         d.p.undo_null_move();
         if(value >= beta)
         {
@@ -428,7 +436,7 @@ template<acceleration accel> static int negamax(color c,
     bool const tail = (depth <= 1);
 
 #if CH_ENABLE_MOVE_PICKER
-    move_picker picker(
+    move_picker<accel> picker(
         mvs, d.p, hash_move,
         d.killers[height], d.hh, depth);
 #else
@@ -466,7 +474,7 @@ template<acceleration accel> static int negamax(color c,
 #endif
 
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-    bool const can_reduce = (node_type != NODE_PV && depth > 5);
+    bool const can_reduce = (node_type != NODE_PV && depth >= 6);
 #endif
 #if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)
@@ -480,7 +488,7 @@ template<acceleration accel> static int negamax(color c,
     {
         move mv = mvs[n];
 #endif
-        bool const quiet = !d.p.move_is_capture(mv);
+        bool const quiet = !d.p.move_is_promotion_or_capture(mv);
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);

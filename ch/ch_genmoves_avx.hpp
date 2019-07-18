@@ -159,7 +159,7 @@ struct move_generator<ACCEL_AVX>
 
             if(knight_pawn_threats)
             {
-                assert(!more_than_one(knight_pawn_threats));
+                assert(!more_than_one<ACCEL_AVX>(knight_pawn_threats));
                 if(slider_threats == 0)
                 {
                     // generate non-pinned moves that capture threat

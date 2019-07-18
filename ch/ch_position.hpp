@@ -32,9 +32,11 @@ struct position
     struct CH_ALIGN(16) stack_node
     {
         uint64_t hash;
+        uint64_t UNUSED1;
         move prev_move;
-        int piece_vals[2];
-        uint32_t UNUSED;
+        uint16_t UNUSED2;
+        uint16_t ply_irreversible;
+        int16_t piece_vals[2];
         int16_t cap_piece;
         uint8_t ep_sq;
         uint8_t castling_rights;
@@ -60,6 +62,23 @@ struct position
     }
 
     uint64_t hash() const { return stack().hash; }
+
+    // repetition history
+    std::array<uint32_t, 6000> hash_history;
+    int ply;
+
+    CH_FORCEINLINE int repetition_count() const
+    {
+        uint32_t h = uint32_t(hash());
+        int count = 0;
+        int irr = stack().ply_irreversible;
+        for(int n = ply - 4; n >= irr; n -= 2)
+        {
+            if(hash_history[n] == h)
+                ++count;
+        }
+        return count;
+    }
 
     color current_turn;
 
@@ -99,7 +118,7 @@ struct position
     {
         if((bbs[WHITE + PAWN] | bbs[BLACK + PAWN]) != 0)
             return false;
-        int const* v = stack().piece_vals;
+        auto const& v = stack().piece_vals;
         if(v[0] == 0)
             return v[1] < PIECE_VALUES[ROOK];
         else if(v[1] == 0)
@@ -147,6 +166,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     stack_index = 0;
     stack().cap_piece = EMPTY;
     stack().prev_move = NULL_MOVE;
+    stack().ply_irreversible = 0;
     uint64_t& hash = stack().hash;
     hash = 0ull;
 
@@ -254,13 +274,14 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     }
 
     age = 0;
+    ply = 0;
 
     {
-        int* v = stack().piece_vals;
+        auto& v = stack().piece_vals;
         v[0] = v[1] = 0;
         for(int i : { WHITE, BLACK })
             for(int p : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN })
-                v[i] += popcnt<ACCEL_UNACCEL>(bbs[i + p]) * PIECE_VALUES[i + p];
+                v[i] += int16_t(popcnt<ACCEL_UNACCEL>(bbs[i + p]) * PIECE_VALUES[i + p]);
     }
 }
 
@@ -288,18 +309,21 @@ void position::do_null_move()
     st.cap_piece = EMPTY;
     st.prev_move = NULL_MOVE;
     st.hash ^= hash_turn;
+    st.ply_irreversible = 0;
     if(st.ep_sq)
     {
         st.hash ^= hash_enp[st.ep_sq & 7];
         st.ep_sq = 0;
     }
     current_turn = opposite(current_turn);
+    ++ply;
 }
 
 void position::undo_null_move()
 {
     stack_pop();
     current_turn = opposite(current_turn);
+    --ply;
 }
 
 template<acceleration accel>
@@ -318,8 +342,11 @@ void position::do_move(move const& mv)
     st.cap_piece = int16_t(cap);
     st.prev_move = mv;
 
-    int& my_vals = st.piece_vals[p & 1];
-    int& enemy_vals = st.piece_vals[~p & 1];
+    hash_history[ply] = uint32_t(st.hash);
+    ++ply;
+
+    auto& my_vals = st.piece_vals[p & 1];
+    auto& enemy_vals = st.piece_vals[~p & 1];
 
     {
         uint16_t diff_castling_rights = st.castling_rights;
@@ -395,6 +422,10 @@ void position::do_move(move const& mv)
 
     enemy_vals -= PIECE_VALUES[cap];
 
+    // pawn move or capture
+    if(cap != EMPTY || p < KNIGHT)
+        st.ply_irreversible = uint16_t(ply);
+
     st.hash ^= (
         hashes[p][a] ^
         hashes[p][b] ^
@@ -411,6 +442,8 @@ void position::undo_move(move const& mv)
     int cap = stack().cap_piece;
     uint64_t cap_bb = (1ull << b);
     uint64_t p_bb = (1ull << a) | cap_bb;
+
+    --ply;
 
     stack_pop();
 
