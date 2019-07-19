@@ -17,8 +17,6 @@ Stockfish finds it at depth 15 in less than 20 ms
 
 IMPLEMENT:
 
-Move picker class (like Stockfish) that can score/pick in stages
-Specialized quiescence move generator
 Proper PV tracking (i.e., not with hash)
 Incrementally updated piece-square position value?
 Moves that give check in quiescence? (depth-limited)
@@ -26,6 +24,11 @@ Record and report statistics (number of fail-highs in PVS, etc)
 Simplified ABDADA:
     http://www.tckerrigan.com/Chess/Parallel_Search/Simplified_ABDADA/simplified_abdada.html
 Lazy SMP properly synchonized iterative deepening?
+Move ordering by threatened piece:
+    If the static evaluation is >= beta, the null move fails low,
+    and the refutation of the null move is a capture, this means
+    that the captured piece is in danger. So it is a good idea to
+    move it away. 
 
 */
 

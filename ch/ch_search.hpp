@@ -228,8 +228,9 @@ template<acceleration accel> static int quiesce(color c,
     position& p = d.p;
     move_list mvs;
 
-    int stand_pat = evaluator<accel>::evaluate(p, c);
     ++d.nodes;
+
+    int stand_pat = evaluator<accel>::evaluate(p, c);
     if(stand_pat >= beta)
         return beta;
 
@@ -270,12 +271,12 @@ template<acceleration accel> static int quiesce(color c,
 
     for(move mv : mvs)
     {
-
+        int value;
         p.do_move<accel>(mv);
 #if CH_COLOR_TEMPLATE
-        int value = -quiesce<opposite(c), accel>(
+        value = -quiesce<opposite(c), accel>(
 #else
-        int value = -quiesce<accel>(opposite(c),
+        value = -quiesce<accel>(opposite(c),
 #endif
             d, depth - 1, -beta, -alpha, height + 1);
         p.undo_move<accel>(mv);
@@ -380,11 +381,18 @@ template<acceleration accel> static int negamax(color c,
         return static_eval;
 
 #if CH_ENABLE_RAZORING
-    if(node_type == NODE_ALL)
+    if(height != 0)
     {
         static constexpr int RAZOR_MARGIN = 50;
         if(depth == 2 && static_eval + RAZOR_MARGIN <= alpha)
-            --depth;
+        {
+#if CH_COLOR_TEMPLATE
+            return quiesce<c, accel>(d, depth, alpha, beta, height);
+#else
+            return quiesce<accel>(c, d, depth, alpha, beta, height);
+#endif
+            //--depth;
+        }
     }
 #endif
 

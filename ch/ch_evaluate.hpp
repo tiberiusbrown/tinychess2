@@ -125,6 +125,15 @@ static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
 template<acceleration accel>
 struct evaluator
 {
+    static CH_FORCEINLINE int evaluate_simple(position const& p, color c)
+    {
+        int x = 0;
+        x += p.stack().piece_vals[WHITE];
+        x -= p.stack().piece_vals[BLACK];
+        x = (c == WHITE ? x : -x);
+        return x;
+    }
+
     static int evaluate(position const& p, color c)
     {
         int x = 0;

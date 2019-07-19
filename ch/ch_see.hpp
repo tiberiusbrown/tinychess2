@@ -76,6 +76,8 @@ static int see(move mv, position& p)
     uint64_t fromset = 1ull << fr;
     color c = (frompc & 1) == 0 ? WHITE : BLACK;
     gain[0] = SEE_PIECE_VALUES[p.pieces[to]];
+    if(mv.is_promotion())
+        gain[0] += SEE_PIECE_VALUES[mv.promotion_piece()] - SEE_PIECE_VALUES[PAWN];
 
     do
     {
