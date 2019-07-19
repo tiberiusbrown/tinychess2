@@ -65,7 +65,7 @@ Lazy SMP properly synchonized iterative deepening?
 // internal iterative deepening
 #define CH_ENABLE_IID 1
 
-#define CH_ENABLE_MOVE_PICKER 0
+#define CH_ENABLE_MOVE_PICKER 1
 
 // causes delays in finding mates right now
 // also increases nodes sometimes! i think from hash behavior

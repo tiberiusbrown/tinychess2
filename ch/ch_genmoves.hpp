@@ -8,8 +8,10 @@ namespace ch
 
 struct position;
 
+static constexpr bool const MOVEGEN_QUIESCENCE = true;
+
 #if CH_COLOR_TEMPLATE
-template<color c, acceleration accel>
+template<color c, acceleration accel, bool quiescence = false>
 struct move_generator
 {
     static int generate(move* mvs, position& p);

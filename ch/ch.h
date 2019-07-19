@@ -90,7 +90,12 @@ extern "C" {
     // convert move to string
     char const* CHAPI ch_extended_algebraic(ch_move m);
 
+    //
+    // debug methods
+    //
+
     uint64_t CHAPI ch_perft(int depth, uint64_t counts[256]);
+    int CHAPI ch_see(char const* mvstr);
 
 #ifdef __cplusplus
 }

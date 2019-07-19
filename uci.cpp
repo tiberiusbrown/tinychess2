@@ -202,6 +202,10 @@ int main(void)
             uint64_t t = ch_perft(depth, counts);
             std::cout << t << std::endl;
         }
+        else if(startswith(line, "see "))
+        {
+            std::cout << ch_see(&line[4]) << std::endl;
+        }
     }
 
     ch_kill_threads();

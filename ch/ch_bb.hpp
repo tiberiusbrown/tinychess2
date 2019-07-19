@@ -62,6 +62,40 @@ static CH_FORCEINLINE constexpr uint64_t shift_se(uint64_t bb)
     return (bb << 9) & ~FILEA;
 }
 
+template<color c>
+static CH_FORCEINLINE constexpr uint64_t shift_pawn_attack(uint64_t bb);
+template<>
+CH_FORCEINLINE constexpr uint64_t shift_pawn_attack<WHITE>(uint64_t bb)
+{
+    return shift_nw(bb) | shift_ne(bb);
+}
+template<>
+CH_FORCEINLINE constexpr uint64_t shift_pawn_attack<BLACK>(uint64_t bb)
+{
+    return shift_sw(bb) | shift_se(bb);
+}
+static CH_FORCEINLINE constexpr uint64_t shift_pawn_attack(color c, uint64_t bb)
+{
+    return c == WHITE ? shift_pawn_attack<WHITE>(bb) : shift_pawn_attack<BLACK>(bb);
+}
+
+template<color c>
+static CH_FORCEINLINE constexpr uint64_t shift_forward(uint64_t bb);
+template<>
+CH_FORCEINLINE constexpr uint64_t shift_forward<WHITE>(uint64_t bb)
+{
+    return shift_n(bb);
+}
+template<>
+CH_FORCEINLINE constexpr uint64_t shift_forward<BLACK>(uint64_t bb)
+{
+    return shift_s(bb);
+}
+static CH_FORCEINLINE constexpr uint64_t shift_forward(color c, uint64_t bb)
+{
+    return c == WHITE ? shift_forward<WHITE>(bb) : shift_forward<BLACK>(bb);
+}
+
 static CH_FORCEINLINE uint64_t slide_fill_n(uint64_t bb, uint64_t empty)
 {
     bb |= empty & (bb >> 8);

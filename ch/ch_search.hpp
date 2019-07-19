@@ -235,12 +235,26 @@ template<acceleration accel> static int quiesce(color c,
 
     d.seldepth = std::max(d.seldepth, height);
 
-    // TODO: optimized tactical move generation
 #if CH_COLOR_TEMPLATE
-    mvs.generate<c, accel>(p);
+    mvs.generate<c, accel, MOVEGEN_QUIESCENCE>(p);
 #else
-    mvs.generate<accel>(c, p);
+    mvs.generate<accel, MOVEGEN_QUIESCENCE>(c, p);
 #endif
+
+    for(int n = 0; n < mvs.size(); ++n)
+    {
+        move& mv = mvs[n];
+        int v = see<accel>(mv, p);
+        if(v < 0)
+        {
+            std::swap(mv, mvs[mvs.size() - 1]);
+            mvs.pop_back();
+            --n;
+        }
+        else
+            mv.sort_key() = uint8_t(v);
+    }
+    mvs.sort();
 
     //{
     //    bool promotion = false;
@@ -256,11 +270,6 @@ template<acceleration accel> static int quiesce(color c,
 
     for(move mv : mvs)
     {
-        if(!p.move_is_promotion_or_capture(mv))
-            continue;
-
-        if(see<accel>(mv, p) < 0)
-            continue;
 
         p.do_move<accel>(mv);
 #if CH_COLOR_TEMPLATE

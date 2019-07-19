@@ -237,7 +237,7 @@ void CHAPI ch_do_move(ch_move m)
     update_moves();
 }
 
-void CHAPI ch_do_move_str(char const* str)
+static ch_move convert_move(char const* str)
 {
     using namespace ch;
     move m = ch::NULL_MOVE;
@@ -263,7 +263,7 @@ void CHAPI ch_do_move_str(char const* str)
         for(int n = 0; ; ++n)
         {
             if(n >= g_moves.size())
-                return;
+                return 0;
             if((m & 0xFFFF) == (g_moves[n] & 0xFFFF))
             {
                 m = g_moves[n];
@@ -273,7 +273,12 @@ void CHAPI ch_do_move_str(char const* str)
         break;
     }
 
-    ch_do_move(m);
+    return m;
+}
+
+void CHAPI ch_do_move_str(char const* str)
+{
+    ch_do_move(convert_move(str));
 }
 
 int CHAPI ch_evaluate(void)
@@ -357,6 +362,13 @@ uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 #else
         return 0ull;
 #endif
+}
+
+int CHAPI ch_see(char const* mvstr)
+{
+    ch_move m = convert_move(mvstr);
+    if(m == 0 || !g_pos.move_is_promotion_or_capture(m)) return INT_MIN;
+    return ch::see<ch::ACCEL_UNACCEL>(m, g_pos);
 }
 
 }

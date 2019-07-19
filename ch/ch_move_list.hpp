@@ -15,21 +15,24 @@ struct move_list
     move const& operator[](int i) const { return m[i]; }
 
 #if CH_COLOR_TEMPLATE
-    template<color c, acceleration accel> void generate(position& p)
+    template<color c, acceleration accel, bool quiescence = false>
+    void generate(position& p)
     {
-        n = move_generator<c, accel>::generate(&m[0], p);
+        n = move_generator<c, accel, quiescence>::generate(&m[0], p);
     }
-    template<acceleration accel> void generate(color c, position& p)
+    template<acceleration accel, bool quiescence = false>
+    void generate(color c, position& p)
     {
         if(c == WHITE)
-            n = move_generator<WHITE, accel>::generate(&m[0], p);
+            n = move_generator<WHITE, accel, quiescence>::generate(&m[0], p);
         else
-            n = move_generator<BLACK, accel>::generate(&m[0], p);
+            n = move_generator<BLACK, accel, quiescence>::generate(&m[0], p);
     }
 #else
-    template<acceleration accel> void generate(color c, position& p)
+    template<acceleration accel, bool quiescence = false>
+    void generate(color c, position& p)
     {
-        n = move_generator<accel>::generate(c, &m[0], p);
+        n = move_generator<accel, quiescence>::generate(c, &m[0], p);
     }
 #endif
 

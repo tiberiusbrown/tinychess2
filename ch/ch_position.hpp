@@ -183,6 +183,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     pieces[i] = p_; \
     hash ^= hashes[p_][i]; \
     m <<= 1; ++i; \
+    stack().piece_vals[p_ & 1] += PIECE_VALUES[p_]; \
     } while(0)
             switch(c)
             {
@@ -411,6 +412,8 @@ void position::do_move(move const& mv)
                 hashes[cap][b]
                 );
             my_vals += PIECE_VALUES[t] - PIECE_VALUES[PAWN];
+            enemy_vals -= PIECE_VALUES[cap];
+            st.ply_irreversible = uint16_t(ply);
             return;
         }
     }

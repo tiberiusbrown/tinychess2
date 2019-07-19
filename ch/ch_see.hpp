@@ -7,15 +7,15 @@
 namespace ch
 {
 
-static constexpr int8_t const SEE_PIECE_VALUES[] =
+static constexpr int16_t const SEE_PIECE_VALUES[] =
 {
-      4,    4, // p
-     13,   13, // n
-     14,   14, // b
-     20,   20, // r
-     36,   36, // q
-    127,  127, // k
-      0,    0, // empty
+     4,  4, // p
+    13, 13, // n
+    14, 14, // b
+    20, 20, // r
+    36, 36, // q
+    256, 256, // k
+     0,  0, // empty
 };
 
 #define CH_CHECK_SEE_A(pc_) do { \
@@ -47,7 +47,7 @@ static CH_FORCEINLINE uint64_t see_least_valuable_attacker(
     a = queen_attacks & p.bbs[c + QUEEN];
     CH_CHECK_SEE_A(QUEEN);
 
-    a = d.king_attacks & p.bbs[c + KING];
+    a = d.king_attacks & p.bbs[c + KING] & occ;
     if(a)
     {
         pc = KING;
@@ -63,15 +63,6 @@ static CH_FORCEINLINE uint64_t see_least_valuable_attacker(
 template<acceleration accel>
 static int see(move mv, position& p)
 {
-
-    // TODO: full SEE
-    //int to = mv.to();
-    //int x = 0;
-    //if(mv.is_promotion())
-    //    x += SEE_PIECE_VALUES[mv.promotion_piece()] - SEE_PIECE_VALUES[PAWN];
-    //x += SEE_PIECE_VALUES[p.pieces[to]];
-
-
     int to = mv.to();
     // only legal moves generated so king captures are always free
     if(p.pieces[mv.from()] >= KING)
@@ -89,9 +80,8 @@ static int see(move mv, position& p)
     do
     {
         ++d;
-        gain[d] = SEE_PIECE_VALUES[frompc];
+        gain[d] = SEE_PIECE_VALUES[frompc] - gain[d - 1];
         if(std::max(-gain[d - 1], gain[d]) < 0) break;
-        if(frompc >= KING) break;
 
         // find least valuable attacker
         occ ^= fromset;
