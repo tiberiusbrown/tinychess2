@@ -78,6 +78,12 @@ extern "C" {
     // extended algebraic, e.g. e7f8q
     void CHAPI ch_do_move_str(char const* str);
 
+    int CHAPI ch_move_fr_sq(ch_move mv);
+    int CHAPI ch_move_to_sq(ch_move mv);
+
+    int CHAPI ch_num_moves();
+    ch_move CHAPI ch_get_move(int n);
+
     int CHAPI ch_evaluate(void);
 
     void CHAPI ch_search(ch_search_limits const* limits);
@@ -89,6 +95,37 @@ extern "C" {
 
     // convert move to string
     char const* CHAPI ch_extended_algebraic(ch_move m);
+
+    //
+    // game state retrieval
+    //
+
+    enum
+    {
+        CH_WP, CH_BP,
+        CH_WN, CH_BN,
+        CH_WB, CH_BB,
+        CH_WR, CH_BR,
+        CH_WQ, CH_BQ,
+        CH_WK, CH_BK,
+        CH_EMPTY
+    };
+    // A8: sq = 0
+    // A1: sq = 54
+    // H8: sq = 7
+    // H1: sq = 63
+    int CHAPI ch_get_piece_at(int sq);
+
+    int CHAPI ch_is_draw(void);
+
+    enum { CH_WHITE, CH_BLACK };
+
+    // if the game is in checkmate, side will be set to
+    // CH_WHITE (0) or CH_BLACK (1)
+    int CHAPI ch_is_checkmate(int* side);
+
+    // CH_WHITE (0) or CH_BLACK (1)
+    int CHAPI ch_current_turn(void);
 
     //
     // debug methods

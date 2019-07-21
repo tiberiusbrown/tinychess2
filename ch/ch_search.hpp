@@ -173,13 +173,15 @@ static void send_info(search_data& d)
     for(int n = pvlen - 2; n >= 0; --n)
         d.p.undo_move<accel>(pv[n]);
 
+    int nps = mstime ? div_nps_mstime(d.nodes, mstime) : 0;
+
     search_info(
         d.depth,
         std::max(d.depth, d.seldepth),
         d.nodes,
         mstime,
         d.score,
-        mstime ? d.nodes * 1000 / mstime : 0,
+        nps,
         (ch_move*)pv,
         pvlen
     );
@@ -230,7 +232,15 @@ template<acceleration accel> static int quiesce(color c,
 
     ++d.nodes;
 
-    int stand_pat = evaluator<accel>::evaluate(p, c);
+    int stand_pat;
+    {
+        evaluator<accel> e;
+        stand_pat = e.evaluate_first(p, c);
+        if(stand_pat >= beta + 50)
+            return beta;
+        stand_pat = e.evaluate_second(p, c);
+    }
+
     if(stand_pat >= beta)
         return beta;
 
@@ -242,9 +252,27 @@ template<acceleration accel> static int quiesce(color c,
     mvs.generate<accel, MOVEGEN_QUIESCENCE>(c, p);
 #endif
 
+    alpha = std::max(alpha, stand_pat);
+
+    bool endgame = (
+        p.stack().piece_vals[WHITE] + p.stack().piece_vals[BLACK] < 1200);
     for(int n = 0; n < mvs.size(); ++n)
     {
         move& mv = mvs[n];
+        
+        // delta pruning
+        if(
+            !endgame &&
+            !mv.is_promotion() &&
+            stand_pat + PIECE_VALUES[p.pieces[mv.to()]] + 200 < alpha
+            )
+        {
+            std::swap(mv, mvs[mvs.size() - 1]);
+            mvs.pop_back();
+            --n;
+            continue;
+        }
+
         int v = see<accel>(mv, p);
         if(v < 0)
         {
@@ -267,18 +295,25 @@ template<acceleration accel> static int quiesce(color c,
     //        return alpha;
     //}
 
-    alpha = std::max(alpha, stand_pat);
-
     for(move mv : mvs)
     {
         int value;
         p.do_move<accel>(mv);
+
+        {
+            int x = d.p.mate_by_material(c);
+            if(x != 0) d.p.undo_move<accel>(mv);
+            if(x > 0) return MATE_SCORE - 256;
+            if(x < 0) return MATED_SCORE + 256;
+        }
+
 #if CH_COLOR_TEMPLATE
         value = -quiesce<opposite(c), accel>(
 #else
         value = -quiesce<accel>(opposite(c),
 #endif
             d, depth - 1, -beta, -alpha, height + 1);
+
         p.undo_move<accel>(mv);
 
         if(value > alpha)
@@ -308,7 +343,7 @@ template<acceleration accel> static int negamax(color c,
     if(d.stop)
         return 0;
 
-    if(depth > 2 && d.time_limit_reached())
+    if(height > 0 && d.time_limit_reached())
     {
         d.stop = true;
         return 0;
@@ -366,7 +401,50 @@ template<acceleration accel> static int negamax(color c,
     }
 #endif
 
+    int static_eval;
+    {
+        evaluator<accel> e;
+        static_eval = e.evaluate_first(d.p, c);
+
+        // TODO: prune here?
+
+        static_eval = e.evaluate_second(d.p, c);
+    }
+
+    if(height >= MAX_VARIATION)
+        return static_eval;
+
     move_list mvs;
+
+#if CH_ENABLE_PROBCUT_PRUNING
+    // Ethereal-style Probcut
+    static constexpr int const PROBCUT_MARGIN = 100;
+    if(
+        node_type != NODE_PV &&
+        depth >= 5 &&
+        beta < MATE_SCORE - 256 &&
+        beta > MATED_SCORE + 256 &&
+        static_eval + d.p.best_case_move_value() >= beta + PROBCUT_MARGIN)
+    {
+        int rbeta = std::min(beta + PROBCUT_MARGIN, MATE_SCORE - 257);
+        mvs.generate<accel, MOVEGEN_QUIESCENCE>(c, d.p);
+        for(move mv : mvs)
+        {
+            int v;
+            d.p.do_move<accel>(mv);
+#if CH_COLOR_TEMPLATE
+            v = -negamax<opposite(c), accel>(
+#else
+            v = -negamax<accel>(opposite(c), 
+#endif
+                d, depth - 4, -rbeta, -rbeta + 1, height + 1, node_type);
+            d.p.undo_move<accel>(mv);
+            if(v >= rbeta)
+                return v;
+        }
+    }
+#endif
+
 #if CH_COLOR_TEMPLATE
     mvs.generate<c, accel>(d.p);
 #else
@@ -375,16 +453,13 @@ template<acceleration accel> static int negamax(color c,
     if(mvs.empty())
         return d.p.in_check ? MATED_SCORE + height : 0;
 
-    int static_eval = evaluator<accel>::evaluate(d.p, c);
-
-    if(height >= MAX_VARIATION)
-        return static_eval;
+    bool in_check = d.p.in_check;
 
 #if CH_ENABLE_RAZORING
     if(height != 0)
     {
         static constexpr int RAZOR_MARGIN = 50;
-        if(depth == 2 && static_eval + RAZOR_MARGIN <= alpha)
+        if(depth == 2 && !in_check && static_eval + RAZOR_MARGIN <= alpha)
         {
 #if CH_COLOR_TEMPLATE
             return quiesce<c, accel>(d, depth, alpha, beta, height);
@@ -398,7 +473,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_FUTILITY_PRUNING
     // futility pruning
-    if(node_type != NODE_PV && depth < 7)
+    if(node_type != NODE_PV && !in_check && depth <= 8)
     {
         if(static_eval >= beta + 64 * depth)
             return static_eval;
@@ -410,11 +485,7 @@ template<acceleration accel> static int negamax(color c,
     if(!d.p.in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
-#if CH_COLOR_TEMPLATE
-        d.p.has_piece_better_than_pawn<c>()
-#else
         d.p.has_piece_better_than_pawn(c)
-#endif
         )
     {
         d.mvstack[height] = NULL_MOVE;
@@ -510,14 +581,23 @@ template<acceleration accel> static int negamax(color c,
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
 
+        if(!quiet)
+        {
+            int x = d.p.mate_by_material(c);
+            if(x != 0) d.p.undo_move<accel>(mv);
+            if(x > 0) return MATE_SCORE - 256;
+            if(x < 0) return MATED_SCORE + 256;
+        }
+
         int reduction = 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
         // stupid simple late move reduction
         if(can_reduce && quiet && n >= 6)
-            reduction = depth / 5 + n / 12;
+            reduction = (depth - 2) / 3 + (n - 4) / 8;
 #endif
+        reduction = std::max(1, reduction);
 
-        if(tail)
+        if(depth - reduction <= 0)
         {
             int v;
 #if CH_ENABLE_QUIESCENCE
@@ -534,7 +614,7 @@ template<acceleration accel> static int negamax(color c,
 #endif
             {
                 ++d.nodes;
-                v = evaluator<accel>::evaluate(d.p, c);
+                v = evaluator<accel>{}.evaluate(d.p, c);
             }
             value = std::max(value, v);
         }
@@ -634,6 +714,8 @@ template<acceleration accel> static int negamax(color c,
             value <= MATED_SCORE + 256 ? value - height :
             value >= MATE_SCORE - 256 ? value + height :
             value);
+        if(i.value == MAX_SCORE || i.value == MIN_SCORE)
+            __debugbreak();
         if(value <= alpha_orig)
             i.flag = hash_info::UPPER;
         else if(value >= beta)
@@ -747,7 +829,7 @@ static move iterative_deepening(
     int prev_score;
     d.p = p;
     d.nodes = 0;
-    prev_score = ch::evaluator<accel>::evaluate(p, p.current_turn);
+    prev_score = evaluator<accel>{}.evaluate(p, p.current_turn);
     for(;;)
     {
         d.seldepth = 0;

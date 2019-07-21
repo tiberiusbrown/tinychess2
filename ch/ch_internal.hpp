@@ -39,24 +39,46 @@
 #error "Unsupported"
 #endif
 
-#ifndef NDEBUG
+#if !defined(NDEBUG)
 #define CH_FORCEINLINE
 #define CH_FORCENOINLINE
 #define CH_OPT_SIZE
 #else
+
+#if CH_NEVER_FORCE_INLINE
+#if CH_NEVER_REQUEST_INLINE
+#define CH_FORCEINLINE
+#else
+#define CH_FORCEINLINE inline
+#endif
+#define CH_FORCENOINLINE 
+#else
 #if defined(_MSC_VER)
 #define CH_FORCEINLINE __forceinline
 #define CH_FORCENOINLINE __declspec(noinline)
-#define CH_OPT_SIZE __pragma(optimize("ts", on))
 #elif defined(__GNUC__)
 #define CH_FORCEINLINE __attribute__((always_inline)) inline
 #define CH_FORCENOINLINE __attribute__((noinline))
+#endif
+#endif
+
+#if defined(_MSC_VER)
+#define CH_OPT_SIZE __pragma(optimize("ts", on))
+#elif defined(__GNUC__)
 #define CH_OPT_SIZE __attribute__((optimize("-Os")))
 #else
-#define CH_FORCEINLINE inline
-#define CH_FORCENOINLINE
 #define CH_OPT_SIZE
 #endif
+#endif
+
+#ifndef CH_FORCEINLINE
+#define CH_FORCEINLINE
+#endif
+#ifndef CH_FORCENOINLINE
+#define CH_FORCENOINLINE
+#endif
+#ifndef CH_OPT_SIZE
+#define CH_OPT_SIZE
 #endif
 
 namespace ch
@@ -151,7 +173,7 @@ template<>
 CH_FORCEINLINE int pop_lsb<ACCEL_AVX>(uint64_t& x)
 {
 #if CH_ARCH_32BIT
-    return pop_lsb(x);
+    return pop_lsb<ACCEL_UNACCEL>(x);
 #else
     int i = lsb<ACCEL_AVX>(x);
     x = _blsr_u64(x);
@@ -176,19 +198,21 @@ CH_FORCEINLINE uint64_t pop_lsb_mask<ACCEL_AVX>(uint64_t& x)
 }
 
 template<acceleration accel>
-CH_FORCEINLINE static int popcnt(uint64_t x)
+CH_FORCEINLINE static constexpr int popcnt(uint64_t x)
 {
-    static constexpr uint64_t const k1 = 0x5555555555555555ull;
-    static constexpr uint64_t const k2 = 0x3333333333333333ull;
-    static constexpr uint64_t const k4 = 0x0f0f0f0f0f0f0f0full;
-    static constexpr uint64_t const kf = 0x0101010101010101ull;
-    x = x - ((x >> 1)  & k1);
-    x = (x & k2) + ((x >> 2) & k2);
-    x = (x + (x >> 4)) & k4;
-    x = (x * kf) >> 56;
-    return (int)x;
+    constexpr uint64_t  m1 = 0x5555555555555555ull;
+    constexpr uint64_t  m2 = 0x3333333333333333ull;
+    constexpr uint64_t  m4 = 0x0f0f0f0f0f0f0f0full;
+    x -= (x >> 1) & m1;
+    x = (x & m2) + ((x >> 2) & m2);
+    x = (x + (x >> 4)) & m4;
+    x += x >> 8;
+    x += x >> 16;
+    x += x >> 32;
+    return int(x & 0x7f);
 }
 
+#if CH_ENABLE_SSE
 template<>
 CH_FORCEINLINE int popcnt<ACCEL_SSE>(uint64_t x)
 {
@@ -202,22 +226,31 @@ CH_FORCEINLINE int popcnt<ACCEL_SSE>(uint64_t x)
     return __builtin_popcountll(x);
 #endif
 }
+#endif
+#if CH_ENABLE_AVX
 template<>
 CH_FORCEINLINE int popcnt<ACCEL_AVX>(uint64_t x)
 {
     return popcnt<ACCEL_SSE>(x);
 }
+#endif
 
 template<acceleration accel>
 CH_FORCEINLINE bool more_than_one(uint64_t x)
 {
     return (x & (x - 1)) != 0;
 }
+#if CH_ENABLE_AVX
 template<>
 CH_FORCEINLINE bool more_than_one<ACCEL_AVX>(uint64_t x)
 {
+#if CH_ARCH_32BIT
+    return more_than_one<ACCEL_UNACCEL>(x);
+#else
     return _blsr_u64(x) != 0;
+#endif
 }
+#endif
 
 void print_bbs(uint64_t bbs[], int n);
 inline void print_bb(uint64_t bb) { print_bbs(&bb, 1); }
@@ -313,5 +346,39 @@ static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
         ((uint32_t*)dst)[n] = ((uint32_t const*)src)[n];
 }
 #endif
+
+static CH_FORCEINLINE int div_nps_mstime(uint64_t a, int ms)
+{
+    static double const C1000 = 1000;
+    int r;
+#if CH_ARCH_32BIT
+#ifdef _MSC_VER
+    __asm
+    {
+        fild   QWORD PTR a
+        fmul   QWORD PTR C1000
+        fild   DWORD PTR ms
+        fdiv
+        fisttp DWORD PTR r
+    }
+#else
+    /* assume gcc-style (mingw) */
+    /* warning: not tested!! might not work... */
+    asm(
+        "fild   %[input0]\n\t"
+        "fmul   %[input1]\n\t"
+        "fild   %[input2]\n\t"
+        "fdivp           \n\t"
+        "fisttp %[output0]\n\t"
+        : [output0] "=m" (r)
+        : [input0] "m" (a)
+        , [input1] "m" (C1000)
+        : );
+#endif
+#else
+    r = int(a * 1000 / ms);
+#endif
+    return r;
+}
 
 }

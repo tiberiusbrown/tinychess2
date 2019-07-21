@@ -28,9 +28,9 @@ elseif(UNIX)
         set(CFG_BUILD_32BIT ON)
     endif()
 	if(CFG_BUILD_32BIT)
-		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/link32.ld")
+		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/gui/link32.ld")
 	else()
-		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/link64.ld")
+		set(LINKLD "${CMAKE_CURRENT_SOURCE_DIR}/gui/link64.ld")
 	endif()
 
     set(COMMON_FLAGS)
@@ -102,12 +102,66 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME}_uci pthread)
 endif()
 
-if(FALSE)
+if(TRUE)
 
-file(GLOB GUI_SOURCES "gui/*")
-add_executable(${PROJECT_NAME} ${EXETYPE} ${GUI_SOURCES} ${EDITORCONFIG})
+set(BUILD_COMPRESSED_DATA_SOURCES
+    gui/alldata.h
+    gui/common.h
+    gui/config.h
+    gui/font.h
+    gui/img.h
+    gui/build_compressed_data.cpp
+    )
+add_executable(build_compressed_data ${BUILD_COMPRESSED_DATA_SOURCES})
+if(MSVC)
+    target_compile_options(build_compressed_data PRIVATE /wd4996)
+endif()
+if(UNIX)
+    target_compile_options(build_compressed_data PRIVATE -std=c++11)
+    target_compile_options(build_compressed_data PRIVATE -O2)
+endif()
+set(ALLDATA_H "${CMAKE_CURRENT_BINARY_DIR}/ALLDATA_COMPRESSED.h")
+target_compile_definitions(build_compressed_data PRIVATE
+    -DOUTFILEH="${ALLDATA_H}")
+add_custom_command(
+    OUTPUT "${ALLDATA_H}"
+    DEPENDS build_compressed_data
+    COMMAND "$<TARGET_FILE:build_compressed_data>"
+    )
+set_source_files_properties("${ALLDATA_H}"
+    PROPERTIES GENERATED TRUE)
+if(MSVC)
+    source_group("Generated" FILES "${ALLDATA_H}")
+endif()
+
+set(GUI_SOURCE_FILE)
+if(MSVC)
+    set(GUI_SOURCE_FILE gui/start_windows.c)
+elseif(UNIX)
+    set(GUI_SOURCE_FILE gui/start_linux.c)
+endif()
+add_executable(${PROJECT_NAME} ${EXETYPE}
+    ${GUI_SOURCE_FILE}
+    gui/common.h
+    gui/config.h
+    gui/data.h
+    gui/draw_helpers.h
+    gui/font.h
+    gui/format.h
+    gui/img.h
+    gui/settings.h
+    gui/start_common.h
+    gui/system.h
+    gui/run.h
+    gui/text.h
+    gui/thread.h
+    "${ALLDATA_H}"
+    ${EDITORCONFIG}
+    )
 target_link_libraries(${PROJECT_NAME} ch)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "ch")
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}")
 if(MSVC)
     #target_compile_options(${PROJECT_NAME} PRIVATE /d2noftol3)
 
@@ -123,21 +177,30 @@ if(MSVC)
 
     set_property(
         TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS "
-        /ENTRY:start
-        /NODEFAULTLIB
         /MANIFEST:NO
         /DYNAMICBASE:NO
         /FIXED
-        /SAFESEH:NO
         /INCREMENTAL:NO
         /OPT:REF
         /OPT:ICF=16
-        /SECTION:.text,R
-        /MERGE:\".rdata=.text\"
-        /MERGE:\".xdata=.text\"
-        /MERGE:\".pdata=.text\"
         /ignore:4254
         ")
+    foreach(B MINSIZEREL;RELEASE;RELWITHDEBINFO)
+        set_property(
+            TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS_${B} "
+            /SAFESEH:NO
+            /ENTRY:start
+            /NODEFAULTLIB")
+    endforeach()
+
+    #set_property(
+    #    TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS "
+    #    /SECTION:.text,R
+    #    /MERGE:\".rdata=.text\"
+    #    /MERGE:\".xdata=.text\"
+    #    /MERGE:\".pdata=.text\"
+    #    ")
+        
 elseif(UNIX)
 
     target_compile_options(${PROJECT_NAME} PRIVATE -nodefaultlibs)
@@ -157,7 +220,7 @@ elseif(UNIX)
 		TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
 		" -Wl,--build-id=none -Wl,-z,norelro -Wl,--hash-style=gnu -s")
 
-	file(GLOB SSTRIP_SOURCES sstrip/*.c sstrip/*.h)
+	file(GLOB SSTRIP_SOURCES gui/sstrip/*.c gui/sstrip/*.h)
 	add_executable(sstrip ${SSTRIP_SOURCES})
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 		COMMAND $<TARGET_FILE:sstrip> $<TARGET_FILE:${PROJECT_NAME}>

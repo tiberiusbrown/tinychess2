@@ -30,13 +30,45 @@ Move ordering by threatened piece:
     that the captured piece is in danger. So it is a good idea to
     move it away. 
 
+
+Probcut pruning in Ethereal:
+
+    // Step 10. Probcut Pruning. If we have a good capture that causes a cutoff
+    // with an adjusted beta value at a reduced search depth, we expect that it
+    // will cause a similar cutoff at this search depth, with a normal beta value
+    if (   !PvNode
+        &&  depth >= ProbCutDepth
+        &&  abs(beta) < MATE_IN_MAX
+        &&  eval + moveBestCaseValue(board) >= beta + ProbCutMargin) {
+
+        // Try tactical moves which maintain rBeta
+        rBeta = MIN(beta + ProbCutMargin, MATE - MAX_PLY - 1);
+        initNoisyMovePicker(&movePicker, thread, rBeta - eval);
+        while ((move = selectNextMove(&movePicker, board, 1)) != NONE_MOVE) {
+
+            // Perform a reduced depth verification search
+            if (!apply(thread, board, move, height)) continue;
+            value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, height+1);
+            revert(thread, board, move, height);
+
+            // Probcut failed high
+            if (value >= rBeta) return value;
+        }
+    }
+
 */
 
 // color is templated instead of passed as argument
-#define CH_COLOR_TEMPLATE 1
+#define CH_COLOR_TEMPLATE 0
 
 // enable SSE and AVX acceleration
-#define CH_ENABLE_ACCEL 1
+#define CH_ENABLE_ACCEL 0
+
+// disable forcing inline
+#define CH_NEVER_FORCE_INLINE 1
+
+// never request inline
+#define CH_NEVER_REQUEST_INLINE 1
 
 // magic bitboards
 #define CH_ENABLE_MAGIC 1
@@ -55,10 +87,11 @@ Move ordering by threatened piece:
 #define CH_ENABLE_COUNTERMOVE_HEURISTIC 0
 
 // no zw protection right now
-// actually screws everything up right now (?)
 #define CH_ENABLE_NULL_MOVE 1
 
 #define CH_ENABLE_FUTILITY_PRUNING 1
+
+#define CH_ENABLE_PROBCUT_PRUNING 1
 
 #define CH_ENABLE_QUIESCENCE 1
 #define CH_QUIESCE_ON_QUIETS 1
@@ -83,7 +116,8 @@ Move ordering by threatened piece:
 #define CH_NUM_KILLERS 2
 
 // force off magic bitboards for 32-bit targets (expensive multiply)
-#if CH_ARCH_32BIT
-#undef CH_ENABLE_MAGIC
-#define CH_ENABLE_MAGIC 0
-#endif
+//#if CH_ARCH_32BIT
+//#undef CH_ENABLE_MAGIC
+//#define CH_ENABLE_MAGIC 0
+//#endif
+//

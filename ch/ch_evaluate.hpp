@@ -97,12 +97,12 @@ template<acceleration accel>
 static CH_FORCEINLINE int pawn_protector_bonuses(color c, position const& p)
 {
     uint64_t pawn_protectors;
-    uint64_t const all = p.bb_alls[c];
+    uint64_t const pawns = p.bbs[c + PAWN];
     if(c == WHITE)
-        pawn_protectors = (shift_sw(all) | shift_se(all));
+        pawn_protectors = (shift_sw(pawns) | shift_se(pawns));
     else
-        pawn_protectors = (shift_nw(all) | shift_ne(all));
-    pawn_protectors &= p.bbs[c + PAWN];
+        pawn_protectors = (shift_nw(pawns) | shift_ne(pawns));
+    pawn_protectors &= pawns;
     return popcnt<accel>(pawn_protectors) * PAWN_PROTECTOR_BONUS;
 }
 
@@ -125,24 +125,11 @@ static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
 template<acceleration accel>
 struct evaluator
 {
-    static CH_FORCEINLINE int evaluate_simple(position const& p, color c)
+    int mg, eg, v;
+
+    CH_FORCEINLINE int evaluate_first(position const& p, color c)
     {
         int x = 0;
-        x += p.stack().piece_vals[WHITE];
-        x -= p.stack().piece_vals[BLACK];
-        x = (c == WHITE ? x : -x);
-        return x;
-    }
-
-    static int evaluate(position const& p, color c)
-    {
-        int x = 0;
-
-        x += p.stack().piece_vals[WHITE];
-        x -= p.stack().piece_vals[BLACK];
-
-        // phase: 0 is false, 256 is true
-        int mg, eg;
         {
             static constexpr int const EG_MAT = 650;
             static constexpr int const MG_MAT = EG_MAT + 2048;
@@ -156,34 +143,18 @@ struct evaluator
             mg /= (MG_MAT - EG_MAT);
             eg = 256 - mg;
         }
+        x += p.stack().piece_vals[WHITE];
+        x -= p.stack().piece_vals[BLACK];
+        x += (
+            p.stack().piece_sq[0] * mg +
+            p.stack().piece_sq[1] * eg) / 256;
+        x = (c == WHITE ? x : -x);
+        return v = x;
+    }
 
-        {
-            int d = 0;
-
-            d += eval_piece_table<accel>(p.bbs[WHITE + KNIGHT], INIT_TABLE_KNIGHT);
-            d += eval_piece_table<accel>(p.bbs[WHITE + BISHOP], INIT_TABLE_BISHOP);
-            d += eval_piece_table<accel>(p.bbs[WHITE + ROOK], INIT_TABLE_ROOK);
-            d += eval_piece_table<accel>(p.bbs[WHITE + QUEEN], INIT_TABLE_QUEEN);
-
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + KNIGHT], INIT_TABLE_KNIGHT);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + BISHOP], INIT_TABLE_BISHOP);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + ROOK], INIT_TABLE_ROOK);
-            d -= eval_piece_table_flipped<accel>(p.bbs[BLACK + QUEEN], INIT_TABLE_QUEEN);
-
-            x += d * mg / 256;
-
-            x += eval_piece_table<accel>(p.bbs[WHITE + PAWN], INIT_TABLE_PAWN);
-            x -= eval_piece_table_flipped<accel>(p.bbs[BLACK + PAWN], INIT_TABLE_PAWN);
-        }
-
-        {
-            int wk = lsb<accel>(p.bbs[WHITE + KING]);
-            int bk = lsb<accel>(p.bbs[BLACK + KING]) ^ 56;
-            int d = 0;
-            d += (TABLE_KING_MG[wk] - TABLE_KING_MG[bk]) * mg;
-            d += (TABLE_KING_EG[wk] - TABLE_KING_EG[bk]) * eg;
-            x += d / 256;
-        }
+    int evaluate_second(position const& p, color c)
+    {
+        int x = 0;
 
         x += mobility_bonuses<accel>(WHITE, p);
         x -= mobility_bonuses<accel>(BLACK, p);
@@ -196,7 +167,13 @@ struct evaluator
 
         x = (c == WHITE ? x : -x);
 
-        return x;
+        return v += x;
+    }
+
+    int evaluate(position const& p, color c)
+    {
+        evaluate_first(p, c);
+        return evaluate_second(p, c);
     }
 };
 

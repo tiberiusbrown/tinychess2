@@ -10,11 +10,11 @@ struct position;
 static constexpr int const BISHOP_MOBILITY_BONUS = 3;
 static constexpr int const ROOK_MOBILITY_BONUS = 1;
 
-static constexpr int const PAWN_PROTECTOR_BONUS = 0;
+static constexpr int const PAWN_PROTECTOR_BONUS = 4;
 
 static constexpr int const PASSED_PAWN_PENALTIES[8] =
 {
-    4, 1, 2, 2, 2, 2, 1, 4,
+    10, 2, 5, 5, 5, 5, 2, 10,
 };
 
 // piece values in centipawns
@@ -28,6 +28,19 @@ static constexpr int16_t const PIECE_VALUES[13] =
     0, 0,
     0,
 };
+
+// piece values from white's perspective
+static constexpr int16_t const PIECE_VALUES_WHITE[13] =
+{
+    PIECE_VALUES[0], -PIECE_VALUES[0],
+    PIECE_VALUES[2], -PIECE_VALUES[2],
+    PIECE_VALUES[4], -PIECE_VALUES[4],
+    PIECE_VALUES[6], -PIECE_VALUES[6],
+    PIECE_VALUES[8], -PIECE_VALUES[8],
+    0, 0,
+    0,
+};
+
 static_assert(PIECE_VALUES[WHITE + PAWN] == PIECE_VALUES[BLACK + PAWN], "");
 static_assert(PIECE_VALUES[WHITE + KNIGHT] == PIECE_VALUES[BLACK + KNIGHT], "");
 static_assert(PIECE_VALUES[WHITE + BISHOP] == PIECE_VALUES[BLACK + BISHOP], "");
@@ -118,27 +131,62 @@ static constexpr int8_t const TABLE_KING_EG[64] =
     -50, -30, -30, -30, -30, -30, -30, -50,
 };
 
-int16_t table_pawn   [64];
-int16_t table_knight [64];
-int16_t table_bishop [64];
-int16_t table_rook   [64];
-int16_t table_queen  [64];
+static constexpr int8_t const TABLE_ZERO[64] =
+{
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+};
 
-static void evaluator_init_table(
-    int16_t* dst, int8_t const* src, int16_t val)
+int8_t piece_tables[2][13][64];
+
+template<bool flipped>
+static void evaluator_init_table(int8_t* dst, int8_t const* src)
 {
     for(int sq = 0; sq < 64; ++sq)
-        dst[sq] = src[sq] + val;
+    {
+        if(flipped)
+            dst[sq] = -src[sq ^ 56];
+        else
+            dst[sq] = src[sq];
+    }
 }
 
 static void init_evaluator()
 {
+    // middle game
+    evaluator_init_table<false>(piece_tables[0][WHITE + PAWN  ], INIT_TABLE_PAWN  );
+    evaluator_init_table<false>(piece_tables[0][WHITE + KNIGHT], INIT_TABLE_KNIGHT);
+    evaluator_init_table<false>(piece_tables[0][WHITE + BISHOP], INIT_TABLE_BISHOP);
+    evaluator_init_table<false>(piece_tables[0][WHITE + ROOK  ], INIT_TABLE_ROOK  );
+    evaluator_init_table<false>(piece_tables[0][WHITE + QUEEN ], INIT_TABLE_QUEEN );
+    evaluator_init_table<false>(piece_tables[0][WHITE + KING  ], TABLE_KING_MG    );
+    evaluator_init_table<true >(piece_tables[0][BLACK + PAWN  ], INIT_TABLE_PAWN  );
+    evaluator_init_table<true >(piece_tables[0][BLACK + KNIGHT], INIT_TABLE_KNIGHT);
+    evaluator_init_table<true >(piece_tables[0][BLACK + BISHOP], INIT_TABLE_BISHOP);
+    evaluator_init_table<true >(piece_tables[0][BLACK + ROOK  ], INIT_TABLE_ROOK  );
+    evaluator_init_table<true >(piece_tables[0][BLACK + QUEEN ], INIT_TABLE_QUEEN );
+    evaluator_init_table<true >(piece_tables[0][BLACK + KING  ], TABLE_KING_MG    );
+    evaluator_init_table<false>(piece_tables[0][EMPTY         ], TABLE_ZERO       );
 
-    evaluator_init_table(table_pawn, INIT_TABLE_PAWN, PIECE_VALUES[PAWN]);
-    evaluator_init_table(table_knight, INIT_TABLE_KNIGHT, PIECE_VALUES[KNIGHT]);
-    evaluator_init_table(table_bishop, INIT_TABLE_BISHOP, PIECE_VALUES[BISHOP]);
-    evaluator_init_table(table_rook, INIT_TABLE_ROOK, PIECE_VALUES[ROOK]);
-    evaluator_init_table(table_queen, INIT_TABLE_QUEEN, PIECE_VALUES[QUEEN]);
+    evaluator_init_table<false>(piece_tables[1][WHITE + PAWN  ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + KNIGHT], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + BISHOP], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + ROOK  ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + QUEEN ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + KING  ], TABLE_KING_EG    );
+    evaluator_init_table<true >(piece_tables[1][BLACK + PAWN  ], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + KNIGHT], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + BISHOP], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + ROOK  ], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + QUEEN ], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + KING  ], TABLE_KING_EG    );
+    evaluator_init_table<false>(piece_tables[1][EMPTY         ], TABLE_ZERO       );
 }
 
 

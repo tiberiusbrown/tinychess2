@@ -205,13 +205,15 @@ void CHAPI ch_do_move(ch_move m)
     // validate move
     {
         int valid = 0;
+        move mv(m);
+        mv.sort_key() = 0;
         for(move const& tm : g_moves)
-            if(m == tm)
+            if(mv == tm)
                 valid = 1;
         if(!valid)
         {
-            printf("uci info string invalid move: %u %s\n",
-                m, move(m).extended_algebraic());
+            //printf("uci info string invalid move: %u %s\n",
+            //    m, move(m).extended_algebraic());
             return;
         }
     }
@@ -281,24 +283,32 @@ void CHAPI ch_do_move_str(char const* str)
     ch_do_move(convert_move(str));
 }
 
+int CHAPI ch_move_fr_sq(ch_move mv)
+{
+    return ch::move(mv).from();
+}
+
+int CHAPI ch_move_to_sq(ch_move mv)
+{
+    return ch::move(mv).to();
+}
+
+int CHAPI ch_num_moves()
+{
+    return g_moves.size();
+}
+
+ch_move CHAPI ch_get_move(int n)
+{
+    if(n < 0 || n >= g_moves.size()) return ch::NULL_MOVE;
+    return g_moves[n];
+}
+
 int CHAPI ch_evaluate(void)
 {
     using namespace ch;
-#if CH_ENABLE_AVX
-    if(has_avx())
-        return evaluator<ACCEL_AVX>::evaluate(g_pos, g_pos.current_turn);
-    else
-#endif
-#if CH_ENABLE_SSE
-    if(has_sse())
-        return evaluator<ACCEL_SSE>::evaluate(g_pos, g_pos.current_turn);
-    else
-#endif
-#if CH_ENABLE_UNACCEL
-        return evaluator<ACCEL_UNACCEL>::evaluate(g_pos, g_pos.current_turn);
-#else
-        return 0;
-#endif
+    evaluator<ACCEL_UNACCEL> e;
+    return e.evaluate(g_pos, g_pos.current_turn);
 }
 
 void CHAPI ch_search(ch_search_limits const* limits)
@@ -342,6 +352,12 @@ char const* CHAPI ch_extended_algebraic(uint32_t m)
     return ch::move(m).extended_algebraic();
 }
 
+int CHAPI ch_get_piece_at(int sq)
+{
+    if(sq < 0 || sq >= 64) return ch::EMPTY;
+    return int(g_pos.pieces[sq]);
+}
+
 uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 {
 #if CH_ENABLE_HASH_PERFT
@@ -362,6 +378,28 @@ uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 #else
         return 0ull;
 #endif
+}
+
+int CHAPI ch_is_draw(void)
+{
+    if(g_pos.is_draw_by_insufficient_material()) return true;
+    if(!g_pos.in_check && g_moves.empty()) return true;
+    return false;
+}
+
+int CHAPI ch_is_checkmate(int* side)
+{
+    if(g_pos.in_check && g_moves.empty())
+    {
+        if(side) *side = g_pos.current_turn;
+        return true;
+    }
+    return false;
+}
+
+int CHAPI ch_current_turn(void)
+{
+    return g_pos.current_turn;
 }
 
 int CHAPI ch_see(char const* mvstr)

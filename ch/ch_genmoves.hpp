@@ -17,7 +17,7 @@ struct move_generator
     static int generate(move* mvs, position& p);
 };
 #else
-template<acceleration accel>
+template<acceleration accel, bool quiescence = false>
 struct move_generator
 {
     static int generate(color c, move* mvs, position& p);

@@ -16,7 +16,6 @@ static std::chrono::steady_clock::time_point start_time;
 
 static uint32_t get_ms(void)
 {
-    //return clock() * 1000 / CLOCKS_PER_SEC;
     return (uint32_t)std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start_time).count();
 }
@@ -43,9 +42,9 @@ static void search_info(
         << " seldepth " << seldepth
         << " time " << mstime;
     std::cout << " score ";
-    if(CH_MATE_SCORE - score < 256)
+    if(CH_MATE_SCORE - score <= 256)
         std::cout << "mate " << (CH_MATE_SCORE - score + 1) / 2;
-    else if(CH_MATED_SCORE - score > -256)
+    else if(CH_MATED_SCORE - score >= -256)
         std::cout << "mate " << (CH_MATED_SCORE - score - 1) / 2;
     else
         std::cout << "cp " << score;
@@ -110,7 +109,7 @@ static void set_hash_mem(int megabytes)
     ch_set_hash(hash_mem, mpow);
 }
 
-int main(void)
+int __cdecl main(void)
 {
     hash_mem = NULL;
     ch_init(&SYSINF);

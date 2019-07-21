@@ -4,7 +4,7 @@
 
 #include <stdio.h>
 
-extern "C" __attribute__((visibility("default"))) void start(void)
+__attribute__((visibility("default"))) void start(void)
 {
     ch_system_info info = { 0 };
     ch_init(&info);

@@ -32,15 +32,18 @@ struct position
     struct CH_ALIGN(16) stack_node
     {
         uint64_t hash;
-        uint64_t UNUSED1;
+        uint32_t UNUSED1;
         move prev_move;
-        uint16_t UNUSED2;
+        int16_t piece_vals[2]; // white and black
+        int16_t piece_sq[2]; // middle and end game
         uint16_t ply_irreversible;
-        int16_t piece_vals[2];
-        int16_t cap_piece;
+        uint16_t UNUSED2;
+        uint8_t cap_piece;
         uint8_t ep_sq;
         uint8_t castling_rights;
+        uint8_t UNUSED3;
     };
+    static_assert(sizeof(stack_node) == 32, "");
     std::array<stack_node, STACK_SIZE> stack_data;
     int stack_index;
     stack_node& stack() { return stack_data[stack_index]; }
@@ -80,6 +83,34 @@ struct position
         return count;
     }
 
+    CH_FORCEINLINE void update_piece_sq(int pc, int from, int to)
+    {
+        auto* v = stack().piece_sq;
+        v[0] -= piece_tables[0][pc][from];
+        v[0] += piece_tables[0][pc][to];
+        v[1] -= piece_tables[1][pc][from];
+        v[1] += piece_tables[1][pc][to];
+    }
+
+    CH_FORCEINLINE void update_piece_sq_cap(int cap, int from)
+    {
+        auto* v = stack().piece_sq;
+        v[0] -= piece_tables[0][cap][from];
+        v[1] -= piece_tables[1][cap][from];
+    }
+
+    CH_FORCEINLINE int best_case_move_value() const
+    {
+        int v = PIECE_VALUES[PAWN];
+        color ec = opposite(current_turn);
+        for(int pc = ec + QUEEN; ec > BLACK + PAWN; pc -= 2)
+            if(bbs[pc]) { v = PIECE_VALUES[pc]; break; }
+        uint64_t const pro_rank = current_turn == WHITE ? RANK7 : RANK2;
+        if(bbs[ec + PAWN] & pro_rank)
+            v += PIECE_VALUES[QUEEN] - PIECE_VALUES[PAWN];
+        return v;
+    }
+
     color current_turn;
 
     void new_game();
@@ -114,24 +145,48 @@ struct position
         return mv.is_promotion() || move_is_geq_capture(mv);
     }
 
+    template<color c>
+    CH_FORCEINLINE bool is_draw_by_insufficient_material_helper() const
+    {
+        int mv = stack().piece_vals[c];
+        int ev = stack().piece_vals[opposite(c)];
+        if(mv == 0)
+        {
+            if(ev < PIECE_VALUES[ROOK])
+                return true;
+        }
+        return false;
+    }
+
     CH_FORCEINLINE bool is_draw_by_insufficient_material() const
     {
         if((bbs[WHITE + PAWN] | bbs[BLACK + PAWN]) != 0)
             return false;
-        auto const& v = stack().piece_vals;
-        if(v[0] == 0)
-            return v[1] < PIECE_VALUES[ROOK];
-        else if(v[1] == 0)
-            return v[0] < PIECE_VALUES[ROOK];
-        return false;
+        if(stack().piece_vals[WHITE] <= PIECE_VALUES[BISHOP] &&
+            stack().piece_vals[WHITE] == stack().piece_vals[BLACK])
+            return true;
+        return
+            is_draw_by_insufficient_material_helper<WHITE>() ||
+            is_draw_by_insufficient_material_helper<BLACK>();
     }
 
-#if CH_COLOR_TEMPLATE
-    template<color c>
-    CH_FORCEINLINE bool has_piece_better_than_pawn() const
-#else
+    CH_FORCEINLINE int mate_by_material(color c) const
+    {
+        color ec = opposite(c);
+        if(stack().piece_vals[c] == 0)
+        {
+            if(bbs[ec + ROOK]) return -1;
+            if(bbs[ec + QUEEN]) return -1;
+        }
+        if(stack().piece_vals[ec] == 0)
+        {
+            if(bbs[c + ROOK]) return 1;
+            if(bbs[c + QUEEN]) return 1;
+        }
+        return 0;
+    }
+
     CH_FORCEINLINE bool has_piece_better_than_pawn(color c) const
-#endif
     {
         return (
             bbs[c + KNIGHT] |
@@ -167,6 +222,8 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     stack().cap_piece = EMPTY;
     stack().prev_move = NULL_MOVE;
     stack().ply_irreversible = 0;
+    stack().piece_sq[0] = stack().piece_sq[1] = 0;
+    stack().piece_vals[0] = stack().piece_vals[1] = 0;
     uint64_t& hash = stack().hash;
     hash = 0ull;
 
@@ -184,6 +241,8 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     hash ^= hashes[p_][i]; \
     m <<= 1; ++i; \
     stack().piece_vals[p_ & 1] += PIECE_VALUES[p_]; \
+    stack().piece_sq[0] += piece_tables[0][p_][i]; \
+    stack().piece_sq[1] += piece_tables[1][p_][i]; \
     } while(0)
             switch(c)
             {
@@ -340,7 +399,7 @@ void position::do_move(move const& mv)
     assert(cap != WHITE + KING && cap != BLACK + KING);
 
     auto& st = stack_push();
-    st.cap_piece = int16_t(cap);
+    st.cap_piece = uint8_t(cap);
     st.prev_move = mv;
 
     hash_history[ply] = uint32_t(st.hash);
@@ -380,6 +439,7 @@ void position::do_move(move const& mv)
             pieces[a - 1] = uint8_t(rook);
             pieces[a - 4] = EMPTY;
             st.hash ^= (hashes[rook][a - 1] ^ hashes[rook][a - 4]);
+            update_piece_sq(rook, a - 4, a - 1);
         }
         else if(mv.is_castlek())
         {
@@ -388,6 +448,7 @@ void position::do_move(move const& mv)
             pieces[a + 1] = uint8_t(rook);
             pieces[a + 3] = EMPTY;
             st.hash ^= (hashes[rook][a + 1] ^ hashes[rook][a + 3]);
+            update_piece_sq(rook, a + 3, a + 1);
         }
         else if(mv.is_en_passant())
         {
@@ -397,6 +458,8 @@ void position::do_move(move const& mv)
             pieces[sq] = EMPTY;
             st.hash ^= hashes[st.cap_piece][sq];
             enemy_vals -= PIECE_VALUES[PAWN];
+            st.piece_sq[0] -= piece_tables[0][st.cap_piece][sq];
+            st.piece_sq[1] -= piece_tables[1][st.cap_piece][sq];
         }
         else if(mv.is_promotion())
         {
@@ -413,6 +476,14 @@ void position::do_move(move const& mv)
                 );
             my_vals += PIECE_VALUES[t] - PIECE_VALUES[PAWN];
             enemy_vals -= PIECE_VALUES[cap];
+
+            st.piece_sq[0] -= piece_tables[0][p][a];
+            st.piece_sq[0] += piece_tables[0][t][b];
+            st.piece_sq[0] -= piece_tables[0][cap][b];
+            st.piece_sq[1] -= piece_tables[1][p][a];
+            st.piece_sq[1] += piece_tables[1][t][b];
+            st.piece_sq[1] -= piece_tables[1][cap][b];
+
             st.ply_irreversible = uint16_t(ply);
             return;
         }
@@ -424,6 +495,8 @@ void position::do_move(move const& mv)
     pieces[b] = uint8_t(p);
 
     enemy_vals -= PIECE_VALUES[cap];
+    update_piece_sq(p, a, b);
+    update_piece_sq_cap(cap, b);
 
     // pawn move or capture
     if(cap != EMPTY || p < KNIGHT)
