@@ -249,7 +249,7 @@ static FORCEINLINE void run(void)
 
     ch_search_limits limits =
     {
-        0, 300, 0, 0
+        0, 100, 0, 0
     };
 
     ch_init(&info);
@@ -258,7 +258,7 @@ static FORCEINLINE void run(void)
 
     thread_create(&thrd, thread_func, NULL);
 
-    ishuman[0] = 1;
+    ishuman[0] = 0;
     ishuman[1] = 0;
     bestmv = 0;
     prevmv = 0;

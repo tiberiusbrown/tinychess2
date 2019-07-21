@@ -85,39 +85,6 @@ static string convert_name(char const* name)
     return r;
 }
 
-struct vec3 { float x, y, z; };
-static void load_obj(
-    char const* filename,
-    vector<vec3>& vertices,
-    vector<int>& indices)
-{
-    ifstream f(filename);
-    char c;
-    vec3 v;
-    int i0, i1, i2;
-    string dummy;
-    while(!f.eof())
-    {
-        f >> c;
-        if(c == 'v')
-        {
-            f >> v.x >> v.y >> v.z;
-            vertices.push_back(v);
-        }
-        else if(c == 'f')
-        {
-            f >> i0 >> i1 >> i2;
-            indices.push_back(i0);
-            indices.push_back(i1);
-            indices.push_back(i2);
-        }
-        else
-        {
-            getline(f, dummy);
-        }
-    }
-}
-
 template<class T> T clamp(T x, T a, T b)
 {
     return x < a ? a : x > b ? b : x;
@@ -164,7 +131,7 @@ static void load_alldata(
 
 struct
 {
-    typedef std::pair<char, int> T;
+    typedef std::pair<int, int> T;
     bool operator()(T const& a, T const& b) const
     {
         return a.second < b.second ||
@@ -211,7 +178,7 @@ int main(int argc, char** argv)
     for(int i = 1, j = 0; i < (int)uncompressed_data.size(); ++i)
     {
         bool found = false;
-        int length, offset;
+        int length, offset = 0;
         int lengthmax = min((1 << COMPRESS_LENGTH_BITS) - 1, i - 2);
 
         while(i > offsets[j] + sizes[j])

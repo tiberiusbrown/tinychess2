@@ -383,6 +383,7 @@ uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 int CHAPI ch_is_draw(void)
 {
     if(g_pos.is_draw_by_insufficient_material()) return true;
+    if(g_pos.repetition_count() >= 3) return true;
     if(!g_pos.in_check && g_moves.empty()) return true;
     return false;
 }
