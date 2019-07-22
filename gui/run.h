@@ -168,7 +168,7 @@ static void draw_piece(int pc, int x, int y)
         {
             uint32_t di = (d >> (c * 2)) & 0x3;
             if(!di) continue;
-            set_pixel_safe(
+            set_pixel_safe_bounds(
                 c + x,
                 r + y,
                 COLOR_PIECES[col][di - 1]);

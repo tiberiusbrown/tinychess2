@@ -416,6 +416,13 @@ static void set_pixel_safe(int x, int y, pixel p)
         pixels[i] = p;
 }
 
+static void set_pixel_safe_bounds(int x, int y, pixel p)
+{
+    if(x < 0 || y < 0 || x >= FBW || y >= FBH)
+        return;
+    pixels[y * FBW + x] = p;
+}
+
 #define FORMAT_CONCAT3 (FORMAT_CONCAT4 + 2)
 #define FORMAT_CONCAT2 (FORMAT_CONCAT4 + 4)
 #define FORMAT_CONCAT1 (FORMAT_CONCAT4 + 6)
