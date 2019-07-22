@@ -349,6 +349,7 @@ template<acceleration accel> static int negamax(color c,
         return 0;
     }
 
+    if(height > 0)
     {
         int count = d.p.repetition_count();
         if(count >= 2)
@@ -361,6 +362,7 @@ template<acceleration accel> static int negamax(color c,
         return 0;
 
     // mate distance pruning
+    if(height > 0)
     {
         alpha = std::max(alpha, MATED_SCORE + height);
         beta = std::min(beta, MATE_SCORE - height);
@@ -393,7 +395,7 @@ template<acceleration accel> static int negamax(color c,
                     alpha = std::max<int>(alpha, v);
                 else if(i.flag == hash_info::UPPER)
                     beta = std::min<int>(beta, v);
-                if(alpha >= beta)
+                if(height > 0 && alpha >= beta)
                     return v;
             }
             hash_move = i.get_best();
@@ -580,14 +582,6 @@ template<acceleration accel> static int negamax(color c,
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
-
-        if(!quiet)
-        {
-            int x = d.p.mate_by_material(c);
-            if(x != 0) d.p.undo_move<accel>(mv);
-            if(x > 0) return MATE_SCORE - 256;
-            if(x < 0) return MATED_SCORE + 256;
-        }
 
         int reduction = 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION

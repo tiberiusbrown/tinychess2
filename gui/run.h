@@ -9,6 +9,9 @@
 #include "img.h"
 #include "text.h"
 #include "thread.h"
+
+#define ANIMATE_NUM_STEPS 10
+#define ANIMATE_STEP_MS 30
     
 static pixel const COLOR_BORDER = PIXEL_SHADE(50);
 
@@ -146,11 +149,11 @@ static void draw_board(void)
     }
 
     /* best move while ai is thinking */
-    if(thinking)
-    {
-        drawsqbox(ch_move_fr_sq(bestmv), COLOR_THINKING);
-        drawsqbox(ch_move_to_sq(bestmv), COLOR_THINKING);
-    }
+    //if(thinking)
+    //{
+    //    drawsqbox(ch_move_fr_sq(bestmv), COLOR_THINKING);
+    //    drawsqbox(ch_move_to_sq(bestmv), COLOR_THINKING);
+    //}
 }
 
 static void draw_piece(int pc, int x, int y)
@@ -173,7 +176,7 @@ static void draw_piece(int pc, int x, int y)
     }
 }
 
-static void draw_pieces(void)
+static void draw_pieces_without_selected(void)
 {
     int x, y;
 
@@ -189,6 +192,11 @@ static void draw_pieces(void)
             draw_piece(pc, x * 20 + 12, y * 20 + 12);
         }
     }
+}
+
+static void draw_pieces(void)
+{
+    draw_pieces_without_selected();
 
     /* selected piece */
     if(selpos >= 0 && selpos < 64)
@@ -237,6 +245,34 @@ static void thread_func(void* user)
     ch_thread_start();
 }
 
+static void animate_move(ch_move mv)
+{
+    /* animate piece moving */
+    int a = ch_move_fr_sq(mv);
+    int b = ch_move_to_sq(mv);
+    int n;
+    int pc = board[a / 8][a % 8];
+    int x1 = (a % 8) * 20 + 12;
+    int y1 = (a / 8) * 20 + 12;
+    int dx = (b % 8) * 20 + 12 - x1;
+    int dy = (b / 8) * 20 + 12 - y1;
+    for(n = 0; n < ANIMATE_NUM_STEPS; ++n)
+    {
+        delay_ms(ANIMATE_STEP_MS);
+        selpos = -1;
+        draw_board();
+        selpos = a;
+        draw_pieces_without_selected();
+        draw_piece(pc,
+            x1 + dx * n / ANIMATE_NUM_STEPS,
+            y1 + dy * n / ANIMATE_NUM_STEPS);
+        refresh();
+    }
+    delay_ms(ANIMATE_STEP_MS);
+    selpos = -1;
+    ch_do_move(mv);
+}
+
 static FORCEINLINE void run(void)
 {
     ch_system_info info =
@@ -258,7 +294,7 @@ static FORCEINLINE void run(void)
 
     thread_create(&thrd, thread_func, NULL);
 
-    ishuman[0] = 0;
+    ishuman[0] = 1;
     ishuman[1] = 0;
     bestmv = 0;
     prevmv = 0;
@@ -349,16 +385,17 @@ static FORCEINLINE void run(void)
             ch_search(&limits);
             while(thinking)
             {
-                delay_ms(20);
-                draw_board();
-                draw_pieces();
+                delay_ms(1);
+                //delay_ms(20);
+                //draw_board();
+                //draw_pieces();
                 //text(format("Nodes: %d", game.nodes + game.qnodes), 190, 20, TEXT_COLOR);
-                text(format("Depth: %d", cur_depth), 190, 30, TEXT_COLOR);
-                text(format("Score: %d", cur_score), 190, 40, TEXT_COLOR);
-                refresh();
+                //text(format("Depth: %d", cur_depth), 190, 30, TEXT_COLOR);
+                //text(format("Score: %d", cur_score), 190, 40, TEXT_COLOR);
+                //refresh();
             }
             prevmv = bestmv;
-            ch_do_move(bestmv);
+            animate_move(bestmv);
             update_board();
             draw_board();
             draw_pieces();

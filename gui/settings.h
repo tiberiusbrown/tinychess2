@@ -11,8 +11,8 @@ static struct settings
 
 static void settings_default(void)
 {
-    settings.ww = FBW * 1;
-    settings.wh = FBH * 1;
+    settings.ww = FBW * 4;
+    settings.wh = FBH * 4;
     settings.fullscreen = 0;
 }
 

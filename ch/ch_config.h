@@ -30,32 +30,6 @@ Move ordering by threatened piece:
     that the captured piece is in danger. So it is a good idea to
     move it away. 
 
-
-Probcut pruning in Ethereal:
-
-    // Step 10. Probcut Pruning. If we have a good capture that causes a cutoff
-    // with an adjusted beta value at a reduced search depth, we expect that it
-    // will cause a similar cutoff at this search depth, with a normal beta value
-    if (   !PvNode
-        &&  depth >= ProbCutDepth
-        &&  abs(beta) < MATE_IN_MAX
-        &&  eval + moveBestCaseValue(board) >= beta + ProbCutMargin) {
-
-        // Try tactical moves which maintain rBeta
-        rBeta = MIN(beta + ProbCutMargin, MATE - MAX_PLY - 1);
-        initNoisyMovePicker(&movePicker, thread, rBeta - eval);
-        while ((move = selectNextMove(&movePicker, board, 1)) != NONE_MOVE) {
-
-            // Perform a reduced depth verification search
-            if (!apply(thread, board, move, height)) continue;
-            value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, height+1);
-            revert(thread, board, move, height);
-
-            // Probcut failed high
-            if (value >= rBeta) return value;
-        }
-    }
-
 */
 
 // color is templated instead of passed as argument
