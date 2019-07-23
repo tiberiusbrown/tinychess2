@@ -11,7 +11,7 @@
 #include "thread.h"
 
 #define ANIMATE_NUM_STEPS 10
-#define ANIMATE_STEP_MS 30
+#define ANIMATE_STEP_MS 25
     
 static pixel const COLOR_BORDER = PIXEL_SHADE(50);
 
@@ -33,9 +33,10 @@ static int ishuman[2];
 static int board[8][8];
 
 static thread thrd;
+static int cur_turn;
 static int thinking;
 static int cur_depth;
-static int cur_score;
+static int cur_score[2];
 static uint64_t cur_nodes;
 
 static uint64_t hash_mem[(1 << 17) * 64];
@@ -228,7 +229,7 @@ static void search_info(
     (void)nps;
     (void)pvlen;
     cur_depth = depth;
-    cur_score = score;
+    cur_score[cur_turn] = score;
     cur_nodes = nodes;
     bestmv = pv[0];
 }
@@ -381,6 +382,7 @@ static FORCEINLINE void run(void)
         }
         else
         {
+            cur_turn = ch_current_turn();
             thinking = 1;
             ch_search(&limits);
             while(thinking)
