@@ -240,7 +240,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     pieces[i] = p_; \
     hash ^= hashes[p_][i]; \
     m <<= 1; ++i; \
-    stack().piece_vals[p_ & 1] += PIECE_VALUES[p_]; \
+    stack().piece_vals[(p_) & 1] += PIECE_VALUES[p_]; \
     stack().piece_sq[0] += piece_tables[0][p_][i]; \
     stack().piece_sq[1] += piece_tables[1][p_][i]; \
     } while(0)

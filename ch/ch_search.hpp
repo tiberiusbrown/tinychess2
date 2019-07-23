@@ -82,7 +82,9 @@ static CH_FORCEINLINE void order_moves(
     std::array<move, CH_NUM_KILLERS> const& killers)
 {
     move parent_move = d.p.stack().prev_move;
+#if CH_ENABLE_COUNTERMOVE_HEURISTIC
     move countermove = d.hh->get_countermove(parent_move);
+#endif
 
     for(move& mv : mvs)
     {
@@ -511,7 +513,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_IID
     // internal iterative deepening
-    if(hash_move == NULL && node_type != NODE_CUT && depth > 5)
+    if(hash_move == NULL_MOVE && node_type != NODE_CUT && depth > 5)
     {
 #if CH_COLOR_TEMPLATE
         negamax<c, accel>(
@@ -708,8 +710,6 @@ template<acceleration accel> static int negamax(color c,
             value <= MATED_SCORE + 256 ? value - height :
             value >= MATE_SCORE - 256 ? value + height :
             value);
-        if(i.value == MAX_SCORE || i.value == MIN_SCORE)
-            __debugbreak();
         if(value <= alpha_orig)
             i.flag = hash_info::UPPER;
         else if(value >= beta)

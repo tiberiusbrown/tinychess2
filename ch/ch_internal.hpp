@@ -198,7 +198,7 @@ CH_FORCEINLINE uint64_t pop_lsb_mask<ACCEL_AVX>(uint64_t& x)
 }
 
 template<acceleration accel>
-CH_FORCEINLINE static constexpr int popcnt(uint64_t x)
+CH_FORCEINLINE static int popcnt(uint64_t x)
 {
     constexpr uint64_t  m1 = 0x5555555555555555ull;
     constexpr uint64_t  m2 = 0x3333333333333333ull;
@@ -349,9 +349,9 @@ static CH_FORCEINLINE void memcpy32(void* dst, void const* src, int n)
 
 static CH_FORCEINLINE int div_nps_mstime(uint64_t a, int ms)
 {
-    static double const C1000 = 1000;
     int r;
 #if CH_ARCH_32BIT
+    static double const C1000 = 1000;
 #ifdef _MSC_VER
     __asm
     {

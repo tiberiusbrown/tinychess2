@@ -109,7 +109,11 @@ static void set_hash_mem(int megabytes)
     ch_set_hash(hash_mem, mpow);
 }
 
+#ifdef _MSC_VER
 int __cdecl main(void)
+#else
+int main(void)
+#endif
 {
     hash_mem = NULL;
     ch_init(&SYSINF);

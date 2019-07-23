@@ -35,7 +35,7 @@ static CH_FORCEINLINE int mobility_bonuses(color c, position const& p)
     int x = 0;
     uint64_t const diag = p.bbs[c + QUEEN] | p.bbs[c + BISHOP];
     uint64_t const orth = p.bbs[c + QUEEN] | p.bbs[c + ROOK];
-    uint64_t const cap = ~p.bb_alls[c];
+    //uint64_t const cap = ~p.bb_alls[c];
     uint64_t const empty = ~(p.bb_alls[WHITE] | p.bb_alls[BLACK]);
 
     uint64_t diag_moves =

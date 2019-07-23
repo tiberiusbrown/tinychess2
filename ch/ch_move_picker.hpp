@@ -58,6 +58,7 @@ struct move_picker
         case STAGE_HASH:
             if(index < num)
                 return mvs[index++];
+            // fallthrough
 
         case STAGE_PREP_WINNING_CAPTURES:
             // group all non-losing captures
@@ -83,6 +84,7 @@ struct move_picker
                 move_list::sort_descending());
             index = knum;
             stage = STAGE_WINNING_CAPTURES;
+            // fallthrough
 
         case STAGE_WINNING_CAPTURES:
             if(index < num)
@@ -100,6 +102,7 @@ struct move_picker
                     }
             }
             index = knum;
+            // fallthrough
 
         case STAGE_KILLERS:
             if(index < num)
@@ -126,16 +129,19 @@ struct move_picker
 #endif
             index = knum;
             stage = STAGE_QUIETS;
+            // fallthrough
 
         case STAGE_QUIETS:
             if(index < num)
                 return mvs[index++];
             stage = STAGE_LOSING_CAPTURES;
+            // fallthrough
 
         case STAGE_LOSING_CAPTURES:
             if(index < mvs.size())
                 return mvs[index++];
             stage = STAGE_DONE;
+            // fallthrough
 
         case STAGE_DONE:
         default:
