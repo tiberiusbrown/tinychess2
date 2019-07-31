@@ -246,7 +246,7 @@ static void my_memset(void* p, uint8_t x, int n)
 {
     uint8_t* i = (uint8_t*)p;
     if(!((intptr_t)p & 0x3) && !(n & 0x3))
-        return my_memzero32(p, n / 4);
+        return my_memset32(p, 0, n / 4);
     while(n-- > 0) *i++ = x;
 }
 #endif

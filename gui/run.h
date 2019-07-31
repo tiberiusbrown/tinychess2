@@ -129,16 +129,14 @@ static void draw_board(void)
     {
         for(n = 0; n < ch_num_moves(); ++n)
         {
-            int r, c, b;
+            int r, c;
             ch_move mv = ch_get_move(n);
             if(ch_move_fr_sq(mv) != selpos) continue;
             r = ch_move_to_sq(mv) / 8;
             c = ch_move_to_sq(mv) % 8;
-            b = (r + c) % 2;
             r = r * 20 + 10;
             c = c * 20 + 10;
             draw_box(c + 1, r + 1, c + 18, r + 18, COLOR_THINKING);
-            //draw_rect_unsafe(c, r, c + 19, r + 19, COLOR_LEGAL[b]);
         }
     }
 

@@ -2,6 +2,10 @@
 
 #ifdef _MSC_VER
 #include <intrin.h>
+#define CH_CPUID(d_, n_) __cpuid(d_, n_)
+#else
+#include <cpuid.h>
+#define CH_CPUID(d_, n_) __cpuid(n_, d_[0], d_[1], d_[2], d_[3])
 #endif
 
 #include "ch_internal.hpp"
@@ -14,14 +18,13 @@ static bool has_avx_;
 
 CH_OPT_SIZE static void init_cpuid()
 {
-#ifdef _MSC_VER
     int n, data[4];
     has_sse_ = false;
     has_avx_ = false;
-    __cpuid(data, 0);
+    CH_CPUID(data, 0);
     n = data[0];
     if(n < 1) return;
-    __cpuid(data, 1);
+    CH_CPUID(data, 1);
     has_sse_ = (data[3] & (1 << 26)) != 0; // SSE2
     has_sse_ &= (data[2] & (1 << 9)) != 0; // SSSE3
     has_sse_ &= (data[2] & (1 << 20)) != 0; // SSE4.2
@@ -32,19 +35,9 @@ CH_OPT_SIZE static void init_cpuid()
         has_avx_ = false;
         return;
     }
-    __cpuid(data, 7);
+    CH_CPUID(data, 7);
     has_avx_ &= (data[1] & (1 << 5)) != 0; // AVX2
     has_avx_ &= (data[1] & (1 << 3)) != 0; // BMI1
-#else
-    __builtin_cpu_init();
-    has_sse_ = __builtin_cpu_supports("sse2") &&
-        __builtin_cpu_supports("ssse3") &&
-        __builtin_cpu_supports("sse4.2") &&
-        __builtin_cpu_supports("popcnt");
-    has_avx_ = __builtin_cpu_supports("avx2") &&
-        __builtin_cpu_supports("popcnt") &&
-        __builtin_cpu_supports("bmi");
-#endif
 }
 
 #if CH_ENABLE_SSE && CH_ARCH_32BIT

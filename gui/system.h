@@ -225,6 +225,7 @@ static void* PROCS_THREAD[11] = { NULL };
 __asm__(".symver dlopen,dlopen@GLIBC_" GLIBC_VER);
 __asm__(".symver dlsym,dlsym@GLIBC_" GLIBC_VER);
 __asm__(".symver dlclose,dlclose@GLIBC_" GLIBC_VER);
+void* memmove(void* dest, const void* src, size_t count);
 #endif
 #include <dlfcn.h>
 
@@ -399,6 +400,24 @@ static void* PROCS_GL[18];
 #define FN_glEnable            ((PFN_glEnable           )PROCS_GL[15])
 #define FN_glViewport          ((PFN_glViewport         )PROCS_GL[16])
 #define FN_glClear             ((PFN_glClear            )PROCS_GL[17])
+#endif
+
+#if ENABLE_THREAD
+static void* hpthread;
+#include <pthread.h>
+DEFPROC(int, pthread_mutex_init, (pthread_mutex_t*, pthread_mutexattr_t const*));
+DEFPROC(int, pthread_mutex_destroy, (pthread_mutex_t*));
+DEFPROC(int, pthread_mutex_lock, (pthread_mutex_t*));
+DEFPROC(int, pthread_mutex_unlock, (pthread_mutex_t*));
+DEFPROC(int, pthread_create, (pthread_t*, pthread_attr_t const*, void*(*)(void*), void*));
+DEFPROC(int, pthread_join, (pthread_t, void**));
+static void* PROCS_THREAD[6];
+#define FN_pthread_mutex_init ((PFN_pthread_mutex_init)PROCS_THREAD[0])
+#define FN_pthread_mutex_destroy ((PFN_pthread_mutex_destroy)PROCS_THREAD[1])
+#define FN_pthread_mutex_lock ((PFN_pthread_mutex_lock)PROCS_THREAD[2])
+#define FN_pthread_mutex_unlock ((PFN_pthread_mutex_unlock)PROCS_THREAD[3])
+#define FN_pthread_create ((PFN_pthread_create)PROCS_THREAD[4])
+#define FN_pthread_join ((PFN_pthread_join)PROCS_THREAD[5])
 #endif
 
 #if ENABLE_XSHM

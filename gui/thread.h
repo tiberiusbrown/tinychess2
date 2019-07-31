@@ -20,9 +20,10 @@ typedef struct
     mutex m;
 } cond;
 #else
+#include <pthread.h>
 typedef pthread_mutex_t mutex;
 typedef pthread_t systhread;
-typedef pthread_cont_t cond;
+typedef pthread_cond_t cond;
 #endif
 
 typedef struct
@@ -39,7 +40,11 @@ static int threading_avail = 0;
 /* called by entry function */
 static void init_threading(void)
 {
-    threading_avail = load_procs(kernel32, PROCS_THREAD, PROCNAMES_THREAD);
+#if defined(_WIN32)
+    threading_avail = load_procs(pthread, PROCS_THREAD, PROCNAMES_THREAD);
+#else
+    threading_avail = load_procs(hpthread, PROCS_THREAD, PROCNAMES_THREAD);
+#endif
 }
 
 static void mutex_create(mutex* m)
@@ -47,7 +52,9 @@ static void mutex_create(mutex* m)
 #if defined(_WIN32)
     FN_InitializeCriticalSection(m);
 #else
-    pthread_mutex_init(m, NULL);
+    //FN_pthread_mutex_init(m, NULL);
+    mutex t = PTHREAD_MUTEX_INITIALIZER;
+    *m = t;
 #endif
 }
 
@@ -56,7 +63,8 @@ static void mutex_destroy(mutex* m)
 #if defined(_WIN32)
     FN_DeleteCriticalSection(m);
 #else
-    pthread_mutex_destroy(m);
+    //FN_pthread_mutex_destroy(m);
+    (void)m;
 #endif
 }
 
@@ -65,7 +73,7 @@ static void mutex_lock(mutex* m)
 #if defined(_WIN32)
     FN_EnterCriticalSection(m);
 #else
-    pthread_mutex_lock(m);
+    FN_pthread_mutex_lock(m);
 #endif
 }
 
@@ -74,7 +82,7 @@ static void mutex_unlock(mutex* m)
 #if defined(_WIN32)
     FN_LeaveCriticalSection(m);
 #else
-    pthread_mutex_unlock(m);
+    FN_pthread_mutex_unlock(m);
 #endif
 }
 
@@ -101,7 +109,7 @@ static void thread_create(thread* t, threadfunc f, void* u)
 #if defined(_WIN32)
     t->t = FN_CreateThread(NULL, 0, thread_func_helper, (LPVOID)t, 0, NULL);
 #else
-    pthread_create(&t->t, NULL, thread_func_helper, (void*)t);
+    FN_pthread_create(&t->t, NULL, thread_func_helper, (void*)t);
 #endif
 }
 
@@ -112,7 +120,7 @@ static void thread_join(thread* t)
     FN_CloseHandle(t->t);
 #else
     void* pres;
-    pthread_join(t->t, &pres);
+    FN_pthread_join(t->t, &pres);
 #endif
     mutex_destroy(&t->mtx);
 }
@@ -131,78 +139,8 @@ static void thread_yield(void)
 #if defined(_WIN32)
     FN_Sleep(1);
 #else
-    sched_yield();
+    FN_usleep(1);
 #endif
-}
-
-static void cond_create(cond* c)
-{
-#if defined(_WIN32)
-    c->waiters = 0;
-    mutex_create(&c->m);
-    c->events[0] = FN_CreateEventA(NULL, FALSE, FALSE, NULL);
-    c->events[1] = FN_CreateEventA(NULL, TRUE, FALSE, NULL);
-#else
-    pthread_cond_init(cond, NULL);
-#endif
-}
-
-static void cond_destroy(cond* c)
-{
-#if defined(_WIN32)
-    FN_CloseHandle(c->events[0]);
-    FN_CloseHandle(c->events[1]);
-    mutex_destroy(&c->m);
-#else
-    othread_cond_destroy(c);
-#endif
-}
-
-static void cond_one(cond* c)
-{
-#if defined(_WIN32)
-    int has_waiters;
-    mutex_lock(&c->m);
-    has_waiters = (c->waiters > 0);
-    mutex_unlock(&c->m);
-    if(has_waiters)
-        FN_SetEvent(c->events[0]);
-#else
-    pthread_cond_signal(c);
-#endif
-}
-
-static void cond_all(cond* c)
-{
-#if defined(_WIN32)
-    int has_waiters;
-    mutex_lock(&c->m);
-    has_waiters = (c->waiters > 0);
-    mutex_unlock(&c->m);
-    if(has_waiters)
-        FN_SetEvent(c->events[1]);
-#else
-    pthread_cond_broadcast(c);
-#endif
-}
-
-static void cond_wait(cond* c)
-{
-    DWORD r;
-    int last;
-
-    mutex_lock(&c->m);
-    ++c->waiters;
-    mutex_unlock(&c->m);
-
-    r = FN_WaitForMultipleObjects(2, c->events, FALSE, INFINITE);
-
-    mutex_lock(&c->m);
-    --c->waiters;
-    last = (r == (WAIT_OBJECT_0 + 1)) && (c->waiters == 0);
-    mutex_unlock(&c->m);
-
-    if(last) FN_ResetEvent(c->events[1]);
 }
 
 #endif

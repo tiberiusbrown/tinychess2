@@ -3,7 +3,7 @@
 #include "system.h"
 
 #include "common.h"
-#include "text7x8.h"
+#include "text.h"
 #include "data.h"
 #include "run.h"
 #include "settings.h"
@@ -11,11 +11,11 @@
 
 #include <ALLDATA_COMPRESSED.h>
 
-static void* hx11 = NULL;
-static void* hc = NULL;
+static void* hx11;
+static void* hc;
 
 #if ENABLE_OPENGL
-static void* hgl = NULL;
+static void* hgl;
 static int support_opengl;
 static int using_opengl;
 static GLXContext glc;
@@ -23,13 +23,13 @@ static GLuint gltex;
 #endif
 
 #if ENABLE_XSHM
-static void* hxext = NULL;
+static void* hxext;
 static int support_xshm;
 static int using_xshm;
 static XShmSegmentInfo shminfo;
 #endif
 
-static Display* display = NULL;
+static Display* display;
 static Window   window;
 static GC gc;
 static XGCValues gcv;
@@ -42,7 +42,7 @@ static int r_preshift;
 static int g_preshift;
 static int b_preshift;
 static uint32_t alpha_mask;
-static XImage* image = NULL;
+static XImage* image;
 static char* putpixel_ptr;
 
 static Atom wm_protocols;
@@ -434,11 +434,16 @@ static int create_opengl_window(void)
 }
 #endif
 
-static void update_ms(void)
+uint32_t get_ms(void)
 {
     struct timeval tv;
     FN_gettimeofday(&tv, NULL);
-    ms = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+static void update_ms(void)
+{
+    ms = get_ms();
 }
 
 static void shutdown(int code)
@@ -477,23 +482,36 @@ static void shutdown(int code)
     }
 
 #if ENABLE_DLCLOSE
+
     if(hx11) dlclose(hx11);
 
 #if ENABLE_OPENGL
     if(hgl) dlclose(hgl);
 #endif
+
+#if ENABLE_THREAD
+    if(hpthread) dlclose(hpthread);
+#endif
+
 #endif
 
     FN_exit(code);
 }
 
-void __attribute__((externally_visible)) start(void)
-{   
+#ifndef NDEBUG
+int main(int argc, char** argv)
+{
+    (void)argc;
+    (void)argv;
+#else
+void __attribute__((force_align_arg_pointer, externally_visible)) start(void)
+{
+#endif
     uncompress_data();
     settings_init();
 
-    ww = FBW * wscale;
-    wh = FBH * wscale;
+    ww = settings.ww;
+    wh = settings.wh;
 
     /* do this first to load exit */
     hc = dlopen((char const*)LIBC_SO, RTLD_NOW);
@@ -508,15 +526,12 @@ void __attribute__((externally_visible)) start(void)
     if(!load_procs(hx11, PROCS_X11, (char const*)PROCNAMES_X11))
         shutdown(-1);
 
-    {
-        struct timeval tv;
-        struct timezone tz;
-        FN_gettimeofday(&tv, &tz);
-        random_seed[0] = (uint32_t)tv.tv_usec + 0xcafebabe;
-        random_seed[1] = (uint32_t)tv.tv_sec;
-        random_seed[2] = (uint32_t)tz.tz_minuteswest;
-        random_seed[3] = (uint32_t)tz.tz_dsttime;
-    }
+#if ENABLE_THREAD
+    hpthread = dlopen(LIBPTHREAD_SO, RTLD_NOW);
+    if(!hpthread) shutdown(-1);
+    init_threading();
+    if(!threading_avail) shutdown(-1);
+#endif
 
 #if ENABLE_OPENGL
     support_opengl = 1;
@@ -574,6 +589,10 @@ void __attribute__((externally_visible)) start(void)
     run();
 
     shutdown(0);
+
+#ifndef NDEBUG
+    return 0;
+#endif
 }
 
 static int prev_mouse_x = INT32_MIN;
@@ -708,6 +727,36 @@ static int wait_for_input_timeout(input* i, int* timeout_ms)
     shutdown(0);
     return 0;
 }
+
+void* memmove(void* dest, const void* src, size_t count)
+{
+    signed char operation;
+    size_t end;
+    size_t current;
+
+    if(dest != src)
+    {
+        if(dest < src)
+        {
+            operation = 1;
+            current = 0;
+            end = count;
+        }
+        else
+        {
+            operation = -1;
+            current = count - 1;
+            end = (size_t)(-1);
+        }
+
+        for(; current != end; current += operation)
+        {
+            *(((unsigned char*)dest) + current) = *(((unsigned char*)src) + current);
+        }
+    }
+    return dest;
+}
+
 
 #else
 typedef int avoid_unused_translation_unit;

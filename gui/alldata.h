@@ -169,6 +169,9 @@ static struct datadecl const ALLDATA[] =
 #endif
     STR_DATA_NAME(LIBX11_SO, char, "libX11.so.6"),
     STR_DATA_NAME(LIBC_SO, char, "libc.so.6"),
+#if ENABLE_THREAD
+    STR_DATA_NAME(LIBPTHREAD_SO, char, "libpthread.so.0"),
+#endif
 #if ENABLE_OPENGL
     STR_DATA_NAME(LIBGL_SO, char, "libGL.so.1"),
     STR_DATA_NAME(PROCNAME_GLXGETPROCADDRESSARB, char, "glXGetProcAddressARB"),
@@ -194,6 +197,16 @@ static struct datadecl const ALLDATA[] =
         "glEnable"            "\0"
         "glViewport"          "\0"
         "glClear"             "\0"
+    ),
+#endif
+#if ENABLE_THREAD
+    STR_DATA_NAME(PROCNAMES_THREAD, char,
+        "pthread_mutex_init" "\0"
+        "pthread_mutex_destroy" "\0"
+        "pthread_mutex_lock" "\0"
+        "pthread_mutex_unlock" "\0"
+        "pthread_create" "\0"
+        "pthread_join" "\0"
     ),
 #endif
     STR_DATA_NAME(ATOM_WM_PROTOCOLS, char, "WM_PROTOCOLS"),
