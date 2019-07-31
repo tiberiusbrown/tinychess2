@@ -313,6 +313,7 @@ static FORCEINLINE void run(void)
                 text("Checkmate", 190, 10, TEXT_COLOR);
             else
                 text("Stalemate", 190, 10, TEXT_COLOR);
+            refresh();
             for(;;) wait_for_input(&i);
         }
 
