@@ -422,7 +422,8 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_PROBCUT_PRUNING
     // Ethereal-style Probcut
-    static constexpr int const PROBCUT_MARGIN = 100;
+    int const PROBCUT_MARGIN = d.p.stack().piece_vals[c] > 1000 ?
+        40 : 100;
     if(
         node_type != NODE_PV &&
         depth >= 5 &&
@@ -435,6 +436,7 @@ template<acceleration accel> static int negamax(color c,
         for(move mv : mvs)
         {
             int v;
+            d.mvstack[height] = mv;
             d.p.do_move<accel>(mv);
 #if CH_COLOR_TEMPLATE
             v = -negamax<opposite(c), accel>(
@@ -625,6 +627,17 @@ template<acceleration accel> static int negamax(color c,
 #endif
                 d, depth - reduction, -alpha - 1, -alpha, height + 1,
                 node_type == NODE_CUT ? NODE_ALL : NODE_CUT);
+            if(v > beta && reduction > 1)
+            {
+                // redo search without reduction if failed high
+#if CH_COLOR_TEMPLATE
+                v = -negamax<opposite(c), accel>(
+#else
+                v = -negamax<accel>(opposite(c),
+#endif
+                    d, depth - 1, -alpha - 1, -alpha, height + 1,
+                    node_type == NODE_CUT ? NODE_ALL : NODE_CUT);
+            }
             if((v > alpha && v < beta) ||
                 (node_type == NODE_PV && v == beta && beta == alpha + 1))
             {
