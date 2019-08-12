@@ -116,7 +116,7 @@ static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
     {
         uint64_t file_pawns = pawns & mask;
         if(more_than_one<accel>(file_pawns))
-            x += PASSED_PAWN_PENALTIES[i];
+            x += DOUBLED_PAWN_PENALTIES[i];
         mask <<= 1;
     }
     return x;

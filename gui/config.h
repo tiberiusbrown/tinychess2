@@ -31,15 +31,6 @@
 #define FBW 320
 #define FBH 180
 
-/* level dimensions */
-#define LEVEL_W 128
-#define LEVEL_H 64
-#define LEVEL_TILES (LEVEL_W * LEVEL_H)
-#define NUM_LEVELS 16
-
-/* allows fractional vision values */
-#define VISION_MULT 16
-
 #define ENABLE_RESIZE_SNAP 1
 #define RESIZE_SNAP_PIXELS 32
 

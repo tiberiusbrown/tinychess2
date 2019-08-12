@@ -51,6 +51,8 @@ extern "C" {
         // TODO: if remtime is nonzero, time management will be used
         int remtime;
         int inctime;
+
+        int mate_search; // disallow reductions
     } ch_search_limits;
 
     void CHAPI ch_init(ch_system_info const* info);
@@ -77,6 +79,12 @@ extern "C" {
     void CHAPI ch_do_move(ch_move m);
     // extended algebraic, e.g. e7f8q
     void CHAPI ch_do_move_str(char const* str);
+
+    ch_move CHAPI ch_last_move(void);
+    // returns the move undone, or 0 if no moves to undo
+    ch_move CHAPI ch_undo_move(void);
+    // returns the move redone, or 0 if no moves to redo
+    ch_move CHAPI ch_redo_move(void);
 
     int CHAPI ch_move_fr_sq(ch_move mv);
     int CHAPI ch_move_to_sq(ch_move mv);
@@ -116,13 +124,22 @@ extern "C" {
     // H1: sq = 63
     int CHAPI ch_get_piece_at(int sq);
 
+    // draw types
+    enum
+    {
+        CH_DRAW_NONE,
+        CH_DRAW_FIFTY_MOVE,
+        CH_DRAW_REPETITION,
+        CH_DRAW_MATERIAL,
+        CH_DRAW_STALEMATE,
+    };
     int CHAPI ch_is_draw(void);
 
-    enum { CH_WHITE, CH_BLACK };
+    // whether the side to move is in check
+    int CHAPI ch_is_check(void);
 
-    // if the game is in checkmate, side will be set to
-    // CH_WHITE (0) or CH_BLACK (1)
-    int CHAPI ch_is_checkmate(int* side);
+    // whether the side to move is in checkmate
+    int CHAPI ch_is_checkmate(void);
 
     // CH_WHITE (0) or CH_BLACK (1)
     int CHAPI ch_current_turn(void);

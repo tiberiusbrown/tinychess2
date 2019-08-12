@@ -12,7 +12,7 @@ static constexpr int const ROOK_MOBILITY_BONUS = 1;
 
 static constexpr int const PAWN_PROTECTOR_BONUS = 4;
 
-static constexpr int const PASSED_PAWN_PENALTIES[8] =
+static constexpr int const DOUBLED_PAWN_PENALTIES[8] =
 {
     10, 2, 5, 5, 5, 5, 2, 10,
 };
@@ -57,6 +57,18 @@ static constexpr int8_t const INIT_TABLE_PAWN[64] =
      5, -5, -10,   0,   0, -10, -5,  5,
      5, 10,  10, -20, -20,  10, 10,  5,
      0,  0,   0,   0,   0,   0,  0,  0,
+};
+
+static constexpr int8_t const INIT_TABLE_PAWN_EG[64] =
+{
+     0,  0,  0,  0,  0,  0,  0,  0,
+    90, 90, 90, 90, 90, 90, 90, 90,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    20, 20, 20, 20, 20, 20, 20, 20,
+     5,  5,  5,  5,  5,  5,  5,  5,
+     0,  0,  0,  0,  0,  0,  0,  0,
+    -5, -5, -5, -5, -5, -5, -5, -5,
+     0,  0,  0,  0,  0,  0,  0,  0,
 };
 
 static constexpr int8_t const INIT_TABLE_KNIGHT[64] =
@@ -174,13 +186,13 @@ static void init_evaluator()
     evaluator_init_table<true >(piece_tables[0][BLACK + KING  ], TABLE_KING_MG    );
     evaluator_init_table<false>(piece_tables[0][EMPTY         ], TABLE_ZERO       );
 
-    evaluator_init_table<false>(piece_tables[1][WHITE + PAWN  ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][WHITE + PAWN  ], INIT_TABLE_PAWN_EG);
     evaluator_init_table<false>(piece_tables[1][WHITE + KNIGHT], TABLE_ZERO       );
     evaluator_init_table<false>(piece_tables[1][WHITE + BISHOP], TABLE_ZERO       );
     evaluator_init_table<false>(piece_tables[1][WHITE + ROOK  ], TABLE_ZERO       );
     evaluator_init_table<false>(piece_tables[1][WHITE + QUEEN ], TABLE_ZERO       );
     evaluator_init_table<false>(piece_tables[1][WHITE + KING  ], TABLE_KING_EG    );
-    evaluator_init_table<true >(piece_tables[1][BLACK + PAWN  ], TABLE_ZERO       );
+    evaluator_init_table<true >(piece_tables[1][BLACK + PAWN  ], INIT_TABLE_PAWN_EG);
     evaluator_init_table<true >(piece_tables[1][BLACK + KNIGHT], TABLE_ZERO       );
     evaluator_init_table<true >(piece_tables[1][BLACK + BISHOP], TABLE_ZERO       );
     evaluator_init_table<true >(piece_tables[1][BLACK + ROOK  ], TABLE_ZERO       );

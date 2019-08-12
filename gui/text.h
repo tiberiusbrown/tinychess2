@@ -24,16 +24,16 @@ static void text_ex(
 )
 {
     char const* t = txt;
-    char c;
+    int c;
     font_character const* f;
     uint8_t fc;
     int ix, iy, xc = x;
     if(len == 0) len = INT32_MAX;
     *wc = NULL;
-    while((c = *t++) != '\0' && len-- > 0)
+    while((c = (unsigned char)(*t++)) != '\0' && len-- > 0)
     {
         c -= 32;
-        if((unsigned char)c > FONT_DATA_SIZE / sizeof(font_character))
+        if(c >= FONT_DATA_SIZE / sizeof(font_character))
             continue;
         f = &FONT_DATA[(int)c];
 

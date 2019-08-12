@@ -19,6 +19,7 @@ static ch::position g_pos;
 static ch::search_data g_sd[CH_MAX_THREADS];
 static ch::move_list g_moves;
 static ch::history_heuristic g_hh;
+static int g_redo_ply;
 
 // thread management
 static std::atomic_int g_num_threads;
@@ -189,12 +190,14 @@ void CHAPI ch_clear_caches(void)
 void CHAPI ch_new_game()
 {
     g_pos.new_game();
+    g_redo_ply = 0;
     update_moves();
 }
 
 void CHAPI ch_load_fen(char const* fen)
 {
     g_pos.load_fen(fen);
+    g_redo_ply = 0;
     update_moves();
 }
 
@@ -236,6 +239,7 @@ void CHAPI ch_do_move(ch_move m)
 
     g_pos.stack_reset();
     g_pos.age += 1;
+    g_redo_ply = g_pos.ply;
     update_moves();
 }
 
@@ -283,6 +287,30 @@ void CHAPI ch_do_move_str(char const* str)
     ch_do_move(convert_move(str));
 }
 
+ch_move CHAPI ch_last_move(void)
+{
+    if(g_pos.ply == 0) return ch::NULL_MOVE;
+    return g_pos.move_history[g_pos.ply - 1];
+}
+
+ch_move CHAPI ch_undo_move(void)
+{
+    int p = g_pos.ply - 1;
+    if(p < 0) return ch::NULL_MOVE;
+    ch_new_game();
+    for(int n = 0; n < p; ++n)
+        ch_do_move(g_pos.move_history[n]);
+    return g_pos.move_history[p];
+}
+
+ch_move CHAPI ch_redo_move(void)
+{
+    if(g_pos.ply >= g_redo_ply) return ch::NULL_MOVE;
+    ch::move mv = g_pos.move_history[g_pos.ply];
+    ch_do_move(mv);
+    return mv;
+}
+
 int CHAPI ch_move_fr_sq(ch_move mv)
 {
     return ch::move(mv).from();
@@ -315,6 +343,7 @@ void CHAPI ch_search(ch_search_limits const* limits)
 {
     uint32_t start_time = ch::get_ms();
     helper_stop_threads();
+    g_redo_ply = g_pos.ply;
 #if CH_ENABLE_HISTORY_HEURISTIC
     g_hh.clear();
 #endif
@@ -382,20 +411,22 @@ uint64_t CHAPI ch_perft(int depth, uint64_t counts[256])
 
 int CHAPI ch_is_draw(void)
 {
-    if(g_pos.is_draw_by_insufficient_material()) return true;
-    if(g_pos.repetition_count() >= 3) return true;
-    if(!g_pos.in_check && g_moves.empty()) return true;
-    return false;
+    if(g_pos.is_draw_by_insufficient_material()) return CH_DRAW_MATERIAL;
+    if(g_pos.repetition_count() >= 2) return CH_DRAW_REPETITION;
+    if(!g_pos.in_check && g_moves.empty()) return CH_DRAW_STALEMATE;
+    return CH_DRAW_NONE;
 }
 
-int CHAPI ch_is_checkmate(int* side)
+int CHAPI ch_is_check(void)
+{
+    return g_pos.in_check ? 1 : 0;
+}
+
+int CHAPI ch_is_checkmate()
 {
     if(g_pos.in_check && g_moves.empty())
-    {
-        if(side) *side = g_pos.current_turn;
-        return true;
-    }
-    return false;
+        return 1;
+    return 0;
 }
 
 int CHAPI ch_current_turn(void)

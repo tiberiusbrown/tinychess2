@@ -187,6 +187,13 @@ int main(void)
             if(contains(line, " movetime "))
                 limits.mstime = atoi(
                     line.c_str() + line.find(" movetime ", 0) + 10);
+            if(contains(line, " mate "))
+            {
+                limits.depth = clamp(atoi(
+                    line.c_str() + line.find(" mate ", 0) + 6), 1, 64);
+                limits.depth = limits.depth * 2 + 1;
+                limits.mate_search = 1;
+            }
             ch_search(&limits);
         }
         else if(startswith(line, "stop"))

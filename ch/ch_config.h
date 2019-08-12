@@ -36,13 +36,13 @@ Move ordering by threatened piece:
 #define CH_COLOR_TEMPLATE 0
 
 // enable SSE and AVX acceleration
-#define CH_ENABLE_ACCEL 0
+#define CH_ENABLE_ACCEL 1
 
 // disable forcing inline
-#define CH_NEVER_FORCE_INLINE 1
+#define CH_NEVER_FORCE_INLINE 0
 
 // never request inline
-#define CH_NEVER_REQUEST_INLINE 1
+#define CH_NEVER_REQUEST_INLINE 0
 
 // magic bitboards
 #define CH_ENABLE_MAGIC 1

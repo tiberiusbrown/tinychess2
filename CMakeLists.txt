@@ -143,19 +143,30 @@ endif()
 
 set(GUI_SOURCE_FILE)
 if(MSVC)
-    set(GUI_SOURCE_FILE gui/start_windows.c)
+    set(GUI_SOURCE_FILE
+        gui/start_windows.c
+        gui/icon.rc
+        )
 elseif(UNIX)
     set(GUI_SOURCE_FILE gui/start_linux.c)
 endif()
 add_executable(${PROJECT_NAME} ${EXETYPE}
     ${GUI_SOURCE_FILE}
+    gui/button.h
     gui/common.h
     gui/config.h
     gui/data.h
     gui/draw_helpers.h
     gui/font.h
     gui/format.h
+    gui/game_ai_move.h
+    gui/game_common.h
+    gui/game_draw.h
+    gui/game_play.h
+    gui/game_player_move.h
     gui/img.h
+    gui/main_menu.h
+    gui/messagebox.h
     gui/settings.h
     gui/start_common.h
     gui/system.h

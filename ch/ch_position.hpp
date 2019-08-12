@@ -70,6 +70,9 @@ struct position
     std::array<uint32_t, 6000> hash_history;
     int ply;
 
+    // move history
+    std::array<move, 6000> move_history;
+
     CH_FORCEINLINE int repetition_count() const
     {
         uint32_t h = uint32_t(hash());
@@ -156,6 +159,11 @@ struct position
                 return true;
         }
         return false;
+    }
+
+    CH_FORCEINLINE bool is_draw_by_fifty_move_rule() const
+    {
+        return ply >= stack().ply_irreversible + 100;
     }
 
     CH_FORCEINLINE bool is_draw_by_insufficient_material() const
@@ -366,17 +374,21 @@ static constexpr uint8_t const CASTLING_SPOILERS[64] =
 void position::do_null_move()
 {
     auto& st = stack_push();
+
+    hash_history[ply] = uint32_t(st.hash);
+    move_history[ply] = NULL_MOVE;
+    ++ply;
+
     st.cap_piece = EMPTY;
     st.prev_move = NULL_MOVE;
     st.hash ^= hash_turn;
-    st.ply_irreversible = 0;
+    st.ply_irreversible = uint16_t(ply);
     if(st.ep_sq)
     {
         st.hash ^= hash_enp[st.ep_sq & 7];
         st.ep_sq = 0;
     }
     current_turn = opposite(current_turn);
-    ++ply;
 }
 
 void position::undo_null_move()
@@ -403,6 +415,7 @@ void position::do_move(move const& mv)
     st.prev_move = mv;
 
     hash_history[ply] = uint32_t(st.hash);
+    move_history[ply] = mv;
     ++ply;
 
     auto& my_vals = st.piece_vals[p & 1];

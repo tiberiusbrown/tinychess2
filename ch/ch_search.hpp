@@ -353,15 +353,14 @@ template<acceleration accel> static int negamax(color c,
 
     if(height > 0)
     {
-        int count = d.p.repetition_count();
-        if(count >= 2)
+        if(d.p.is_draw_by_fifty_move_rule())
             return 0;
-        if(count >= 1 && height > 2)
+        int count = d.p.repetition_count();
+        if(count >= 1)
+            return 0;
+        if(d.p.is_draw_by_insufficient_material())
             return 0;
     }
-
-    if(d.p.is_draw_by_insufficient_material())
-        return 0;
 
     // mate distance pruning
     if(height > 0)
@@ -568,7 +567,10 @@ template<acceleration accel> static int negamax(color c,
 #endif
 
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-    bool const can_reduce = (node_type != NODE_PV && depth >= 6);
+    bool const can_reduce = (
+        node_type != NODE_PV &&
+        depth >= 6 &&
+        !d.limits.mate_search);
 #endif
 #if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)

@@ -41,7 +41,7 @@ static int threading_avail = 0;
 static void init_threading(void)
 {
 #if defined(_WIN32)
-    threading_avail = load_procs(pthread, PROCS_THREAD, PROCNAMES_THREAD);
+    threading_avail = load_procs(kernel32, PROCS_THREAD, PROCNAMES_THREAD);
 #else
     threading_avail = load_procs(hpthread, PROCS_THREAD, PROCNAMES_THREAD);
 #endif

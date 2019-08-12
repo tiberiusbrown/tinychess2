@@ -9,6 +9,9 @@ typedef struct font_character
     uint8_t width;
 } font_character;
 
+#define TEXT_ARROW_LEFT  "\x7f"
+#define TEXT_ARROW_RIGHT "\x80"
+
 #ifdef FONT_DEFINE_DATA
 #define DEFINE_CHARACTER_COL(n, x0, x1, x2, x3, x4, x5, x6, x7) ( \
     ((((x0 >> (4*n)) & 0xf) != 0 ? 1 : 0) << 0) | \
@@ -31,7 +34,7 @@ typedef struct font_character
     DEFINE_CHARACTER_COL(0, 0x##x0, 0x##x1, 0x##x2, 0x##x3, 0x##x4, 0x##x5, 0x##x6, 0x##x7), \
     wd }
 
-static font_character const FONT[126-32+1] =
+static font_character const FONT[] =
 {
     /* [SPACE] */
     DEFINE_CHARACTER(3,
@@ -1172,6 +1175,31 @@ static font_character const FONT[126-32+1] =
     0000000,
     0000000,
     ),
+
+    /* x7f: left arrow */
+    DEFINE_CHARACTER(8,
+    0001000,
+    0011000,
+    0111111,
+    1111111,
+    0111111,
+    0011000,
+    0001000,
+    0000000,
+    ),
+
+    /* x80: right arrow */
+    DEFINE_CHARACTER(8,
+    0001000,
+    0001100,
+    1111110,
+    1111111,
+    1111110,
+    0001100,
+    0001000,
+    0000000,
+    ),
+
 
 };
 
