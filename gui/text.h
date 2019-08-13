@@ -33,7 +33,7 @@ static void text_ex(
     while((c = (unsigned char)(*t++)) != '\0' && len-- > 0)
     {
         c -= 32;
-        if(c >= FONT_DATA_SIZE / sizeof(font_character))
+        if(c >= (int)(FONT_DATA_SIZE / sizeof(font_character)))
             continue;
         f = &FONT_DATA[(int)c];
 
