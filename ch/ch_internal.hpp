@@ -123,7 +123,7 @@ static constexpr int const NUM_BB = 13;
 
 static constexpr color opposite(color c)
 {
-    return color(BLACK - c);
+    return color(c ^ BLACK);
 };
 
 template<acceleration accel>

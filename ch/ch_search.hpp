@@ -718,7 +718,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_HASH
     // transposition table store
-    if(depth > 1)
+    if(!d.stop && depth > 1)
     {
         hash_info i;
         i.value = int16_t(

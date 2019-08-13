@@ -4,6 +4,7 @@
 #include "ch_internal.hpp"
 #include "ch_genmoves.hpp"
 #include "ch_hash.hpp"
+#include "ch_magic.hpp"
 #include "ch_move.hpp"
 #include "ch_move_list.hpp"
 
@@ -146,6 +147,37 @@ struct position
     CH_FORCEINLINE bool move_is_promotion_or_geq_capture(move mv) const
     {
         return mv.is_promotion() || move_is_geq_capture(mv);
+    }
+
+    CH_FORCEINLINE bool move_is_check(move mv) const
+    {
+        // TODO
+        int const ek = lsb<ACCEL_UNACCEL>(bbs[opposite(current_turn) + KING]);
+        uint64_t const d = (1ull << mv.to());
+        uint64_t const occ = bb_alls[WHITE] | bb_alls[BLACK];
+        switch(pieces[mv.from()])
+        {
+        case WHITE + PAWN:
+            return (masks[ek].pawn_attacks[BLACK] & d) != 0;
+        case BLACK + PAWN:
+            return (masks[ek].pawn_attacks[WHITE] & d) != 0;
+        case WHITE + KNIGHT:
+        case BLACK + KNIGHT:
+            return (masks[ek].knight_attacks & d) != 0;
+        case WHITE + BISHOP:
+        case BLACK + BISHOP:
+            return (magic_bishop_attacks(ek, occ) & d) != 0;
+        case WHITE + ROOK:
+        case BLACK + ROOK:
+            return (magic_rook_attacks(ek, occ) & d) != 0;
+        case WHITE + QUEEN:
+        case BLACK + QUEEN:
+            return ((magic_bishop_attacks(ek, occ) |
+                magic_rook_attacks(ek, occ)) & d) != 0;
+        default:
+            break;
+        }
+        return false;
     }
 
     template<color c>

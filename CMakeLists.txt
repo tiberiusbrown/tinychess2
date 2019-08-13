@@ -8,7 +8,7 @@ set(EXETYPE)
 
 if(MSVC)
     set(EXETYPE WIN32)
-    set(CMAKE_CXX_FLAGS "/W4 /MT /DWIN32 /D_WINDOWS /FAcs /Gy /Gs65536 /wd4127 /wd4505")
+    set(CMAKE_CXX_FLAGS "/W4 /MT /DWIN32 /D_WINDOWS /Gy /Gs65536 /wd4127 /wd4505")
     set(CMAKE_CXX_FLAGS_MINSIZEREL "/DNDEBUG /MT /O1 /Oi /Os /Oy /GS- /fp:fast /Gr")
     set(CMAKE_CXX_FLAGS_RELEASE "/DNDEBUG /MT /O2 /Oi /Ot /Oy /Ob2 /GS- /fp:fast /Gr")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} /DEBUG /Zi")
@@ -95,9 +95,13 @@ endif()
 
 file(GLOB CH_SOURCES "ch/*")
 add_library(ch STATIC ${CH_SOURCES} ${EDITORCONFIG})
+add_library(ch_minimal STATIC ${CH_SOURCES} ${EDITORCONFIG})
+target_compile_definitions(ch_minimal PRIVATE -DCH_MINIMAL_SIZE)
 if(UNIX)
     target_compile_options(ch PRIVATE -mssse3 -fno-tree-vectorize)
+    target_compile_options(ch_minimal PRIVATE -mssse3 -fno-tree-vectorize)
     target_link_libraries(ch gcc)
+    target_link_libraries(ch_minimal gcc)
 endif()
 
 add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
@@ -176,7 +180,7 @@ add_executable(${PROJECT_NAME} ${EXETYPE}
     "${ALLDATA_H}"
     ${EDITORCONFIG}
     )
-target_link_libraries(${PROJECT_NAME} ch)
+target_link_libraries(${PROJECT_NAME} ch_minimal)
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC "ch")
 target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_BINARY_DIR}")

@@ -33,7 +33,7 @@ Move ordering by threatened piece:
 */
 
 // color is templated instead of passed as argument
-#define CH_COLOR_TEMPLATE 0
+#define CH_COLOR_TEMPLATE 1
 
 // enable SSE and AVX acceleration
 #define CH_ENABLE_ACCEL 1
@@ -94,4 +94,16 @@ Move ordering by threatened piece:
 //#undef CH_ENABLE_MAGIC
 //#define CH_ENABLE_MAGIC 0
 //#endif
-//
+
+// override for minimum size
+#ifdef CH_MINIMAL_SIZE
+#undef CH_COLOR_TEMPLATE
+#undef CH_ENABLE_ACCEL
+#undef CH_NEVER_FORCE_INLINE
+#undef CH_NEVER_REQUEST_INLINE
+
+#define CH_COLOR_TEMPLATE 0
+#define CH_ENABLE_ACCEL 0
+#define CH_NEVER_FORCE_INLINE 1
+#define CH_NEVER_REQUEST_INLINE 1
+#endif
