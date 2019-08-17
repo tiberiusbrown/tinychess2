@@ -110,7 +110,7 @@ struct position
         for(int pc = ec + QUEEN; ec > BLACK + PAWN; pc -= 2)
             if(bbs[pc]) { v = PIECE_VALUES[pc]; break; }
         uint64_t const pro_rank = current_turn == WHITE ? RANK7 : RANK2;
-        if(bbs[ec + PAWN] & pro_rank)
+        if(bbs[current_turn + PAWN] & pro_rank)
             v += PIECE_VALUES[QUEEN] - PIECE_VALUES[PAWN];
         return v;
     }

@@ -455,10 +455,10 @@ template<acceleration accel> static int negamax(color c,
 #else
     mvs.generate<accel>(c, d.p);
 #endif
-    if(mvs.empty())
-        return d.p.in_check ? MATED_SCORE + height : 0;
 
     bool in_check = d.p.in_check;
+    if(mvs.empty())
+        return in_check ? MATED_SCORE + height : 0;
 
 #if CH_ENABLE_RAZORING
     if(height != 0)
@@ -487,7 +487,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_NULL_MOVE
     // null move pruning
-    if(!d.p.in_check && depth > 4 &&
+    if(!in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
         d.p.has_piece_better_than_pawn(c)
@@ -570,8 +570,11 @@ template<acceleration accel> static int negamax(color c,
     bool const can_reduce = (
         node_type != NODE_PV &&
         depth >= 6 &&
+        !in_check &&
         !d.limits.mate_search);
 #endif
+    if(in_check)
+        ++depth;
 #if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)
     {
