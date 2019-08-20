@@ -576,13 +576,6 @@ template<acceleration accel> static int negamax(color c,
                 d.hh->increment_bf(mv, hh_increment);
 #endif
 
-#if CH_ENABLE_LATE_MOVE_REDUCTION
-    bool const can_reduce = (
-        //node_type != NODE_PV &&
-        depth >= 6 &&
-        !in_check &&
-        !d.limits.mate_search);
-#endif
     if(in_check)
         ++depth;
 #if CH_ENABLE_MOVE_PICKER
@@ -603,14 +596,21 @@ template<acceleration accel> static int negamax(color c,
 #endif
         bool const quiet = !d.p.move_is_promotion_or_capture(mv);
         bool const check = d.p.move_is_check(mv);
+        bool const castle = mv.is_castle();
+
+        bool const dont_reduce = !quiet || in_check || check || castle;
+
+        int newdepth = depth;
+        if(castle)
+            ++newdepth;
 
 #if CH_ENABLE_FUTILITY_PRUNING
-        if(fprune && quiet && n > 0 && !check)
+        if(!dont_reduce && fprune && n > 0)
             continue;
 #endif
 
 #if CH_ENABLE_LATE_MOVE_PRUNING
-        if(depth <= 4 && quiet && !in_check && !check && n >= depth * 7)
+        if(!dont_reduce && newdepth <= 4 && n >= newdepth * 7)
             continue;
 #endif
 
@@ -619,23 +619,22 @@ template<acceleration accel> static int negamax(color c,
 
         int v = alpha + 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-        //if(can_reduce && quiet_or_losing && !d.p.move_is_check(mv))
-        if(depth >= 3 && n >= 4 && quiet && !in_check && !check)
+        if(!dont_reduce && newdepth >= 3 && n >= 4)
         {
             int reduction = 2;
-            if(n >= 6) reduction += depth / 3;
-            reduction = std::min(depth - 1, std::max(1, reduction));
+            if(n >= 6) reduction += newdepth / 3;
+            reduction = std::min(newdepth - 2, std::max(1, reduction));
 #if CH_COLOR_TEMPLATE
             v = -negamax<opposite(c), accel>(
 #else
             v = -negamax<accel>(opposite(c),
 #endif
-                d, depth - reduction, -alpha - 1, -alpha, height + 1);
+                d, newdepth - reduction, -alpha - 1, -alpha, height + 1);
 
         }
 #endif
 
-        if(depth <= 1)
+        if(newdepth <= 1)
         {
 #if CH_ENABLE_QUIESCENCE
             if(CH_QUIESCE_ON_QUIETS || !quiet)
@@ -645,7 +644,7 @@ template<acceleration accel> static int negamax(color c,
 #else
                 v = -quiesce<accel>(opposite(c),
 #endif
-                    d, depth - 1, -beta, -alpha, height + 1);
+                    d, newdepth - 1, -beta, -alpha, height + 1);
             }
             else
 #endif
@@ -662,7 +661,7 @@ template<acceleration accel> static int negamax(color c,
 #else
             value = std::max(value, -negamax<accel>(opposite(c),
 #endif
-                d, depth - 1, -beta, -alpha, height + 1));
+                d, newdepth - 1, -beta, -alpha, height + 1));
         }
         else
         {

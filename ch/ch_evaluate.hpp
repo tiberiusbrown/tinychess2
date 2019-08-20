@@ -160,21 +160,30 @@ struct evaluator
         return v = x;
     }
 
+    CH_FORCEINLINE int evaluate_second_side(position const& p, color c)
+    {
+        int x = 0;
+        x += mobility_bonuses<accel>(c, p);
+        x += pawn_protector_bonuses<accel>(c, p);
+        x += passed_pawn_penalties<accel>(c, p);
+        //x += king_safety_bonuses<accel>(c, p);
+        if(!p.bbs[c + PAWN])
+        {
+            int pv = p.stack().piece_vals[c];
+            if(pv <= PIECE_VALUES[BISHOP] ||
+                //pv == PIECE_VALUES[KNIGHT] + PIECE_VALUES[BISHOP] ||
+                0)
+                x /= 2;
+        }
+        return x;
+    }
+
     int evaluate_second(position const& p, color c)
     {
         int x = 0;
 
-        x += mobility_bonuses<accel>(WHITE, p);
-        x -= mobility_bonuses<accel>(BLACK, p);
-
-        x += pawn_protector_bonuses<accel>(WHITE, p);
-        x -= pawn_protector_bonuses<accel>(BLACK, p);
-
-        x += passed_pawn_penalties<accel>(WHITE, p);
-        x -= passed_pawn_penalties<accel>(BLACK, p);
-
-        //x += king_safety_bonuses<accel>(WHITE, p);
-        //x -= king_safety_bonuses<accel>(BLACK, p);
+        x += evaluate_second_side(p, WHITE);
+        x -= evaluate_second_side(p, BLACK);
 
         x = (c == WHITE ? x : -x);
 

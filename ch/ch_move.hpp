@@ -36,6 +36,7 @@ struct move
     constexpr bool is_special() const { return (d & 0x00FF0000) != 0; }
     constexpr bool is_castleq() const { return (d & MOVE_CASTLEQ) != 0; }
     constexpr bool is_castlek() const { return (d & MOVE_CASTLEK) != 0; }
+    constexpr bool is_castle() const { return (d & (MOVE_CASTLEK | MOVE_CASTLEQ)) != 0; }
     constexpr bool is_en_passant() const { return (d & MOVE_EN_PASSANT) != 0; }
     constexpr bool is_pawn_dmove() const { return (d & MOVE_PAWN_DMOVE) != 0; }
     constexpr bool is_promotion() const { return (d & MOVE_PROMOTION) != 0; }

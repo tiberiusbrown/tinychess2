@@ -2,8 +2,8 @@
 #define CONFIG_H
 
 /* LZSS config for embedded compressed data */
-#define COMPRESS_OFFSET_BITS 7
-#define COMPRESS_LENGTH_BITS 6
+#define COMPRESS_OFFSET_BITS 8
+#define COMPRESS_LENGTH_BITS 3
 
 #define ENABLE_RBUTTON 1
 #define ENABLE_MS 1
