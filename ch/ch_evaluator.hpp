@@ -17,6 +17,8 @@ static constexpr int const DOUBLED_PAWN_PENALTIES[8] =
     10, 2, 5, 5, 5, 5, 2, 10,
 };
 
+static constexpr int const KING_SAFETY_BONUS = 5;
+
 // piece values in centipawns
 static constexpr int16_t const PIECE_VALUES[13] =
 {

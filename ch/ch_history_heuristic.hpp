@@ -54,7 +54,7 @@ struct history_heuristic
         return num * HISTORY_HEURISTIC_SCALE / std::max(den, 1);
     }
 
-    CH_FORCEINLINE move get_countermove(move mv)
+    CH_FORCEINLINE move get_countermove(move mv) const
     {
         return move(uint32_t(cm[mv.from()][mv.to()]));
     }

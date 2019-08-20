@@ -123,6 +123,14 @@ static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
 }
 
 template<acceleration accel>
+static CH_FORCEINLINE int king_safety_bonuses(color c, position const& p)
+{
+    uint64_t t = masks[lsb<accel>(p.bbs[c + KING])].king_attacks;
+    t &= p.bb_alls[c];
+    return popcnt<accel>(t) * KING_SAFETY_BONUS;
+}
+
+template<acceleration accel>
 struct evaluator
 {
     int mg, eg, v;
@@ -164,6 +172,9 @@ struct evaluator
 
         x += passed_pawn_penalties<accel>(WHITE, p);
         x -= passed_pawn_penalties<accel>(BLACK, p);
+
+        //x += king_safety_bonuses<accel>(WHITE, p);
+        //x -= king_safety_bonuses<accel>(BLACK, p);
 
         x = (c == WHITE ? x : -x);
 

@@ -70,7 +70,7 @@ Move ordering by threatened piece:
 #define CH_ENABLE_QUIESCENCE 1
 #define CH_QUIESCE_ON_QUIETS 1
 
-#define CH_ENABLE_PVS 1
+#define CH_ENABLE_PVS 0
 
 // internal iterative deepening
 #define CH_ENABLE_IID 1
@@ -80,6 +80,8 @@ Move ordering by threatened piece:
 // causes delays in finding mates right now
 // also increases nodes sometimes! i think from hash behavior
 #define CH_ENABLE_LATE_MOVE_REDUCTION 1
+
+#define CH_ENABLE_LATE_MOVE_PRUNING 1
 
 #define CH_ENABLE_RAZORING 1
 

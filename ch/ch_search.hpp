@@ -337,7 +337,7 @@ template<color c, acceleration accel> static int negamax(
 template<acceleration accel> static int negamax(color c,
 #endif
     search_data& d,
-    int depth, int alpha, int beta, int height, int node_type)
+    int depth, int alpha, int beta, int height)
 {
     move hash_move = NULL_MOVE;
     int alpha_orig = alpha;
@@ -345,7 +345,7 @@ template<acceleration accel> static int negamax(color c,
     if(d.stop)
         return 0;
 
-    if(height > 0 && d.time_limit_reached())
+    if(height > 0 && depth > 4 && d.time_limit_reached())
     {
         d.stop = true;
         return 0;
@@ -421,10 +421,9 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_PROBCUT_PRUNING
     // Ethereal-style Probcut
-    int const PROBCUT_MARGIN = d.p.stack().piece_vals[c] > 1000 ?
-        40 : 100;
+    int const PROBCUT_MARGIN = 100;
     if(
-        node_type != NODE_PV &&
+        //node_type != NODE_PV &&
         depth >= 5 &&
         beta < MATE_SCORE - 256 &&
         beta > MATED_SCORE + 256 &&
@@ -442,7 +441,7 @@ template<acceleration accel> static int negamax(color c,
 #else
             v = -negamax<accel>(opposite(c), 
 #endif
-                d, depth - 4, -rbeta, -rbeta + 1, height + 1, node_type);
+                d, depth - 4, -rbeta, -rbeta + 1, height + 1);
             d.p.undo_move<accel>(mv);
             if(v >= rbeta)
                 return v;
@@ -478,10 +477,21 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_FUTILITY_PRUNING
     // futility pruning
-    if(node_type != NODE_PV && !in_check && depth <= 8)
+    bool fprune = false;
+    if(
+        //node_type != NODE_PV &&
+        !in_check &&
+        depth <= 8 &&
+        beta < MATE_SCORE - 256 &&
+        beta > MATED_SCORE + 256 &&
+        alpha < MATE_SCORE - 256 &&
+        alpha > MATED_SCORE + 256 &&
+        1)
     {
         if(static_eval >= beta + 64 * depth)
             return static_eval;
+        if(static_eval + 150 * depth <= alpha)
+            fprune = true;
     }
 #endif
 
@@ -500,7 +510,7 @@ template<acceleration accel> static int negamax(color c,
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth - 4, -beta, -beta + 1, height + 1, NODE_PV);
+            d, depth - 4, -beta, -beta + 1, height + 1);
             //d, depth - 4, -beta, -alpha, height + 1, -node_type);
         d.p.undo_null_move();
         if(value >= beta)
@@ -514,14 +524,14 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_IID
     // internal iterative deepening
-    if(hash_move == NULL_MOVE && node_type != NODE_CUT && depth > 5)
+    if(hash_move == NULL_MOVE /* && node_type != NODE_CUT */ && depth > 5)
     {
 #if CH_COLOR_TEMPLATE
         negamax<c, accel>(
 #else
         negamax<accel>(c,
 #endif
-            d, depth - 3, alpha, beta, height, node_type);
+            d, depth - 3, alpha, beta, height);
         hash_move = d.best[height];
     }
 #endif
@@ -568,7 +578,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_LATE_MOVE_REDUCTION
     bool const can_reduce = (
-        node_type != NODE_PV &&
+        //node_type != NODE_PV &&
         depth >= 6 &&
         !in_check &&
         !d.limits.mate_search);
@@ -578,6 +588,10 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)
     {
+        bool const quiet_or_losing = (
+            picker.stage >= move_picker<accel>::STAGE_QUIETS);
+        bool const losing = (
+            picker.stage >= move_picker<accel>::STAGE_LOSING_CAPTURES);
         move mv = picker.get();
 
         if(mv == NULL_MOVE)
@@ -588,21 +602,41 @@ template<acceleration accel> static int negamax(color c,
         move mv = mvs[n];
 #endif
         bool const quiet = !d.p.move_is_promotion_or_capture(mv);
+        bool const check = d.p.move_is_check(mv);
+
+#if CH_ENABLE_FUTILITY_PRUNING
+        if(fprune && quiet && n > 0 && !check)
+            continue;
+#endif
+
+#if CH_ENABLE_LATE_MOVE_PRUNING
+        if(depth <= 4 && quiet && !in_check && !check && n >= depth * 7)
+            continue;
+#endif
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
 
-        int reduction = 1;
+        int v = alpha + 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-        // stupid simple late move reduction
-        if(can_reduce && quiet && n >= 6)
-            reduction = (depth - 2) / 3 + (n - 4) / 8;
-#endif
-        reduction = std::max(1, reduction);
-
-        if(depth - reduction <= 0)
+        //if(can_reduce && quiet_or_losing && !d.p.move_is_check(mv))
+        if(depth >= 3 && n >= 4 && quiet && !in_check && !check)
         {
-            int v;
+            int reduction = 2;
+            if(n >= 6) reduction += depth / 3;
+            reduction = std::min(depth - 1, std::max(1, reduction));
+#if CH_COLOR_TEMPLATE
+            v = -negamax<opposite(c), accel>(
+#else
+            v = -negamax<accel>(opposite(c),
+#endif
+                d, depth - reduction, -alpha - 1, -alpha, height + 1);
+
+        }
+#endif
+
+        if(depth <= 1)
+        {
 #if CH_ENABLE_QUIESCENCE
             if(CH_QUIESCE_ON_QUIETS || !quiet)
             {
@@ -611,7 +645,7 @@ template<acceleration accel> static int negamax(color c,
 #else
                 v = -quiesce<accel>(opposite(c),
 #endif
-                    d, depth - reduction, -beta, -alpha, height + 1);
+                    d, depth - 1, -beta, -alpha, height + 1);
             }
             else
 #endif
@@ -621,63 +655,18 @@ template<acceleration accel> static int negamax(color c,
             }
             value = std::max(value, v);
         }
-#if CH_ENABLE_PVS
-        else if(n > 0)
-        {
-            int v;
-#if CH_COLOR_TEMPLATE
-            v = -negamax<opposite(c), accel>(
-#else
-            v = -negamax<accel>(opposite(c),
-#endif
-                d, depth - reduction, -alpha - 1, -alpha, height + 1,
-                node_type == NODE_CUT ? NODE_ALL : NODE_CUT);
-            if(v > beta && reduction > 1)
-            {
-                // redo search without reduction if failed high
-#if CH_COLOR_TEMPLATE
-                v = -negamax<opposite(c), accel>(
-#else
-                v = -negamax<accel>(opposite(c),
-#endif
-                    d, depth - 1, -alpha - 1, -alpha, height + 1,
-                    node_type == NODE_CUT ? NODE_ALL : NODE_CUT);
-            }
-            if((v > alpha && v < beta) ||
-                (node_type == NODE_PV && v == beta && beta == alpha + 1))
-            {
-                if(v == alpha + 1)
-                    v = alpha;
-#if CH_COLOR_TEMPLATE
-                v = -negamax<opposite(c), accel>(
-#else
-                v = -negamax<accel>(opposite(c),
-#endif
-                    d, depth - reduction, -beta, -v, height + 1, node_type);
-
-#if CH_ENABLE_LATE_MOVE_REDUCTION
-                if(v > alpha)
-                {
-#if CH_COLOR_TEMPLATE
-                    v = -negamax<opposite(c), accel>(
-#else
-                    v = -negamax<accel>(opposite(c),
-#endif
-                        d, depth - 1, -beta, -v, height + 1, node_type);
-                }
-#endif
-            }
-            value = std::max(value, v);
-        }
-#endif
-        else
+        else if(v > alpha)
         {
 #if CH_COLOR_TEMPLATE
             value = std::max(value, -negamax<opposite(c), accel>(
 #else
             value = std::max(value, -negamax<accel>(opposite(c),
 #endif
-                d, depth - reduction, -beta, -alpha, height + 1, -node_type));
+                d, depth - 1, -beta, -alpha, height + 1));
+        }
+        else
+        {
+            value = std::max(value, v);
         }
 
         d.p.undo_move<accel>(mv);
@@ -756,16 +745,16 @@ static int negamax_root(
     if(d.p.current_turn == WHITE)
     {
         return negamax<WHITE, accel>(
-            d, depth, alpha, beta, 0, NODE_PV);
+            d, depth, alpha, beta, 0);
     }
     else
     {
         return negamax<BLACK, accel>(
-            d, depth, alpha, beta, 0, NODE_PV);
+            d, depth, alpha, beta, 0);
     }
 #else
     return negamax<accel>(d.p.current_turn,
-        d, depth, alpha, beta, 0, NODE_PV);
+        d, depth, alpha, beta, 0);
 #endif
 }
 
@@ -837,6 +826,7 @@ template<acceleration accel>
 static move iterative_deepening(
     search_data& d, position const& p)
 {
+    move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
     d.p = p;
@@ -848,13 +838,14 @@ static move iterative_deepening(
         prev_score = aspiration_window<accel>(d, depth, prev_score);
         d.depth = depth;
         d.score = prev_score;
+        if(!d.stop) best = d.best[0];
         if(d.any_limit_reached()) break;
         if(d.data_index == 0) send_info<accel>(d);
         depth = get_next_depth(d, depth + 1);
     }
     if(d.data_index == 0 && !d.stop)
         send_info<accel>(d);
-    return d.best[0];
+    return best;
 }
 
 }
