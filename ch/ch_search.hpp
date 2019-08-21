@@ -342,7 +342,7 @@ template<acceleration accel> static int negamax(color c,
     move hash_move = NULL_MOVE;
     int alpha_orig = alpha;
 
-    if(d.stop)
+    if(height > 0 && d.stop)
         return 0;
 
     if(height > 0 && depth > 4 && d.time_limit_reached())
