@@ -424,6 +424,7 @@ template<acceleration accel> static int negamax(color c,
     int const PROBCUT_MARGIN = 100;
     if(
         //node_type != NODE_PV &&
+        height > 0 &&
         depth >= 5 &&
         beta < MATE_SCORE - 256 &&
         beta > MATED_SCORE + 256 &&
@@ -460,7 +461,7 @@ template<acceleration accel> static int negamax(color c,
         return in_check ? MATED_SCORE + height : 0;
 
 #if CH_ENABLE_RAZORING
-    if(height != 0)
+    if(height > 0)
     {
         static constexpr int RAZOR_MARGIN = 50;
         if(depth == 2 && !in_check && static_eval + RAZOR_MARGIN <= alpha)
@@ -480,6 +481,7 @@ template<acceleration accel> static int negamax(color c,
     bool fprune = false;
     if(
         //node_type != NODE_PV &&
+        height > 0 &&
         !in_check &&
         depth <= 8 &&
         beta < MATE_SCORE - 256 &&
@@ -497,7 +499,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_NULL_MOVE
     // null move pruning
-    if(!in_check && depth > 4 &&
+    if(height > 0 && !in_check && depth > 4 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
         d.p.has_piece_better_than_pawn(c)
