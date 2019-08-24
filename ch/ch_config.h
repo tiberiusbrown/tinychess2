@@ -65,7 +65,8 @@ Move ordering by threatened piece:
 
 #define CH_ENABLE_FUTILITY_PRUNING 1
 
-#define CH_ENABLE_PROBCUT_PRUNING 1
+// seems to hinder right now
+#define CH_ENABLE_PROBCUT_PRUNING 0
 
 #define CH_ENABLE_QUIESCENCE 1
 #define CH_QUIESCE_ON_QUIETS 1
