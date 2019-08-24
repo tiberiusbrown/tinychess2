@@ -31,6 +31,21 @@ struct principal_variation
     std::array<move, MAX_VARIATION> pv;
 };
 
+static CH_FORCEINLINE void update_limits(
+    position const& p,
+    ch_search_limits& limits)
+{
+    int rem = limits.remtime[p.current_turn];
+    if(rem > 0)
+    {
+        static constexpr int const ASSUMED_LENGTH = 40;
+        rem = std::max(20, std::max(
+            rem / ASSUMED_LENGTH,
+            rem - rem * std::max(p.ply, ASSUMED_LENGTH) / ASSUMED_LENGTH));
+        limits.mstime = rem;
+    }
+}
+
 struct search_data
 {
     uint64_t nodes;
@@ -52,17 +67,25 @@ struct search_data
 
     bool time_limit_reached() const
     {
+        if(data_index != 0) return false;
         if(limits.mstime > 0)
             if(int(get_ms() - start_time) >= limits.mstime)
                 return true;
         return false;
     }
 
+    bool node_limit_reached() const
+    {
+        return limits.nodes > 0 && nodes >= limits.nodes;
+    }
+
     bool any_limit_reached() const
     {
-        if(stop || depth >= limits.depth)
-            return true;
-        return time_limit_reached();
+        return
+            stop ||
+            depth >= limits.depth ||
+            node_limit_reached() ||
+            time_limit_reached();
     }
 };
 
@@ -189,39 +212,6 @@ static void send_info(search_data& d)
     );
 }
 
-//#if CH_COLOR_TEMPLATE
-//template<color c>
-//CH_FORCEINLINE bool quiesce_pawn_recapture(position const& p, int sq)
-//#else
-//CH_FORCEINLINE bool quiesce_pawn_recapture(color c, position const& p, int sq)
-//#endif
-//{
-//    if(masks[sq].pawn_attacks[c] & p.bbs[opposite(c) + PAWN])
-//        return true;
-//    return false;
-//}
-//
-//#if CH_COLOR_TEMPLATE
-//template<color c>
-//CH_FORCEINLINE bool quiesce_bad_capture(position const& p, move mv)
-//#else
-//CH_FORCEINLINE bool quiesce_bad_capture(color c, position const& p, move mv)
-//#endif
-//{
-//    int pc = p.pieces[mv.from()];
-//    int cap = p.pieces[mv.to()];
-//    static constexpr int const VALS[10] = { 1, 1, 3, 3, 3, 3, 5, 5, 9, 9 };
-//    if(VALS[cap] - VALS[pc] >= 0) return false;
-//    if(VALS[cap] - VALS[pc] < -2 &&
-//#if CH_COLOR_TEMPLATE
-//        quiesce_pawn_recapture<c>(p, mv.to()))
-//#else
-//        quiesce_pawn_recapture(c, p, mv.to()))
-//#endif
-//        return true;
-//    return false;
-//}
-
 #if CH_COLOR_TEMPLATE
 template<color c, acceleration accel> static int quiesce(
 #else
@@ -234,11 +224,37 @@ template<acceleration accel> static int quiesce(color c,
 
     ++d.nodes;
 
+    move hash_move = NULL_MOVE;
     int stand_pat;
+
+//#if CH_ENABLE_HASH
+//    // transposition table lookup
+//    {
+//        hash_info i;
+//        if(d.tt->get(d.p.hash(), i) && i.depth >= depth)
+//        {
+//            int v = i.value;
+//            if(v >= MATE_SCORE - 256)
+//                v -= height;
+//            if(v <= MATED_SCORE + 256)
+//                v += height;
+//            if(i.flag == hash_info::EXACT)
+//                return v;
+//            else if(i.flag == hash_info::LOWER)
+//                alpha = std::max<int>(alpha, v);
+//            else if(i.flag == hash_info::UPPER)
+//                beta = std::min<int>(beta, v);
+//            if(alpha >= beta)
+//                return v;
+//            hash_move = i.get_best();
+//        }
+//    }
+//#endif
+
     {
         evaluator<accel> e;
         stand_pat = e.evaluate_first(p, c);
-        if(stand_pat >= beta + 50)
+        if(stand_pat >= beta + 100)
             return beta;
         stand_pat = e.evaluate_second(p, c);
     }
@@ -261,6 +277,12 @@ template<acceleration accel> static int quiesce(color c,
     for(int n = 0; n < mvs.size(); ++n)
     {
         move& mv = mvs[n];
+
+        if(mv.is_similar_to(hash_move))
+        {
+            mv.sort_key() = 255;
+            continue;
+        }
         
         // delta pruning
         if(
@@ -281,6 +303,7 @@ template<acceleration accel> static int quiesce(color c,
             std::swap(mv, mvs[mvs.size() - 1]);
             mvs.pop_back();
             --n;
+            continue;
         }
         else
             mv.sort_key() = uint8_t(v);
@@ -305,8 +328,8 @@ template<acceleration accel> static int quiesce(color c,
         {
             int x = d.p.mate_by_material(c);
             if(x != 0) d.p.undo_move<accel>(mv);
-            if(x > 0) return MATE_SCORE - 256;
-            if(x < 0) return MATED_SCORE + 256;
+            if(x > 0) return MATE_SCORE - height;
+            if(x < 0) return MATED_SCORE + height;
         }
 
 #if CH_COLOR_TEMPLATE
@@ -329,8 +352,6 @@ template<acceleration accel> static int quiesce(color c,
     return alpha;
 }
 
-enum { NODE_PV = 0, NODE_CUT = 1, NODE_ALL = -1 };
-
 #if CH_COLOR_TEMPLATE
 template<color c, acceleration accel> static int negamax(
 #else
@@ -342,8 +363,16 @@ template<acceleration accel> static int negamax(color c,
     move hash_move = NULL_MOVE;
     int alpha_orig = alpha;
 
+    d.best[height] = NULL_MOVE;
+
     if(height > 0 && d.stop)
         return 0;
+
+    if(height > 0 && d.node_limit_reached())
+    {
+        d.stop = 1;
+        return 0;
+    }
 
     if(height > 0 && depth > 4 && d.time_limit_reached())
     {
@@ -365,10 +394,10 @@ template<acceleration accel> static int negamax(color c,
     // mate distance pruning
     if(height > 0)
     {
-        alpha = std::max(alpha, MATED_SCORE + height);
-        beta = std::min(beta, MATE_SCORE - height);
-        if(alpha >= beta)
-            return alpha;
+        int m_alpha = std::max(alpha, MATED_SCORE + height);
+        int m_beta = std::min(beta, MATE_SCORE - height);
+        if(m_alpha >= m_beta)
+            return m_alpha;
     }
 
 #if CH_ENABLE_HASH
@@ -378,6 +407,7 @@ template<acceleration accel> static int negamax(color c,
         hash_info i;
         if(d.tt->get(d.p.hash(), i))
         {
+            hash_move = i.get_best();
             if(i.depth >= depth)
             {
                 int v = i.value;
@@ -385,21 +415,31 @@ template<acceleration accel> static int negamax(color c,
                     v -= height;
                 if(v <= MATED_SCORE + 256)
                     v += height;
+#if 1
+                if(i.flag == hash_info::EXACT ||
+                    (i.flag == hash_info::LOWER && v >= beta) ||
+                    (i.flag == hash_info::UPPER && v <= alpha))
+                {
+                    d.best[height] = hash_move;
+                    return v;
+                }
+#else
                 if(i.flag == hash_info::EXACT)
                 {
-                    if(height > 0)
-                        return v;
-                    alpha = v;
-                    beta = v + 1;
+                    d.best[height] = hash_move;
+                    return v;
                 }
                 else if(i.flag == hash_info::LOWER)
                     alpha = std::max<int>(alpha, v);
                 else if(i.flag == hash_info::UPPER)
                     beta = std::min<int>(beta, v);
-                if(height > 0 && alpha >= beta)
+                if(alpha >= beta)
+                {
+                    d.best[height] = hash_move;
                     return v;
+                }
+#endif
             }
-            hash_move = i.get_best();
         }
     }
 #endif
@@ -421,7 +461,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_PROBCUT_PRUNING
     // Ethereal-style Probcut
-    int const PROBCUT_MARGIN = 100;
+    int const PROBCUT_MARGIN = 200;
     if(
         //node_type != NODE_PV &&
         height > 0 &&
@@ -445,7 +485,7 @@ template<acceleration accel> static int negamax(color c,
                 d, depth - 4, -rbeta, -rbeta + 1, height + 1);
             d.p.undo_move<accel>(mv);
             if(v >= rbeta)
-                return v;
+                return beta;// v;
         }
     }
 #endif
@@ -463,8 +503,8 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_RAZORING
     if(height > 0)
     {
-        static constexpr int RAZOR_MARGIN = 50;
-        if(depth == 2 && !in_check && static_eval + RAZOR_MARGIN <= alpha)
+        static constexpr int RAZOR_MARGIN = 100;
+        if(depth <= 2 && !in_check && static_eval + RAZOR_MARGIN <= alpha)
         {
 #if CH_COLOR_TEMPLATE
             return quiesce<c, accel>(d, depth, alpha, beta, height);
@@ -491,15 +531,20 @@ template<acceleration accel> static int negamax(color c,
         1)
     {
         if(static_eval >= beta + 64 * depth)
+//#if CH_COLOR_TEMPLATE
+//            return quiesce<c, accel>(d, depth, alpha, beta, height);
+//#else
+//            return quiesce<accel>(c, d, depth, alpha, beta, height);
+//#endif
             return static_eval;
-        if(static_eval + 150 * depth <= alpha)
+        if(static_eval + 64 * depth <= alpha)
             fprune = true;
     }
 #endif
 
 #if CH_ENABLE_NULL_MOVE
     // null move pruning
-    if(height > 0 && !in_check && depth > 4 &&
+    if(height > 0 && !in_check && depth >= 5 &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
         d.p.has_piece_better_than_pawn(c)
@@ -512,8 +557,8 @@ template<acceleration accel> static int negamax(color c,
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth - 4, -beta, -beta + 1, height + 1);
-            //d, depth - 4, -beta, -alpha, height + 1, -node_type);
+            d, depth >= 8 ? depth / 2 : depth - 4, -beta, -beta + 1, height + 1);
+            //d, depth - 4, -beta, -alpha, height + 1);
         d.p.undo_null_move();
         if(value >= beta)
         {
@@ -526,14 +571,14 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_IID
     // internal iterative deepening
-    if(hash_move == NULL_MOVE /* && node_type != NODE_CUT */ && depth > 5)
+    if(hash_move == NULL_MOVE && depth > 5)
     {
 #if CH_COLOR_TEMPLATE
         negamax<c, accel>(
 #else
         negamax<accel>(c,
 #endif
-            d, depth - 3, alpha, beta, height);
+            d, 3, alpha, beta, height);
         hash_move = d.best[height];
     }
 #endif
@@ -572,10 +617,10 @@ template<acceleration accel> static int negamax(color c,
     int hh_increment = depth * depth;
 
 #if CH_ENABLE_HISTORY_HEURISTIC
-    if(!tail)
-        for(move mv : mvs)
-            if(!d.p.move_is_capture(mv))
-                d.hh->increment_bf(mv, hh_increment);
+    //if(!tail)
+    //    for(move mv : mvs)
+    //        if(!d.p.move_is_capture(mv))
+    //            d.hh->increment_bf(mv, hh_increment);
 #endif
 
     if(in_check)
@@ -583,11 +628,12 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)
     {
+        int stage;
+        move mv = picker.get(stage);
         bool const quiet_or_losing = (
-            picker.stage >= move_picker<accel>::STAGE_QUIETS);
+            stage >= move_picker<accel>::STAGE_QUIETS);
         bool const losing = (
-            picker.stage >= move_picker<accel>::STAGE_LOSING_CAPTURES);
-        move mv = picker.get();
+            stage >= move_picker<accel>::STAGE_LOSING_CAPTURES);
 
         if(mv == NULL_MOVE)
             break;
@@ -601,6 +647,11 @@ template<acceleration accel> static int negamax(color c,
         bool const castle = mv.is_castle();
 
         bool const dont_reduce = !quiet || in_check || check || castle;
+
+#if CH_ENABLE_HISTORY_HEURISTIC
+        if(!tail && quiet)
+            d.hh->increment_bf(mv, hh_increment);
+#endif
 
         int newdepth = depth;
         if(castle)
@@ -729,6 +780,11 @@ template<acceleration accel> static int negamax(color c,
         i.age = uint8_t(d.p.age);
         i.pro_piece = uint8_t(best_move.is_promotion() ?
             best_move.promotion_piece() : EMPTY);
+
+        //if(//d.p.hash() == 2840919199511080229 &&
+        //    (i.value == 732 || i.value == -732))
+        //    print_position(d.p), __debugbreak();
+
         d.tt->put(d.p.hash(), i);
     }
     if(!d.stop)
@@ -764,7 +820,7 @@ static int aspiration_window(
     search_data& d, int depth, int prev_score)
 {
     // TODO: move constants to a common location
-    constexpr int ASPIRATION_BASE_DELTA = 20;
+    constexpr int ASPIRATION_BASE_DELTA = 10;
     constexpr int ASPIRATION_MIN_DEPTH = 4;
 
     int delta = ASPIRATION_BASE_DELTA;
@@ -775,7 +831,6 @@ static int aspiration_window(
 
     while(!d.stop)
     {
-
         int value = negamax_root<accel>(d, depth, alpha, beta);
 
         if(value > alpha && value < beta)
@@ -827,6 +882,7 @@ template<acceleration accel>
 static move iterative_deepening(
     search_data& d, position const& p)
 {
+    uint64_t prev_nodes = 0;
     move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
@@ -836,7 +892,18 @@ static move iterative_deepening(
     for(;;)
     {
         d.seldepth = 0;
-        prev_score = aspiration_window<accel>(d, depth, prev_score);
+        int score = aspiration_window<accel>(d, depth, prev_score);
+
+        if(d.data_index == 0 &&
+            (score <= MATED_SCORE + 256 || score >= MATE_SCORE - 256) &&
+            score == prev_score && d.nodes == prev_nodes)
+        {
+            d.stop = true;
+            best = d.best[0];
+            break;
+        }
+        prev_nodes = d.nodes;
+        prev_score = score;
         d.depth = depth;
         d.score = prev_score;
         if(!d.stop) best = d.best[0];
@@ -846,6 +913,7 @@ static move iterative_deepening(
     }
     if(d.data_index == 0 && !d.stop)
         send_info<accel>(d);
+
     return best;
 }
 

@@ -5,8 +5,6 @@
 namespace ch
 {
 
-struct position;
-
 static constexpr int const BISHOP_MOBILITY_BONUS = 3;
 static constexpr int const ROOK_MOBILITY_BONUS = 1;
 

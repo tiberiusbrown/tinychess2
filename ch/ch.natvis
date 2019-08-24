@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="ch::move">
+        <DisplayString Condition="d == 0">NULL</DisplayString>
+        <DisplayString Condition="d != 0">{CH_FILESTRS[(d>>8)%8],sb}{CH_RANKSTRS[(d>>11)%8],sb}{CH_FILESTRS[d%8],sb}{CH_RANKSTRS[(d>>3)%8],sb}</DisplayString>
+    </Type>
+</AutoVisualizer>

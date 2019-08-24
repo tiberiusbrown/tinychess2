@@ -24,6 +24,7 @@ struct move_picker
         STAGE_KILLERS,
         STAGE_COUNTERS,
         STAGE_QUIETS,
+        STAGE_PREP_LOSING_CAPTURES,
         STAGE_LOSING_CAPTURES,
         STAGE_DONE
     } stage;
@@ -52,13 +53,16 @@ struct move_picker
         stage = STAGE_HASH;
     }
 
-    move get()
+    move get(int& out_stage)
     {
         switch(stage)
         {
         case STAGE_HASH:
             if(index < num)
+            {
+                out_stage = STAGE_HASH;
                 return mvs[index++];
+            }
             // fallthrough
 
         case STAGE_PREP_WINNING_CAPTURES:
@@ -92,7 +96,10 @@ struct move_picker
 
         case STAGE_WINNING_CAPTURES:
             if(index < num)
+            {
+                out_stage = STAGE_WINNING_CAPTURES;
                 return mvs[index++];
+            }
 
             knum = num;
             for(int k = 0; k < CH_NUM_KILLERS; ++k)
@@ -110,7 +117,10 @@ struct move_picker
 
         case STAGE_KILLERS:
             if(index < num)
+            {
+                out_stage = STAGE_KILLERS;
                 return mvs[index++];
+            }
 
             // group all quiets
             knum = num;
@@ -160,22 +170,39 @@ struct move_picker
 
         case STAGE_QUIETS:
             if(index < num)
+            {
+                out_stage = STAGE_QUIETS;
                 return mvs[index++];
-            stage = STAGE_LOSING_CAPTURES;
+            }
+            stage = STAGE_PREP_LOSING_CAPTURES;
             // fallthrough
 
-        case STAGE_LOSING_CAPTURES:
+        case STAGE_PREP_LOSING_CAPTURES:
+            if(index >= mvs.size())
+            {
+                stage = STAGE_DONE;
+                out_stage = STAGE_DONE;
+                return NULL_MOVE;
+            }
             std::sort(
                 mvs.begin() + index,
                 mvs.begin() + num,
                 move_list::sort_descending());
+            stage = STAGE_LOSING_CAPTURES;
+            // fallthrough
+
+        case STAGE_LOSING_CAPTURES:
             if(index < mvs.size())
+            {
+                out_stage = STAGE_LOSING_CAPTURES;
                 return mvs[index++];
+            }
             stage = STAGE_DONE;
             // fallthrough
 
         case STAGE_DONE:
         default:
+            out_stage = STAGE_DONE;
             return NULL_MOVE;
         }
     }

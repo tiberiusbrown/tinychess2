@@ -15,6 +15,20 @@
 #include <intrin.h>
 #endif
 
+#if defined(_MSC_VER) && !defined(NDEBUG)
+extern char const* const CH_FILESTRS[8];
+extern char const* const CH_RANKSTRS[8];
+// natvis help
+char const* const CH_FILESTRS[8] =
+{
+    "a", "b", "c", "d", "e", "f", "g", "h"
+};
+char const* const CH_RANKSTRS[8] =
+{
+    "8", "7", "6", "5", "4", "3", "2", "1"
+};
+#endif
+
 #define CH_ENABLE_UNACCEL 1
 #if CH_ENABLE_ACCEL
 #define CH_ENABLE_SSE 1

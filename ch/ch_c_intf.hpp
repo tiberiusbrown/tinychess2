@@ -341,7 +341,8 @@ int CHAPI ch_evaluate(void)
 
 void CHAPI ch_search(ch_search_limits const* limits)
 {
-    uint32_t start_time = ch::get_ms();
+    using namespace ch;
+    uint32_t start_time = get_ms();
     helper_stop_threads();
     g_redo_ply = g_pos.ply;
 #if CH_ENABLE_HISTORY_HEURISTIC
@@ -350,8 +351,7 @@ void CHAPI ch_search(ch_search_limits const* limits)
     ch_search_limits newlimits = *limits;
     if(newlimits.depth <= 0) newlimits.depth = INT_MAX;
     if(newlimits.mstime <= 0) newlimits.mstime = INT_MAX;
-    if(newlimits.remtime <= 0) newlimits.remtime = INT_MAX;
-    if(newlimits.inctime <= 0) newlimits.inctime = INT_MAX;
+    update_limits(g_pos, newlimits);
     for(int n = 0; n < CH_MAX_THREADS; ++n)
     {
         g_sd[n].start_time = start_time;

@@ -45,12 +45,13 @@ extern "C" {
     typedef struct ch_search_limits
     {
         // hard limits
+        uint64_t nodes;
         int depth;   // stop at a given depth in plies
         int mstime;  // stop after a given number of milliseconds
 
         // TODO: if remtime is nonzero, time management will be used
-        int remtime;
-        int inctime;
+        int remtime[2];
+        int inctime[2];
 
         int mate_search; // disallow reductions
     } ch_search_limits;

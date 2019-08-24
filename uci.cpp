@@ -4,6 +4,7 @@
 //#include <time.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <iterator>
@@ -57,9 +58,12 @@ static void search_info(
     std::cout << std::endl;
 }
 
+static std::atomic<bool> thinking;
+
 static void best_move(ch_move m)
 {
     std::cout << "bestmove " << ch_extended_algebraic(m) << std::endl;
+    thinking = false;
 }
 
 static ch_system_info const SYSINF =
@@ -109,6 +113,132 @@ static void set_hash_mem(int megabytes)
     ch_set_hash(hash_mem, mpow);
 }
 
+static bool process_command(std::string const& line)
+{
+    if(line == "quit")
+        return true;
+    else if(line == "isready")
+    {
+        std::cout << "readyok" << std::endl;
+    }
+    else if(line == "uci")
+    {
+        std::cout
+            << "id name CHRISTINE 0.1" << std::endl
+            << "id author Peter Brown" << std::endl
+            << "option name Hash type spin default 64 min 0 max 4096" << std::endl
+            << "uciok" << std::endl;
+    }
+    else if(line == "ucinewgame")
+    {
+        ch_clear_caches();
+    }
+    else if(startswith(line, "setoption "))
+    {
+        if(contains(line, " name "))
+        {
+            size_t m = line.find(" name ", 0) + 6;
+            size_t n = line.find(" value ", m);
+            if(n != std::string::npos)
+            {
+                if(contains(line, "Hash"))
+                    set_hash_mem(atoi(line.c_str() + n + 7));
+            }
+        }
+    }
+    else if(startswith(line, "position"))
+    {
+        if(contains(line, "startpos"))
+            ch_new_game();
+        else if(contains(line, "fen "))
+            ch_load_fen(line.c_str() + line.find("fen ", 0) + 4);
+        if(contains(line, "moves "))
+        {
+            std::stringstream moves_ss(line.substr(line.find("moves ") + 6));
+            std::vector<std::string> moves{
+                std::istream_iterator<std::string>{moves_ss},
+                std::istream_iterator<std::string>{} };
+            for(std::string const& m : moves)
+            {
+                ch_do_move_str(m.c_str());
+            }
+        }
+    }
+    else if(startswith(line, "go"))
+    {
+        ch_search_limits limits = { 0 };
+        if(contains(line, " nodes "))
+            limits.nodes = (uint64_t)atoll(
+            line.c_str() + line.find(" nodes ", 0) + 7);
+        if(contains(line, " depth "))
+            limits.depth = clamp(atoi(
+            line.c_str() + line.find(" depth ", 0) + 7), 1, 64);
+        if(contains(line, " movetime "))
+            limits.mstime = atoi(
+            line.c_str() + line.find(" movetime ", 0) + 10);
+
+        if(contains(line, " wtime "))
+            limits.remtime[0] = atoi(
+            line.c_str() + line.find(" wtime ", 0) + 7);
+        if(contains(line, " btime "))
+            limits.remtime[1] = atoi(
+            line.c_str() + line.find(" btime ", 0) + 7);
+
+        if(contains(line, " mate "))
+        {
+            limits.depth = clamp(atoi(
+                line.c_str() + line.find(" mate ", 0) + 6), 1, 64);
+            limits.depth = limits.depth * 2 + 1;
+            limits.mate_search = 1;
+        }
+
+        if(contains(line, "moves "))
+        {
+            std::stringstream moves_ss(line.substr(line.find("moves ") + 6));
+            std::vector<std::string> moves{
+                std::istream_iterator<std::string>{moves_ss},
+                std::istream_iterator<std::string>{} };
+
+            int side = ch_current_turn();
+            for(std::string const& m : moves)
+            {
+                if(ch_current_turn() == side)
+                {
+                    thinking = true;
+                    ch_search(&limits);
+                    while(thinking)
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                ch_do_move_str(m.c_str());
+            }
+        }
+
+        thinking = true;
+        ch_search(&limits);
+    }
+    else if(startswith(line, "stop"))
+    {
+        ch_stop();
+    }
+    else if(line == "eval")
+    {
+        std::cout << ch_evaluate() << std::endl;
+    }
+    else if(startswith(line, "perft "))
+    {
+        int depth = atoi(line.c_str() + 6);
+        depth = clamp(depth, 1, 64);
+        uint64_t counts[256] = { 0 };
+        uint64_t t = ch_perft(depth, counts);
+        std::cout << t << std::endl;
+    }
+    else if(startswith(line, "see "))
+    {
+        std::cout << ch_see(&line[4]) << std::endl;
+    }
+    return false;
+}
+
 #ifdef _MSC_VER
 int __cdecl main(void)
 #else
@@ -128,94 +258,8 @@ int main(void)
     {
         std::string line;
         std::getline(std::cin, line);
-
-        if(line == "quit")
+        if(process_command(line))
             break;
-        else if(line == "isready")
-        {
-            std::cout << "readyok" << std::endl;
-        }
-        else if(line == "uci")
-        {
-            std::cout
-                << "id name CHRISTINE 0.1" << std::endl
-                << "id author Peter Brown" << std::endl
-                << "option name Hash type spin default 64 min 0 max 4096" << std::endl
-                << "uciok" << std::endl;
-        }
-        else if(line == "ucinewgame")
-        {
-            ch_clear_caches();
-        }
-        else if(startswith(line, "setoption "))
-        {
-            if(contains(line, " name "))
-            {
-                size_t m = line.find(" name ", 0) + 6;
-                size_t n = line.find(" value ", m);
-                if(n != std::string::npos)
-                {
-                    if(contains(line, "Hash"))
-                        set_hash_mem(atoi(line.c_str() + n + 7));
-                }
-            }
-        }
-        else if(startswith(line, "position"))
-        {
-            if(contains(line, "startpos"))
-                ch_new_game();
-            else if(contains(line, "fen "))
-                ch_load_fen(line.c_str() + line.find("fen ", 0) + 4);
-            if(contains(line, "moves "))
-            {
-                std::stringstream moves_ss(line.substr(line.find("moves ") + 6));
-                std::vector<std::string> moves {
-                    std::istream_iterator<std::string>{moves_ss},
-                    std::istream_iterator<std::string>{} };
-                for(std::string const& m : moves)
-                {
-                    ch_do_move_str(m.c_str());
-                }
-            }
-        }
-        else if(startswith(line, "go"))
-        {
-            ch_search_limits limits = { 0 };
-            if(contains(line, " depth "))
-                limits.depth = clamp(atoi(
-                    line.c_str() + line.find(" depth ", 0) + 7), 1, 64);
-            if(contains(line, " movetime "))
-                limits.mstime = atoi(
-                    line.c_str() + line.find(" movetime ", 0) + 10);
-            if(contains(line, " mate "))
-            {
-                limits.depth = clamp(atoi(
-                    line.c_str() + line.find(" mate ", 0) + 6), 1, 64);
-                limits.depth = limits.depth * 2 + 1;
-                limits.mate_search = 1;
-            }
-            ch_search(&limits);
-        }
-        else if(startswith(line, "stop"))
-        {
-            ch_stop();
-        }
-        else if(line == "eval")
-        {
-            std::cout << ch_evaluate() << std::endl;
-        }
-        else if(startswith(line, "perft "))
-        {
-            int depth = atoi(line.c_str() + 6);
-            depth = clamp(depth, 1, 64);
-            uint64_t counts[256] = { 0 };
-            uint64_t t = ch_perft(depth, counts);
-            std::cout << t << std::endl;
-        }
-        else if(startswith(line, "see "))
-        {
-            std::cout << ch_see(&line[4]) << std::endl;
-        }
     }
 
     ch_kill_threads();

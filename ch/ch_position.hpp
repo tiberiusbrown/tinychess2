@@ -2,7 +2,6 @@
 
 #include "ch_evaluator.hpp"
 #include "ch_internal.hpp"
-#include "ch_genmoves.hpp"
 #include "ch_hash.hpp"
 #include "ch_magic.hpp"
 #include "ch_move.hpp"
