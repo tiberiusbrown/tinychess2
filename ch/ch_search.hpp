@@ -23,7 +23,7 @@ static constexpr int const MAX_SCORE = +32000;
 static constexpr int const MATED_SCORE = CH_MATED_SCORE;
 static constexpr int const MATE_SCORE = CH_MATE_SCORE;
 
-static constexpr int const MAX_VARIATION = 128;
+static constexpr int const MAX_VARIATION = 96;
 
 struct principal_variation
 {
@@ -886,22 +886,26 @@ static move iterative_deepening(
     move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
+    //int num_unchanged = 0;
     d.p = p;
     d.nodes = 0;
     prev_score = evaluator<accel>{}.evaluate(p, p.current_turn);
-    for(;;)
+    while(depth <= MAX_VARIATION)
     {
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
 
-        if(d.data_index == 0 &&
-            (score <= MATED_SCORE + 256 || score >= MATE_SCORE - 256) &&
-            score == prev_score && d.nodes == prev_nodes)
-        {
-            d.stop = true;
-            best = d.best[0];
-            break;
-        }
+        //if(d.data_index == 0 &&
+        //    score == prev_score && d.nodes == prev_nodes)
+        //{
+        //    if(++num_unchanged >= 3)
+        //    {
+        //        d.stop = true;
+        //        best = d.best[0];
+        //        send_info<accel>(d);
+        //        break;
+        //    }
+        //}
         prev_nodes = d.nodes;
         prev_score = score;
         d.depth = depth;

@@ -5,14 +5,14 @@
 namespace ch
 {
 
-static constexpr int const BISHOP_MOBILITY_BONUS = 3;
-static constexpr int const ROOK_MOBILITY_BONUS = 1;
+static constexpr int const BISHOP_MOBILITY_BONUS = 5;
+static constexpr int const ROOK_MOBILITY_BONUS = 3;
 
-static constexpr int const PAWN_PROTECTOR_BONUS = 4;
+static constexpr int const PAWN_PROTECTOR_BONUS = 8;
 
 static constexpr int const DOUBLED_PAWN_PENALTIES[8] =
 {
-    10, 2, 5, 5, 5, 5, 2, 10,
+    20, 5, 10, 10, 10, 10, 5, 20,
 };
 
 static constexpr int const KING_SAFETY_BONUS = 5;
@@ -57,6 +57,18 @@ static constexpr int8_t const INIT_TABLE_PAWN[64] =
      5, -5, -10,   0,   0, -10, -5,  5,
      5, 10,  10, -20, -20,  10, 10,  5,
      0,  0,   0,   0,   0,   0,  0,  0,
+};
+
+static constexpr int8_t const INIT_TABLE_PASSED_PAWN[64] =
+{
+      0,  0,  0,  0,  0,  0,  0,   0,
+    120, 90, 70, 70, 70, 70, 90, 120,
+    100, 70, 60, 60, 60, 60, 70, 100,
+     80, 50, 45, 45, 45, 45, 50,  80,
+     60, 40, 30, 30, 30, 30, 40,  60,
+     45, 30, 20, 20, 20, 20, 30,  45,
+     30, 20, 10, 10, 10, 10, 20,  30,
+      0,  0,  0,  0,  0,  0,  0,   0,
 };
 
 static constexpr int8_t const INIT_TABLE_PAWN_EG[64] =
@@ -155,7 +167,11 @@ static constexpr int8_t const TABLE_ZERO[64] =
     0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-int8_t piece_tables[2][13][64];
+static constexpr int const PASSED_PAWN = EMPTY + 1;
+static constexpr int const W_PASSED_PAWN = WHITE + PASSED_PAWN;
+static constexpr int const B_PASSED_PAWN = BLACK + PASSED_PAWN;
+
+int8_t piece_tables[2][15][64];
 
 template<bool flipped>
 static void evaluator_init_table(int8_t* dst, int8_t const* src)
@@ -185,6 +201,8 @@ static void init_evaluator()
     evaluator_init_table<true >(piece_tables[0][BLACK + QUEEN ], INIT_TABLE_QUEEN );
     evaluator_init_table<true >(piece_tables[0][BLACK + KING  ], TABLE_KING_MG    );
     evaluator_init_table<false>(piece_tables[0][EMPTY         ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[0][W_PASSED_PAWN ], INIT_TABLE_PASSED_PAWN);
+    evaluator_init_table<true >(piece_tables[0][B_PASSED_PAWN ], INIT_TABLE_PASSED_PAWN);
 
     evaluator_init_table<false>(piece_tables[1][WHITE + PAWN  ], INIT_TABLE_PAWN_EG);
     evaluator_init_table<false>(piece_tables[1][WHITE + KNIGHT], TABLE_ZERO       );
@@ -199,6 +217,8 @@ static void init_evaluator()
     evaluator_init_table<true >(piece_tables[1][BLACK + QUEEN ], TABLE_ZERO       );
     evaluator_init_table<true >(piece_tables[1][BLACK + KING  ], TABLE_KING_EG    );
     evaluator_init_table<false>(piece_tables[1][EMPTY         ], TABLE_ZERO       );
+    evaluator_init_table<false>(piece_tables[1][W_PASSED_PAWN ], INIT_TABLE_PASSED_PAWN);
+    evaluator_init_table<true >(piece_tables[1][B_PASSED_PAWN ], INIT_TABLE_PASSED_PAWN);
 }
 
 

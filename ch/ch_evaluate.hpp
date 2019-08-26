@@ -107,7 +107,7 @@ static CH_FORCEINLINE int pawn_protector_bonuses(color c, position const& p)
 }
 
 template<acceleration accel>
-static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
+static CH_FORCEINLINE int doubled_pawn_penalties(color c, position const& p)
 {
     uint64_t const pawns = p.bbs[c + PAWN];
     uint64_t mask = FILEA;
@@ -120,6 +120,30 @@ static CH_FORCEINLINE int passed_pawn_penalties(color c, position const& p)
         mask <<= 1;
     }
     return x;
+}
+
+template<acceleration accel>
+static CH_FORCEINLINE int passed_pawn_bonuses(
+    color c, position const& p,
+    int mg, int eg)
+{
+    uint64_t t = p.bbs[opposite(c) + PAWN];
+    t |= shift_w(t) | shift_e(t);
+    if(c == WHITE)
+        t = slide_fill_s(t, ~0ull);
+    else
+        t = slide_fill_n(t, ~0ull);
+    t = p.bbs[c + PAWN] & ~t;
+    //int xm = 0, xe = 0;
+    //while(t)
+    //{
+    //    xm += piece_tables[0][c + PASSED_PAWN][pop_lsb<accel>(t)];
+    //    xe += piece_tables[1][c + PASSED_PAWN][pop_lsb<accel>(t)];
+    //}
+    //return (xm * mg + xe * eg) / 256;
+    (void)mg;
+    (void)eg;
+    return popcnt<accel>(t) * 40;
 }
 
 template<acceleration accel>
@@ -165,7 +189,8 @@ struct evaluator
         int x = 0;
         x += mobility_bonuses<accel>(c, p);
         x += pawn_protector_bonuses<accel>(c, p);
-        x += passed_pawn_penalties<accel>(c, p);
+        x -= doubled_pawn_penalties<accel>(c, p);
+        //x += passed_pawn_bonuses<accel>(c, p, mg, eg);
         //x += king_safety_bonuses<accel>(c, p);
         if(!p.bbs[c + PAWN])
         {
