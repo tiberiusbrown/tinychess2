@@ -160,9 +160,16 @@ static CH_FORCEINLINE void order_moves(
 }
 
 template<acceleration accel>
-static void send_info(search_data& d)
+static void send_info(search_data& d, bool force = false)
 {
-    d.info_time = get_ms();
+    {
+        static constexpr uint32_t const MIN_INFO_DELAY_MS = 200;
+        uint32_t ct = get_ms();
+        uint32_t dt = ct - d.info_time;
+        d.info_time = ct;
+        if(!force && dt < MIN_INFO_DELAY_MS)
+            return;
+    }
     int mstime = int(d.info_time - d.start_time);
 
     // extract principal variation
@@ -461,7 +468,7 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_PROBCUT_PRUNING
     // Ethereal-style Probcut
-    int const PROBCUT_MARGIN = 200;
+    int const PROBCUT_MARGIN = 100;
     if(
         //node_type != NODE_PV &&
         height > 0 &&
@@ -504,7 +511,10 @@ template<acceleration accel> static int negamax(color c,
     if(height > 0)
     {
         static constexpr int RAZOR_MARGIN = 100;
-        if(depth <= 2 && !in_check && static_eval + RAZOR_MARGIN <= alpha)
+        static constexpr int DEEP_RAZOR_MARGIN = 200;
+        if(!in_check &&
+            ((depth <= 2 && static_eval + RAZOR_MARGIN <= alpha) ||
+            (depth <= 4 && static_eval + DEEP_RAZOR_MARGIN <= alpha)))
         {
 #if CH_COLOR_TEMPLATE
             return quiesce<c, accel>(d, depth, alpha, beta, height);
@@ -886,37 +896,26 @@ static move iterative_deepening(
     move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
-    //int num_unchanged = 0;
     d.p = p;
     d.nodes = 0;
+    d.info_time = 0;
     prev_score = evaluator<accel>{}.evaluate(p, p.current_turn);
     while(depth <= MAX_VARIATION)
     {
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
-
-        //if(d.data_index == 0 &&
-        //    score == prev_score && d.nodes == prev_nodes)
-        //{
-        //    if(++num_unchanged >= 3)
-        //    {
-        //        d.stop = true;
-        //        best = d.best[0];
-        //        send_info<accel>(d);
-        //        break;
-        //    }
-        //}
+        bool force = (score != prev_score);
         prev_nodes = d.nodes;
         prev_score = score;
         d.depth = depth;
         d.score = prev_score;
         if(!d.stop) best = d.best[0];
         if(d.any_limit_reached()) break;
-        if(d.data_index == 0) send_info<accel>(d);
+        if(d.data_index == 0) send_info<accel>(d, force);
         depth = get_next_depth(d, depth + 1);
     }
     if(d.data_index == 0 && !d.stop)
-        send_info<accel>(d);
+        send_info<accel>(d, true);
 
     return best;
 }

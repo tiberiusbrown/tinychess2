@@ -143,7 +143,7 @@ static CH_FORCEINLINE int passed_pawn_bonuses(
     //return (xm * mg + xe * eg) / 256;
     (void)mg;
     (void)eg;
-    return popcnt<accel>(t) * 40;
+    return popcnt<accel>(t) * 64;
 }
 
 template<acceleration accel>
