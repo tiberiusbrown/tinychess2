@@ -18,7 +18,6 @@ Stockfish finds it at depth 15 in less than 20 ms
 IMPLEMENT:
 
 Proper PV tracking (i.e., not with hash)
-Incrementally updated piece-square position value?
 Moves that give check in quiescence? (depth-limited)
 Record and report statistics (number of fail-highs in PVS, etc)
 Simplified ABDADA:
@@ -82,7 +81,7 @@ Move ordering by threatened piece:
 // also increases nodes sometimes! i think from hash behavior
 #define CH_ENABLE_LATE_MOVE_REDUCTION 1
 
-#define CH_ENABLE_LATE_MOVE_PRUNING 1
+#define CH_ENABLE_LATE_MOVE_PRUNING 0
 
 #define CH_ENABLE_RAZORING 1
 #define CH_ENABLE_DEEP_RAZORING 0

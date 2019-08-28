@@ -134,7 +134,7 @@ struct position
     }
     CH_FORCEINLINE bool move_is_promotion_or_capture(move mv) const
     {
-        return mv.is_promotion() || move_is_capture(mv);
+        return move_is_capture(mv) || mv.is_promotion();
     }
     CH_FORCEINLINE bool move_is_geq_capture(move mv) const
     {

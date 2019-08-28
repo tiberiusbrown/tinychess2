@@ -5,10 +5,23 @@
 namespace ch
 {
 
-static constexpr int const BISHOP_MOBILITY_BONUS = 5;
-static constexpr int const ROOK_MOBILITY_BONUS = 3;
+static constexpr int const BISHOP_MOBILITY_BONUS_MG = 5;
+static constexpr int const BISHOP_MOBILITY_BONUS_EG = 3;
+static constexpr int const BISHOP_THREATEN_ROOK = 15;
+static constexpr int const BISHOP_THREATEN_QUEEN = 30;
+static constexpr int const BISHOP_THREATEN_KING = 20;
 
-static constexpr int const PAWN_PROTECTOR_BONUS = 8;
+static constexpr int const ROOK_MOBILITY_BONUS_MG = 3;
+static constexpr int const ROOK_MOBILITY_BONUS_EG = 6;
+static constexpr int const ROOK_THREATEN_QUEEN = 20;
+static constexpr int const ROOK_THREATEN_KING = 20;
+
+static constexpr int const PAWN_PROTECT_ANY = 4;
+static constexpr int const PAWN_PROTECT_PAWN = 4;
+static constexpr int const PAWN_THREATEN_KNIGHT = 20;
+static constexpr int const PAWN_THREATEN_BISHOP = 15;
+static constexpr int const PAWN_THREATEN_ROOK = 40;
+static constexpr int const PAWN_THREATEN_QUEEN = 25;
 
 static constexpr int const DOUBLED_PAWN_PENALTIES[8] =
 {

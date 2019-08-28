@@ -30,80 +30,92 @@ static CH_FORCEINLINE int eval_piece_table_flipped(uint64_t pieces, int8_t const
 }
 
 template<acceleration accel>
-static CH_FORCEINLINE int mobility_bonuses(color c, position const& p)
+static CH_FORCEINLINE int eval_bishops(
+    color c, position const& p,
+    int mg, int eg)
 {
-    int x = 0;
-    uint64_t const diag = p.bbs[c + QUEEN] | p.bbs[c + BISHOP];
-    uint64_t const orth = p.bbs[c + QUEEN] | p.bbs[c + ROOK];
-    //uint64_t const cap = ~p.bb_alls[c];
-    uint64_t const empty = ~(p.bb_alls[WHITE] | p.bb_alls[BLACK]);
-
-    uint64_t diag_moves =
-        slide_attack_nw(diag, empty) |
-        slide_attack_ne(diag, empty) |
-        slide_attack_sw(diag, empty) |
-        slide_attack_se(diag, empty);
-    uint64_t orth_moves =
-        slide_attack_n(orth, empty) |
-        slide_attack_s(orth, empty) |
-        slide_attack_w(orth, empty) |
-        slide_attack_e(orth, empty);
-
-    //diag_moves &= cap;
-    //orth_moves &= cap;
-
-    x += popcnt<accel>(diag_moves) * BISHOP_MOBILITY_BONUS;
-    x += popcnt<accel>(orth_moves) * ROOK_MOBILITY_BONUS;
-
-    return x;
-}
-
-// TODO: this is slightly slower...
-#if 0
-#if CH_ENABLE_AVX
-template<>
-CH_FORCEINLINE int mobility_bonuses<ACCEL_AVX>(color c, position const& p)
-{
-    int x = 0;
-    uint64_t const diag = p.bbs[c + QUEEN] | p.bbs[c + BISHOP];
-    uint64_t const orth = p.bbs[c + QUEEN] | p.bbs[c + ROOK];
-    __m256i const cap = _mm256_set1_epi64x(~p.bb_alls[c]);
-    __m256i const sliders = _mm256_setr_epi64x(orth, orth, diag, diag);
-    __m256i const empty = _mm256_set1_epi64x(
-        ~(p.bb_alls[WHITE] | p.bb_alls[BLACK]));
-
-    union
+    uint64_t t = p.bbs[c + BISHOP];
+    if(!t) return 0;
+    uint64_t const occ = p.bb_alls[WHITE] | p.bb_alls[BLACK];
+    int x = 0, xtr = 0, xtq = 0, xtk = 0;
+    while(t)
     {
-        __m256i u256;
-        uint64_t u64[4];
-    } u;
-    u.u256 = _mm256_or_si256(
-        slide_attack_n_w_nw_ne(sliders, empty),
-        slide_attack_s_e_sw_se(sliders, empty));
-    //u.u256 = _mm256_and_si256(cap, u.u256);
-    
-    uint64_t orth_moves = u.u64[0] | u.u64[1];
-    uint64_t diag_moves = u.u64[2] | u.u64[3];
-
-    x += popcnt<ACCEL_AVX>(diag_moves) * BISHOP_MOBILITY_BONUS;
-    x += popcnt<ACCEL_AVX>(orth_moves) * ROOK_MOBILITY_BONUS;
-
-    return x;
+        int const sq = pop_lsb<accel>(t);
+        uint64_t const a = magic_bishop_attacks(sq, occ);
+        uint64_t const tr = a & p.bbs[opposite(c) + ROOK];
+        uint64_t const tq = a & p.bbs[opposite(c) + QUEEN];
+        uint64_t const tk = a & p.bbs[opposite(c) + KING];
+        x += popcnt<accel>(a);
+        xtr += popcnt<accel>(tr);
+        xtq += popcnt<accel>(tq);
+        xtk += popcnt<accel>(tk);
+    }
+    return (
+        x * (mg * BISHOP_MOBILITY_BONUS_MG + eg * BISHOP_MOBILITY_BONUS_EG) / 256 +
+        xtr * BISHOP_THREATEN_ROOK +
+        xtq * BISHOP_THREATEN_QUEEN +
+        xtk * BISHOP_THREATEN_KING +
+        0);
 }
-#endif
-#endif
 
 template<acceleration accel>
-static CH_FORCEINLINE int pawn_protector_bonuses(color c, position const& p)
+static CH_FORCEINLINE int eval_rooks(
+    color c, position const& p,
+    int mg, int eg)
 {
-    uint64_t pawn_protectors;
-    uint64_t const pawns = p.bbs[c + PAWN];
-    if(c == WHITE)
-        pawn_protectors = (shift_sw(pawns) | shift_se(pawns));
-    else
-        pawn_protectors = (shift_nw(pawns) | shift_ne(pawns));
-    pawn_protectors &= pawns;
-    return popcnt<accel>(pawn_protectors) * PAWN_PROTECTOR_BONUS;
+    uint64_t t = p.bbs[c + ROOK];
+    if(!t) return 0;
+    uint64_t const occ = p.bb_alls[WHITE] | p.bb_alls[BLACK];
+    int x = 0, xtq = 0, xtk = 0;
+    while(t)
+    {
+        int const sq = pop_lsb<accel>(t);
+        uint64_t const a = magic_rook_attacks(sq, occ);
+        uint64_t const tq = a & p.bbs[opposite(c) + QUEEN];
+        uint64_t const tk = a & p.bbs[opposite(c) + KING];
+        x += popcnt<accel>(a);
+        xtq += popcnt<accel>(tq);
+        xtk += popcnt<accel>(tk);
+    }
+    return (
+        x * (mg * ROOK_MOBILITY_BONUS_MG + eg * ROOK_MOBILITY_BONUS_EG) / 256 +
+        xtq * ROOK_THREATEN_QUEEN +
+        xtk * ROOK_THREATEN_KING +
+        0);
+}
+
+// note: not included in pawn hash (TODO)
+template<acceleration accel>
+static CH_FORCEINLINE int eval_pawns(
+    color c, position const& p,
+    int mg, int eg)
+{
+    (void)mg;
+    (void)eg;
+    int x = 0;
+    uint64_t const mp = p.bbs[c + PAWN];
+    uint64_t const a = shift_pawn_attack(c, mp);
+    x += popcnt<accel>(a & p.bb_alls[c]) * PAWN_PROTECT_ANY;
+    x += popcnt<accel>(a & mp) * PAWN_PROTECT_PAWN;
+    x += popcnt<accel>(a & p.bbs[opposite(c) + KNIGHT]) * PAWN_THREATEN_KNIGHT;
+    x += popcnt<accel>(a & p.bbs[opposite(c) + BISHOP]) * PAWN_THREATEN_BISHOP;
+    x += popcnt<accel>(a & p.bbs[opposite(c) + ROOK]) * PAWN_THREATEN_ROOK;
+    x += popcnt<accel>(a & p.bbs[opposite(c) + QUEEN]) * PAWN_THREATEN_QUEEN;
+    return x;
+}
+
+template<acceleration accel>
+static CH_FORCEINLINE int eval_pieces(
+    color c, position const& p,
+    int mg, int eg)
+{
+    int x = 0;
+
+    x += eval_pawns<accel>(c, p, mg, eg);
+    x += eval_bishops<accel>(c, p, mg, eg);
+    x += eval_rooks<accel>(c, p, mg, eg);
+
+    return x;
 }
 
 template<acceleration accel>
@@ -143,15 +155,16 @@ static CH_FORCEINLINE int passed_pawn_bonuses(
     //return (xm * mg + xe * eg) / 256;
     (void)mg;
     (void)eg;
-    return popcnt<accel>(t) * 64;
+    return popcnt<accel>(t) * (mg * 8 + eg * 64) / 256;
 }
 
 template<acceleration accel>
-static CH_FORCEINLINE int king_safety_bonuses(color c, position const& p)
+static CH_FORCEINLINE int king_safety_bonuses(
+    color c, position const& p, int mg)
 {
     uint64_t t = masks[lsb<accel>(p.bbs[c + KING])].king_attacks;
     t &= p.bb_alls[c];
-    return popcnt<accel>(t) * KING_SAFETY_BONUS;
+    return popcnt<accel>(t) * mg * KING_SAFETY_BONUS / 256;
 }
 
 template<acceleration accel>
@@ -187,18 +200,29 @@ struct evaluator
     CH_FORCEINLINE int evaluate_second_side(position const& p, color c)
     {
         int x = 0;
-        x += mobility_bonuses<accel>(c, p);
-        x += pawn_protector_bonuses<accel>(c, p);
+        x += eval_pieces<accel>(c, p, mg, eg);
         x -= doubled_pawn_penalties<accel>(c, p);
         //x += passed_pawn_bonuses<accel>(c, p, mg, eg);
-        //x += king_safety_bonuses<accel>(c, p);
+        //x += king_safety_bonuses<accel>(c, p, mg);
         if(!p.bbs[c + PAWN])
         {
+            // cannot mate with own material
             int pv = p.stack().piece_vals[c];
-            if(pv <= PIECE_VALUES[BISHOP] ||
-                //pv == PIECE_VALUES[KNIGHT] + PIECE_VALUES[BISHOP] ||
-                0)
+            if(pv <= PIECE_VALUES[BISHOP])
                 x /= 2;
+            // if endgame and ahead in material, give a bonus if our
+            // king is close to enemy king (assisting in mate)
+            else if(mg == 0 &&
+                pv >= p.stack().piece_vals[opposite(c)] + PIECE_VALUES[KNIGHT])
+            {
+                // find manhatten distance to enemy king
+                int mk = lsb<ACCEL_UNACCEL>(p.bbs[c + KING]);
+                int ek = lsb<ACCEL_UNACCEL>(p.bbs[opposite(c) + KING]);
+                int dx = std::abs((mk & 7) - (ek & 7));
+                int dy = std::abs((mk >> 3) - (ek >> 3));
+                int d = 14 - dx - dy;
+                x += d * 4;
+            }
         }
         return x;
     }

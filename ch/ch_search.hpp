@@ -332,13 +332,6 @@ template<acceleration accel> static int quiesce(color c,
         int value;
         p.do_move<accel>(mv);
 
-        {
-            int x = d.p.mate_by_material(c);
-            if(x != 0) d.p.undo_move<accel>(mv);
-            if(x > 0) return MATE_SCORE - height;
-            if(x < 0) return MATED_SCORE + height;
-        }
-
 #if CH_COLOR_TEMPLATE
         value = -quiesce<opposite(c), accel>(
 #else
@@ -907,7 +900,7 @@ static move iterative_deepening(
     {
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
-        bool force = (score != prev_score);
+        bool force = (score != prev_score || d.best[0] != best);
         prev_nodes = d.nodes;
         prev_score = score;
         d.depth = depth;
