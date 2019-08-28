@@ -85,6 +85,7 @@ Move ordering by threatened piece:
 #define CH_ENABLE_LATE_MOVE_PRUNING 1
 
 #define CH_ENABLE_RAZORING 1
+#define CH_ENABLE_DEEP_RAZORING 0
 
 #define CH_MAX_THREADS 8
 

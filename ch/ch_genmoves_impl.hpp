@@ -323,7 +323,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
                     while(t)
                     {
                         int i = pop_lsb<accel>(t);
-                        if(t & my_pro_pawns)
+                        if(i < 8)
                             m = add_pawn_promotions(c, m, move(i + 8, i));
                         else
                             *m++ = move(i + 8, i);
@@ -342,7 +342,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
                     while(t)
                     {
                         int i = pop_lsb<accel>(t);
-                        if(t & my_pro_pawns)
+                        if(i >= 56)
                             m = add_pawn_promotions(c, m, move(i - 8, i));
                         else
                             *m++ = move(i - 8, i);

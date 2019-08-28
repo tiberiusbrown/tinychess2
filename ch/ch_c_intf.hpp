@@ -246,7 +246,7 @@ void CHAPI ch_do_move(ch_move m)
 static ch_move convert_move(char const* str)
 {
     using namespace ch;
-    move m = ch::NULL_MOVE;
+    move m = NULL_MOVE;
 
     m += move::from(('8' - str[1]) * 8 + str[0] - 'a');
     m += move::to(('8' - str[3]) * 8 + str[2] - 'a');

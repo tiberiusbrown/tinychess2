@@ -72,20 +72,13 @@ CH_FORCEINLINE bool hash_info_should_overwrite(
 
 struct hash_info
 {
-    uint16_t best;
+    packed_move best;
     int16_t value;
     int8_t depth;
     uint8_t age;
     uint8_t flag;
     uint8_t pro_piece;
     enum { LOWER, UPPER, EXACT };
-    move get_best() const
-    {
-        move r = best;
-        if(pro_piece != EMPTY)
-            r += move::pawn_promotion(pro_piece);
-        return r;
-    }
 };
 
 template<>

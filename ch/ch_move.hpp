@@ -53,8 +53,6 @@ struct move
         return false;
     }
 
-
-private:
     static constexpr uint32_t const MOVE_PAWN_DMOVE = 0x00800000;
     static constexpr uint32_t const MOVE_EN_PASSANT = 0x00400000;
     static constexpr uint32_t const MOVE_CASTLEQ    = 0x00200000;
@@ -91,5 +89,53 @@ char const* move::extended_algebraic() const
     *bp = '\0';
     return buf;
 }
+
+struct packed_move
+{
+    uint16_t d;
+    void set(move const& m)
+    {
+        d = 0;
+        d |= m.to();
+        d |= (m.from() << 6);
+        if(m.is_special())
+        {
+            if(0);
+            else if(m.is_castlek()) d |= 0x1000;
+            else if(m.is_castleq()) d |= 0x2000;
+            else if(m.is_pawn_dmove()) d |= 0x3000;
+            else if(m.is_en_passant()) d |= 0x4000;
+            else if(m.is_promotion())
+            {
+                d |= 0x8000;
+                d |= ((m.promotion_piece() - 2) << 12);
+            }
+        }
+    }
+    constexpr int from() const { return (d >> 6) & 0x3f; }
+    constexpr int to() const { return d & 0x3f; }
+    constexpr int is_special() const { return (d & 0xf000) != 0; }
+    constexpr int is_castlek() const { return (d & 0xf000) == 0x1000; }
+    constexpr int is_castleq() const { return (d & 0xf000) == 0x2000; }
+    constexpr int is_pawn_dmove() const { return (d & 0xf000) == 0x3000; }
+    constexpr int is_en_passant() const { return (d & 0xf000) == 0x4000; }
+    constexpr int is_promotion() const { return (d & 0x8000) != 0; }
+    constexpr int promotion_piece() const { return ((d >> 12) & 0x7) + 2; }
+    operator move() const
+    {
+        move m(from(), to());
+        if(is_special())
+        {
+            if(0);
+            else if(is_castlek()) m += move::MOVE_CASTLEK;
+            else if(is_castleq()) m += move::MOVE_CASTLEQ;
+            else if(is_pawn_dmove()) m += move::pawn_dmove();
+            else if(is_en_passant()) m += move::en_passant();
+            else if(is_promotion())
+                m += move::pawn_promotion(promotion_piece());
+        }
+        return m;
+    }
+};
 
 }

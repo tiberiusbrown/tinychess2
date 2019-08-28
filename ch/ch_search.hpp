@@ -199,7 +199,7 @@ static void send_info(search_data& d, bool force = false)
             d.p.undo_move<accel>(cur);
             break;
         }
-        cur = i.get_best();
+        cur = i.best;
         pv[pvlen++] = cur;
     }
     for(int n = pvlen - 2; n >= 0; --n)
@@ -414,7 +414,7 @@ template<acceleration accel> static int negamax(color c,
         hash_info i;
         if(d.tt->get(d.p.hash(), i))
         {
-            hash_move = i.get_best();
+            hash_move = i.best;
             if(i.depth >= depth)
             {
                 int v = i.value;
@@ -514,7 +514,10 @@ template<acceleration accel> static int negamax(color c,
         static constexpr int DEEP_RAZOR_MARGIN = 200;
         if(!in_check &&
             ((depth <= 2 && static_eval + RAZOR_MARGIN <= alpha) ||
-            (depth <= 4 && static_eval + DEEP_RAZOR_MARGIN <= alpha)))
+#if CH_ENABLE_DEEP_RAZORING
+            (depth <= 4 && static_eval + DEEP_RAZOR_MARGIN <= alpha) ||
+#endif
+            0))
         {
 #if CH_COLOR_TEMPLATE
             return quiesce<c, accel>(d, depth, alpha, beta, height);
@@ -786,7 +789,7 @@ template<acceleration accel> static int negamax(color c,
         else
             i.flag = hash_info::EXACT;
         i.depth = int8_t(depth);
-        i.best = uint16_t(best_move);
+        i.best.set(best_move);
         i.age = uint8_t(d.p.age);
         i.pro_piece = uint8_t(best_move.is_promotion() ?
             best_move.promotion_piece() : EMPTY);
