@@ -220,7 +220,7 @@ static bool process_command(std::string const& line)
     {
         ch_stop();
     }
-    else if(line == "eval")
+    else if(startswith(line, "eval"))
     {
         std::cout << ch_evaluate() << std::endl;
     }

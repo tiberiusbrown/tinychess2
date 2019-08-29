@@ -3,8 +3,17 @@
 #include "ch_internal.hpp"
 #include "ch_bb.hpp"
 
+#include <algorithm>
+
 namespace ch
 {
+
+CH_OPT_SIZE static uint8_t get_cheby_dist(int a, int b)
+{
+    int dx = std::abs((a & 7) - (b & 7));
+    int dy = std::abs((a >> 3) - (b >> 3));
+    return uint8_t(std::max(dx, dy));
+}
 
 CH_OPT_SIZE static void init()
 {
@@ -16,6 +25,10 @@ CH_OPT_SIZE static void init()
     memzero(&masks[0], int(masks.size() * sizeof(masks[0])));
     memzero(&betweens[0], int(betweens.size() * sizeof(betweens[0])));
     memzero(&lines[0], int(lines.size() * sizeof(lines[0])));
+
+    for(int i = 0; i < 64; ++i)
+        for(int j = 0; j < 64; ++j)
+            cheby_dist[i][j] = get_cheby_dist(i, j);
 
     for(int i = 0; i < 64; ++i)
     {

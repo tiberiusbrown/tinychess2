@@ -291,6 +291,8 @@ static std::array<uint8_t, 64 * 8> first_rank_attacks;
 static std::array<std::array<uint64_t, 64>, 64> betweens;
 static std::array<std::array<uint64_t, 64>, 64> lines;
 
+static std::array<std::array<uint8_t, 64>, 64> cheby_dist;
+
 #if CH_ENABLE_SSE
 #if CH_ARCH_64BIT
 static inline constexpr bool has_sse() { return true; }

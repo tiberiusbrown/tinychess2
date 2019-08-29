@@ -175,6 +175,16 @@ static CH_FORCEINLINE uint64_t slide_fill_se(uint64_t bb, uint64_t empty)
     return bb;
 }
 
+template<color c>
+static CH_FORCEINLINE uint64_t slide_fill_forward(uint64_t bb, uint64_t empty)
+{
+    return c == WHITE ? slide_fill_n(bb, empty) : slide_fill_s(bb, empty);
+}
+static CH_FORCEINLINE uint64_t slide_fill_forward(color c, uint64_t bb, uint64_t empty)
+{
+    return c == WHITE ? slide_fill_n(bb, empty) : slide_fill_s(bb, empty);
+}
+
 static CH_FORCEINLINE uint64_t slide_attack_n(uint64_t bb, uint64_t empty)
 {
     return shift_n(slide_fill_n(bb, empty));

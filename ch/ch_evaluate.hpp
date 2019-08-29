@@ -105,6 +105,41 @@ static CH_FORCEINLINE int eval_pawns(
 }
 
 template<acceleration accel>
+static CH_FORCEINLINE int eval_knights(
+    color c, position const& p,
+    int mg, int eg)
+{
+    uint64_t t = p.bbs[c + KNIGHT];
+    if(!t) return 0;
+    int x = 0, xm = 0, xe = 0, xtb = 0, xtr = 0, xtq = 0, xtk = 0;
+    {
+        int n = popcnt<accel>(t) * popcnt<accel>(p.bbs[c + PAWN]);
+        xm += n * KNIGHT_PAWN_BONUS_MG;
+        xe += n * KNIGHT_PAWN_BONUS_EG;
+    }
+    while(t)
+    {
+        int const sq = pop_lsb<accel>(t);
+        uint64_t const a = masks[sq].knight_attacks;
+        uint64_t const tb = a & p.bbs[opposite(c) + BISHOP];
+        uint64_t const tr = a & p.bbs[opposite(c) + ROOK];
+        uint64_t const tq = a & p.bbs[opposite(c) + QUEEN];
+        uint64_t const tk = a & p.bbs[opposite(c) + KING];
+        xtb += popcnt<accel>(tb);
+        xtr += popcnt<accel>(tr);
+        xtq += popcnt<accel>(tq);
+        xtk += popcnt<accel>(tk);
+    }
+    return
+        x +
+        xtb * KNIGHT_THREATEN_BISHOP +
+        xtr * KNIGHT_THREATEN_ROOK +
+        xtq * KNIGHT_THREATEN_QUEEN +
+        xtk * KNIGHT_THREATEN_KING +
+        (xm * mg + xe * eg) / 256;
+}
+
+template<acceleration accel>
 static CH_FORCEINLINE int eval_pieces(
     color c, position const& p,
     int mg, int eg)
@@ -112,6 +147,7 @@ static CH_FORCEINLINE int eval_pieces(
     int x = 0;
 
     x += eval_pawns<accel>(c, p, mg, eg);
+    x += eval_knights<accel>(c, p, mg, eg);
     x += eval_bishops<accel>(c, p, mg, eg);
     x += eval_rooks<accel>(c, p, mg, eg);
 
@@ -141,21 +177,28 @@ static CH_FORCEINLINE int passed_pawn_bonuses(
 {
     uint64_t t = p.bbs[opposite(c) + PAWN];
     t |= shift_w(t) | shift_e(t);
-    if(c == WHITE)
-        t = slide_fill_s(t, ~0ull);
-    else
-        t = slide_fill_n(t, ~0ull);
+    t = slide_fill_forward(opposite(c), t, ~0ull);
     t = p.bbs[c + PAWN] & ~t;
-    //int xm = 0, xe = 0;
-    //while(t)
-    //{
-    //    xm += piece_tables[0][c + PASSED_PAWN][pop_lsb<accel>(t)];
-    //    xe += piece_tables[1][c + PASSED_PAWN][pop_lsb<accel>(t)];
-    //}
-    //return (xm * mg + xe * eg) / 256;
-    (void)mg;
-    (void)eg;
-    return popcnt<accel>(t) * (mg * 8 + eg * 64) / 256;
+    
+    uint64_t const alle = p.bb_alls[opposite(c)];
+    int mk = lsb<accel>(p.bbs[c + KING]);
+    int ek = lsb<accel>(p.bbs[opposite(c) + KING]);
+    
+    int x = 0, xm = 0, xe = 0;
+    while(t)
+    {
+        uint64_t m = lsb_mask<accel>(t);
+        int sq = pop_lsb<accel>(t);
+        int rank = (c == WHITE ? 7 - (sq >> 3) : sq >> 3);
+        xm += PASSED_PAWN_MG[rank];
+        xe += PASSED_PAWN_EG[rank];
+        xe += (cheby_dist[sq][ek] - cheby_dist[sq][mk]) *
+            PASSED_PAWN_KING_ESCORT;
+        if(!(slide_fill_forward(c, m, ~0ull) & alle))
+            xe += PASSED_PAWN_FREE_EG[rank];
+    }
+
+    return x + (xm * mg + xe * eg) / 256;
 }
 
 template<acceleration accel>
@@ -201,7 +244,7 @@ struct evaluator
     {
         int x = 0;
         x += eval_pieces<accel>(c, p, mg, eg);
-        x -= doubled_pawn_penalties<accel>(c, p);
+        //x -= doubled_pawn_penalties<accel>(c, p);
         //x += passed_pawn_bonuses<accel>(c, p, mg, eg);
         //x += king_safety_bonuses<accel>(c, p, mg);
         if(!p.bbs[c + PAWN])
@@ -212,16 +255,13 @@ struct evaluator
                 x /= 2;
             // if endgame and ahead in material, give a bonus if our
             // king is close to enemy king (assisting in mate)
-            else if(mg == 0 &&
+            else if(mg == 0 && !p.bbs[opposite(c) + PAWN] &&
                 pv >= p.stack().piece_vals[opposite(c)] + PIECE_VALUES[KNIGHT])
             {
-                // find manhatten distance to enemy king
+                // find chebyshev distance to enemy king
                 int mk = lsb<ACCEL_UNACCEL>(p.bbs[c + KING]);
                 int ek = lsb<ACCEL_UNACCEL>(p.bbs[opposite(c) + KING]);
-                int dx = std::abs((mk & 7) - (ek & 7));
-                int dy = std::abs((mk >> 3) - (ek >> 3));
-                int d = 14 - dx - dy;
-                x += d * 4;
+                x += (7 - cheby_dist[mk][ek]) * 4;
             }
         }
         return x;
