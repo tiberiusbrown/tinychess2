@@ -278,6 +278,9 @@ struct precomputed_mask_data
     uint64_t bishop_pseudo_attacks;
     uint64_t pawn_attacks[2]; // white, black
 
+    // for king defenders
+    uint64_t king_areas[2];
+
     // for hyperbola quintessence
     uint64_t singleton;
     uint64_t vertical;

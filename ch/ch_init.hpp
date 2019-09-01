@@ -168,6 +168,13 @@ CH_OPT_SIZE static void init()
         for(int j = i + 7; j < 64; j += 7)
             lines[i][j] = anti;
     }
+
+    for(int i = 0; i < 64; ++i)
+    {
+        uint64_t a = masks[i].king_attacks | (1ull << i);
+        masks[i].king_areas[WHITE] = a | shift_n(a);
+        masks[i].king_areas[BLACK] = a | shift_s(a);
+    }
 }
 
 }

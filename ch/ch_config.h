@@ -17,6 +17,7 @@ Stockfish finds it at depth 15 in less than 20 ms
 
 IMPLEMENT:
 
+Mop-up Evaluation for better endgame
 Proper PV tracking (i.e., not with hash)
 Moves that give check in quiescence? (depth-limited)
 Record and report statistics (number of fail-highs in PVS, etc)
@@ -58,33 +59,6 @@ Move ordering by threatened piece:
 
 // seems to hinder right now (?)
 #define CH_ENABLE_COUNTERMOVE_HEURISTIC 0
-
-// no zw protection right now
-#define CH_ENABLE_NULL_MOVE 1
-
-#define CH_ENABLE_FUTILITY_PRUNING 1
-
-// seems to hinder right now
-#define CH_ENABLE_PROBCUT_PRUNING 0
-
-#define CH_ENABLE_QUIESCENCE 1
-#define CH_QUIESCE_ON_QUIETS 1
-
-#define CH_ENABLE_PVS 0
-
-// internal iterative deepening
-#define CH_ENABLE_IID 1
-
-#define CH_ENABLE_MOVE_PICKER 1
-
-// causes delays in finding mates right now
-// also increases nodes sometimes! i think from hash behavior
-#define CH_ENABLE_LATE_MOVE_REDUCTION 1
-
-#define CH_ENABLE_LATE_MOVE_PRUNING 0
-
-#define CH_ENABLE_RAZORING 1
-#define CH_ENABLE_DEEP_RAZORING 0
 
 #define CH_MAX_THREADS 8
 

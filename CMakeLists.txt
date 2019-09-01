@@ -99,7 +99,9 @@ if(MSVC)
 endif()
 add_library(ch STATIC ${CH_SOURCES} ${EDITORCONFIG})
 add_library(ch_minimal STATIC ${CH_SOURCES} ${EDITORCONFIG})
+add_library(ch_tunable STATIC ${CH_SOURCES} ${EDITORCONFIG})
 target_compile_definitions(ch_minimal PRIVATE -DCH_MINIMAL_SIZE)
+target_compile_definitions(ch_tunable PUBLIC -DCH_TUNABLE)
 if(UNIX)
     target_compile_options(ch PRIVATE -mssse3 -fno-tree-vectorize)
     target_compile_options(ch_minimal PRIVATE -mssse3 -fno-tree-vectorize)
@@ -109,6 +111,11 @@ endif()
 
 add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
+
+add_executable(tune_sts tune_sts.cpp ${EDITORCONFIG})
+target_link_libraries(tune_sts ch_tunable)
+target_compile_definitions(tune_sts PUBLIC
+    -DSTSFILE="${CMAKE_CURRENT_SOURCE_DIR}/stsrating/sts_all.epd")
 
 add_executable(${PROJECT_NAME}_uci uci.cpp ${EDITORCONFIG})
 target_link_libraries(${PROJECT_NAME}_uci ch)

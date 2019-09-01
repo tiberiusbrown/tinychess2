@@ -941,14 +941,15 @@ def main(argv):
         analysisTime = 50
         if bRate:
             myTime = 2.5534  # sec in intel i7-2600k
-            yourTime = timeit.timeit('"-".join(str(n) for n in range(100))', number=100000)
-            print('Your bench : %0.6fs' %(yourTime))
-            print('My bench   : %0.6fs' %(myTime))
+            #yourTime = timeit.timeit('"-".join(str(n) for n in range(100))', number=100000)
+            #print('Your bench : %0.6fs' %(yourTime))
+            #print('My bench   : %0.6fs' %(myTime))
 
             if protocol == WB:
                 bRate = False
             else:                
-                analysisTime = 200 * yourTime/myTime
+                #analysisTime = 200 * yourTime/myTime
+                analysisTime = 150
                 if analysisTime < 50:
                     analysisTime = 50  # ms
                 print('Analysis Time to get CCRL 40/4 rating estimate : %0.0fms' %(analysisTime))

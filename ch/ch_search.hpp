@@ -7,6 +7,7 @@
 #include "ch_history_heuristic.hpp"
 #include "ch_move_picker.hpp"
 #include "ch_position.hpp"
+#include "ch_params.hpp"
 
 #include <algorithm>
 #include <array>
@@ -88,76 +89,6 @@ struct search_data
             time_limit_reached();
     }
 };
-
-static constexpr int8_t const MOVE_ORDER_PIECEVALS[10] =
-{
-    1 * 4, 1 * 4,
-    3 * 4, 3 * 4,
-    3 * 4, 3 * 4,
-    5 * 4, 5 * 4,
-    9 * 4, 9 * 4,
-};
-
-static CH_FORCEINLINE void order_moves(
-    move_list& mvs,
-    search_data const& d,
-    move const& hashmove,
-    std::array<move, CH_NUM_KILLERS> const& killers)
-{
-    move parent_move = d.p.stack().prev_move;
-#if CH_ENABLE_COUNTERMOVE_HEURISTIC
-    move countermove = d.hh->get_countermove(parent_move);
-#endif
-
-    for(move& mv : mvs)
-    {
-        int x;
-
-        if(mv.is_similar_to(hashmove))
-        {
-            x = 127;
-        }
-        else if(mv.is_promotion())
-        {
-            x = MOVE_ORDER_PIECEVALS[mv.promotion_piece()]
-                - MOVE_ORDER_PIECEVALS[PAWN];
-            if(d.p.pieces[mv.to()] != EMPTY)
-                x += MOVE_ORDER_PIECEVALS[d.p.pieces[mv.to()]];
-            x += 64;
-        }
-        else if(d.p.pieces[mv.to()] != EMPTY)
-        {
-            x = MOVE_ORDER_PIECEVALS[d.p.pieces[mv.to()]]
-                - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
-            x += 64;
-        }
-        else if(mv.is_killer(killers))
-        {
-            x = 62;
-        }
-#if CH_ENABLE_COUNTERMOVE_HEURISTIC
-        else if(mv.is_similar_to(countermove))
-        {
-            x = 61;
-        }
-#endif
-        else if(mv.to() == parent_move.to())
-        {
-            x = 60 - MOVE_ORDER_PIECEVALS[d.p.pieces[mv.from()]];
-        }
-        else
-        {
-            x = 0;
-#if CH_ENABLE_HISTORY_HEURISTIC
-            x += d.hh->get_hh_score(mv);
-#endif
-        }
-
-        mv.sort_key() = uint8_t(x);
-    }
-
-    mvs.sort();
-}
 
 template<acceleration accel>
 static void send_info(search_data& d, bool force = false)
@@ -400,43 +331,46 @@ template<acceleration accel> static int negamax(color c,
             return m_alpha;
     }
 
+    bool tthit = false;
+    hash_info ttinfo = { 0 };
+    int ttvalue = 0;
 #if CH_ENABLE_HASH
     // transposition table lookup
     if(depth > 1)
     {
-        hash_info i;
-        if(d.tt->get(d.p.hash(), i))
+        if(d.tt->get(d.p.hash(), ttinfo))
         {
-            hash_move = i.best;
-            if(i.depth >= depth)
+            tthit = true;
+            hash_move = ttinfo.best;
+            if(ttinfo.depth >= depth)
             {
-                int v = i.value;
-                if(v >= MATE_SCORE - 256)
-                    v -= height;
-                if(v <= MATED_SCORE + 256)
-                    v += height;
+                ttvalue = ttinfo.value;
+                if(ttvalue >= MATE_SCORE - 256)
+                    ttvalue -= height;
+                if(ttvalue <= MATED_SCORE + 256)
+                    ttvalue += height;
 #if 1
-                if(i.flag == hash_info::EXACT ||
-                    (i.flag == hash_info::LOWER && v >= beta) ||
-                    (i.flag == hash_info::UPPER && v <= alpha))
+                if(ttinfo.flag == hash_info::EXACT ||
+                    (ttinfo.flag == hash_info::LOWER && ttvalue >= beta) ||
+                    (ttinfo.flag == hash_info::UPPER && ttvalue <= alpha))
                 {
                     d.best[height] = hash_move;
-                    return v;
+                    return ttvalue;
                 }
 #else
-                if(i.flag == hash_info::EXACT)
+                if(ttinfo.flag == hash_info::EXACT)
                 {
                     d.best[height] = hash_move;
-                    return v;
+                    return ttvalue;
                 }
-                else if(i.flag == hash_info::LOWER)
-                    alpha = std::max<int>(alpha, v);
-                else if(i.flag == hash_info::UPPER)
-                    beta = std::min<int>(beta, v);
+                else if(ttinfo.flag == hash_info::LOWER)
+                    alpha = std::max<int>(alpha, ttvalue);
+                else if(ttinfo.flag == hash_info::UPPER)
+                    beta = std::min<int>(beta, ttvalue);
                 if(alpha >= beta)
                 {
                     d.best[height] = hash_move;
-                    return v;
+                    return ttvalue;
                 }
 #endif
             }
@@ -461,11 +395,10 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_PROBCUT_PRUNING
     // Ethereal-style Probcut
-    int const PROBCUT_MARGIN = 100;
     if(
-        //node_type != NODE_PV &&
+        alpha + 1 < beta &&
         height > 0 &&
-        depth >= 5 &&
+        depth >= PROBCUT_MIN_DEPTH &&
         beta < MATE_SCORE - 256 &&
         beta > MATED_SCORE + 256 &&
         static_eval + d.p.best_case_move_value() >= beta + PROBCUT_MARGIN)
@@ -485,7 +418,7 @@ template<acceleration accel> static int negamax(color c,
                 d, depth - 4, -rbeta, -rbeta + 1, height + 1);
             d.p.undo_move<accel>(mv);
             if(v >= rbeta)
-                return beta;// v;
+                return v;
         }
     }
 #endif
@@ -503,21 +436,22 @@ template<acceleration accel> static int negamax(color c,
 #if CH_ENABLE_RAZORING
     if(height > 0)
     {
-        static constexpr int RAZOR_MARGIN = 100;
-        static constexpr int DEEP_RAZOR_MARGIN = 200;
         if(!in_check &&
-            ((depth <= 2 && static_eval + RAZOR_MARGIN <= alpha) ||
+            ((depth <= RAZOR_MAX_DEPTH && static_eval + RAZOR_MARGIN <= alpha) ||
 #if CH_ENABLE_DEEP_RAZORING
-            (depth <= 4 && static_eval + DEEP_RAZOR_MARGIN <= alpha) ||
+            (depth <= DEEP_RAZOR_MAX_DEPTH && static_eval + DEEP_RAZOR_MARGIN <= alpha) ||
 #endif
             0))
         {
+#if CH_ENABLE_RAZOR_QSEARCH
 #if CH_COLOR_TEMPLATE
             return quiesce<c, accel>(d, depth, alpha, beta, height);
 #else
             return quiesce<accel>(c, d, depth, alpha, beta, height);
 #endif
-            //--depth;
+#else
+            --depth;
+#endif
         }
     }
 #endif
@@ -526,45 +460,45 @@ template<acceleration accel> static int negamax(color c,
     // futility pruning
     bool fprune = false;
     if(
-        //node_type != NODE_PV &&
         height > 0 &&
         !in_check &&
-        depth <= 8 &&
+        depth <= FUTILITY_PRUNING_MAX_DEPTH &&
         beta < MATE_SCORE - 256 &&
         beta > MATED_SCORE + 256 &&
         alpha < MATE_SCORE - 256 &&
         alpha > MATED_SCORE + 256 &&
         1)
     {
-        if(static_eval >= beta + 64 * depth)
-//#if CH_COLOR_TEMPLATE
-//            return quiesce<c, accel>(d, depth, alpha, beta, height);
-//#else
-//            return quiesce<accel>(c, d, depth, alpha, beta, height);
-//#endif
+        if(static_eval >= reverse_futility_margin(depth, beta))
+        {
             return static_eval;
-        if(static_eval + 64 * depth <= alpha)
+        }
+        if(static_eval <= futility_margin(depth, alpha))
             fprune = true;
     }
 #endif
 
 #if CH_ENABLE_NULL_MOVE
     // null move pruning
-    if(height > 0 && !in_check && depth >= 5 &&
+    if(
+        height > 0 &&
+        !in_check &&
+        depth >= NULL_MOVE_MIN_DEPTH &&
         (height < 1 || d.mvstack[height - 1] != NULL_MOVE) &&
         //(height < 2 || d.mvstack[height - 2] != NULL_MOVE) &&
-        d.p.has_piece_better_than_pawn(c)
-        )
+        d.p.has_piece_better_than_pawn(c) &&
+        (!tthit || !(ttinfo.flag == TTFLAG_UPPER) || ttvalue >= beta) &&
+        1)
     {
         d.mvstack[height] = NULL_MOVE;
         d.p.do_null_move();
+        int newd = null_move_depth(depth, static_eval, beta);
 #if CH_COLOR_TEMPLATE
         int value = -negamax<opposite(c), accel>(
 #else
         int value = -negamax<accel>(opposite(c),
 #endif
-            d, depth >= 8 ? depth / 2 : depth - 4, -beta, -beta + 1, height + 1);
-            //d, depth - 4, -beta, -alpha, height + 1);
+            d, newd, -beta, -beta + 1, height + 1);
         d.p.undo_null_move();
         if(value >= beta)
         {
@@ -577,46 +511,23 @@ template<acceleration accel> static int negamax(color c,
 
 #if CH_ENABLE_IID
     // internal iterative deepening
-    if(hash_move == NULL_MOVE && depth > 5)
+    if(hash_move == NULL_MOVE && depth >= IID_MIN_DEPTH)
     {
 #if CH_COLOR_TEMPLATE
         negamax<c, accel>(
 #else
         negamax<accel>(c,
 #endif
-            d, 3, alpha, beta, height);
+            d, iid_depth(depth), alpha, beta, height);
         hash_move = d.best[height];
     }
 #endif
 
-    bool const tail = (depth <= 1);
-
-#if CH_ENABLE_MOVE_PICKER
     move_picker<accel> picker(
         mvs, d.p, hash_move,
         d.killers[height], d.hh, depth);
-#else
-    if(tail)
-    {
-        for(int i = 0, n = 0; n < mvs.size(); ++n)
-        {
-            if(mvs[n].is_similar_to(hash_move)
-#if CH_ENABLE_KILLERS
-                || mvs[n].is_killer(d.killers[height])
-#endif
-                )
-            {
-                std::swap(mvs[i++], mvs[n]);
-            }
-        }
-    }
-    else
-    {
-        order_moves(mvs, d, hash_move, d.killers[height]);
-        mvs.sort();
-    }
-#endif
 
+    bool const tail = (depth <= 1);
     int value = MIN_SCORE;
     int best = MIN_SCORE;
     move best_move = NULL_MOVE;
@@ -631,7 +542,6 @@ template<acceleration accel> static int negamax(color c,
 
     if(in_check)
         ++depth;
-#if CH_ENABLE_MOVE_PICKER
     for(int n = 0;; ++n)
     {
         int stage;
@@ -643,11 +553,6 @@ template<acceleration accel> static int negamax(color c,
 
         if(mv == NULL_MOVE)
             break;
-#else
-    for(int n = 0; n < mvs.size(); ++n)
-    {
-        move mv = mvs[n];
-#endif
         bool const quiet = !d.p.move_is_promotion_or_capture(mv);
         bool const check = d.p.move_is_check(mv);
         bool const castle = mv.is_castle();
@@ -669,7 +574,9 @@ template<acceleration accel> static int negamax(color c,
 #endif
 
 #if CH_ENABLE_LATE_MOVE_PRUNING
-        if(!dont_reduce && newdepth <= 4 && n >= newdepth * 7)
+        if(!dont_reduce &&
+            newdepth <= LMP_MAX_DEPTH &&
+            n >= lmp_min_n(newdepth))
             continue;
 #endif
 
@@ -678,39 +585,29 @@ template<acceleration accel> static int negamax(color c,
 
         int v = alpha + 1;
 #if CH_ENABLE_LATE_MOVE_REDUCTION
-        if(!dont_reduce && newdepth >= 3 && n >= 4)
+        if(!dont_reduce &&
+            newdepth >= LMR_MIN_DEPTH &&
+            n >= lmr_min_n(newdepth))
         {
-            int reduction = 2;
-            if(n >= 6) reduction += newdepth / 3;
-            reduction = std::min(newdepth - 2, std::max(1, reduction));
+            int const R = lmr_reduction(newdepth, n);
 #if CH_COLOR_TEMPLATE
             v = -negamax<opposite(c), accel>(
 #else
             v = -negamax<accel>(opposite(c),
 #endif
-                d, newdepth - reduction, -alpha - 1, -alpha, height + 1);
+                d, newdepth - R, -alpha - 1, -alpha, height + 1);
 
         }
 #endif
 
         if(newdepth <= 1)
         {
-#if CH_ENABLE_QUIESCENCE
-            if(CH_QUIESCE_ON_QUIETS || !quiet)
-            {
 #if CH_COLOR_TEMPLATE
-                v = -quiesce<opposite(c), accel>(
+            v = -quiesce<opposite(c), accel>(
 #else
-                v = -quiesce<accel>(opposite(c),
+            v = -quiesce<accel>(opposite(c),
 #endif
-                    d, newdepth - 1, -beta, -alpha, height + 1);
-            }
-            else
-#endif
-            {
-                ++d.nodes;
-                v = evaluator<accel>{}.evaluate(d.p, c);
-            }
+                d, newdepth - 1, -beta, -alpha, height + 1);
             value = std::max(value, v);
         }
         else if(v > alpha)
@@ -825,10 +722,6 @@ template<acceleration accel>
 static int aspiration_window(
     search_data& d, int depth, int prev_score)
 {
-    // TODO: move constants to a common location
-    constexpr int ASPIRATION_BASE_DELTA = 10;
-    constexpr int ASPIRATION_MIN_DEPTH = 4;
-
     int delta = ASPIRATION_BASE_DELTA;
     int alpha = depth < ASPIRATION_MIN_DEPTH ? MIN_SCORE :
         std::max(MIN_SCORE, prev_score - delta);
@@ -853,13 +746,7 @@ static int aspiration_window(
             beta = std::min(MAX_SCORE, beta + delta);
         }
 
-#if 0
-        // ethereal
-        delta += delta / 2;
-#else
-        // stockfish
-        delta += delta / 4 + 5;
-#endif
+        delta = aspiration_next_delta(delta);
     }
 
     return 0;

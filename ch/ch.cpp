@@ -1,5 +1,11 @@
 #include "ch.h"
 
+#ifdef CH_TUNABLE
+#define CH_PARAM(n_, default_) extern int n_; int n_ = default_;
+#define CH_PARAM_ARRAY(n_, ...) extern int n_; int n_ = { __VA_ARGS__ };
+#include "ch_params.hpp"
+#endif
+
 // poor man's LTO >:-D
 
 #include "ch_print_bbs.hpp"
@@ -15,7 +21,7 @@
 
 extern "C"
 {
-
+    
 #if CH_ARCH_32BIT
 
 __declspec(naked) void __cdecl _allshl()

@@ -358,7 +358,10 @@ void CHAPI ch_search(ch_search_limits const* limits)
         g_sd[n].limits = newlimits;
     }
     if(g_num_threads == 0)
+    {
+        g_sd[0].stop = false;
         helper_start_search(g_sd[0]);
+    }
     else
         helper_start_threads();
 }
