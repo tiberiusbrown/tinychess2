@@ -11,6 +11,8 @@ namespace ch
 
 struct move_list
 {
+    move_list() : n(0) {}
+
     move& operator[](int i) { return m[i]; }
     move const& operator[](int i) const { return m[i]; }
 
@@ -45,8 +47,8 @@ struct move_list
         std::sort(begin(), end(), sort_descending());
     }
 
-    constexpr int size() const { return n; }
-    constexpr bool empty() const { return n == 0; }
+    int size() const { return n; }
+    bool empty() const { return n == 0; }
 
     std::array<move, 256>::iterator begin() { return m.begin(); }
     std::array<move, 256>::iterator end() { return m.begin() + n; }

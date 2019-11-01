@@ -7,7 +7,7 @@ static void ai_move(void)
 {
     ch_search_limits limits =
     {
-        0, 300, 0, 0
+        0, 0, 300, 0, 0
     };
 
     cur_turn = ch_current_turn();

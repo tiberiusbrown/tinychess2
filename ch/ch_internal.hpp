@@ -98,6 +98,15 @@ char const* const CH_RANKSTRS[8] =
 namespace ch
 {
 
+template<class T> constexpr T const& min(T const& a, T const& b)
+{
+    return a < b ? a : b;
+}
+template<class T> constexpr T const& max(T const& a, T const& b)
+{
+    return a < b ? b : a;
+}
+
 enum acceleration
 {
     ACCEL_UNACCEL, // no acceleration
@@ -141,7 +150,7 @@ static constexpr color opposite(color c)
 };
 
 template<acceleration accel>
-CH_FORCEINLINE int lsb(uint64_t x)
+static CH_FORCEINLINE int lsb(uint64_t x)
 {
     assert(x != 0);
 #ifdef _MSC_VER
@@ -164,19 +173,19 @@ CH_FORCEINLINE int lsb(uint64_t x)
 }
 
 template<acceleration accel>
-CH_FORCEINLINE int pop_lsb(uint64_t& x)
+static CH_FORCEINLINE int pop_lsb(uint64_t& x)
 {
     int i = lsb<accel>(x);
     x &= x - 1;
     return i;
 }
 template<acceleration accel>
-CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
+static CH_FORCEINLINE uint64_t lsb_mask(uint64_t x)
 {
     return x & uint64_t(-int64_t(x));
 }
 template<acceleration accel>
-CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
+static CH_FORCEINLINE uint64_t pop_lsb_mask(uint64_t& x)
 {
     uint64_t r = lsb_mask<accel>(x);
     x ^= r;
@@ -212,7 +221,7 @@ CH_FORCEINLINE uint64_t pop_lsb_mask<ACCEL_AVX>(uint64_t& x)
 }
 
 template<acceleration accel>
-CH_FORCEINLINE static int popcnt(uint64_t x)
+static CH_FORCEINLINE int popcnt(uint64_t x)
 {
     constexpr uint64_t  m1 = 0x5555555555555555ull;
     constexpr uint64_t  m2 = 0x3333333333333333ull;
@@ -250,7 +259,7 @@ CH_FORCEINLINE int popcnt<ACCEL_AVX>(uint64_t x)
 #endif
 
 template<acceleration accel>
-CH_FORCEINLINE bool more_than_one(uint64_t x)
+static CH_FORCEINLINE bool more_than_one(uint64_t x)
 {
     return (x & (x - 1)) != 0;
 }

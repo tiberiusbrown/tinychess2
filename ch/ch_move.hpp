@@ -19,8 +19,8 @@ struct move
     constexpr move(int a, int b) : d((a << 8) + b) {}
     constexpr operator uint32_t() const { return d; }
     move& operator+=(move const& m) { d += m.d; return *this; }
-    constexpr bool operator<(move const& m) { return d < m.d; }
-    constexpr uint8_t& sort_key() { return *((uint8_t*)&d + 3); }
+    constexpr bool operator<(move const& m) const { return d < m.d; }
+    constexpr uint8_t& sort_key() const { return *((uint8_t*)&d + 3); }
     static constexpr move from(int sq) { return sq << 8; }
     static constexpr move to(int sq) { return sq; }
     static constexpr move pawn_dmove(int a, int b) { return move(a, b) + pawn_dmove(); }
@@ -42,7 +42,6 @@ struct move
     constexpr bool is_promotion() const { return (d & MOVE_PROMOTION) != 0; }
     char const* extended_algebraic() const;
     constexpr bool is_similar_to(move const& m) const { return (d & 0xffff) == (m.d & 0xffff); }
-
 
     CH_FORCEINLINE bool is_killer(
         std::array<move, CH_NUM_KILLERS> const& killers)

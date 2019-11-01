@@ -244,7 +244,7 @@ struct evaluator
             uint64_t pp = wp | bp;
             for(int i = 0; i < 8; ++i)
             {
-                uint64_t f = file(i);
+                uint64_t f = file_n(i);
                 bool wf = (f & wp) != 0;
                 bool bf = (f & bp) != 0;
                 if(bf && !wf)

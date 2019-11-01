@@ -86,7 +86,8 @@ struct search_data
             stop ||
             depth >= limits.depth ||
             node_limit_reached() ||
-            time_limit_reached();
+            time_limit_reached() ||
+            0;
     }
 };
 
@@ -210,7 +211,7 @@ template<acceleration accel> static int quiesce(color c,
 
     alpha = std::max(alpha, stand_pat);
 
-    bool endgame = (
+    bool const endgame = (
         p.stack().piece_vals[WHITE] + p.stack().piece_vals[BLACK] < 1200);
     for(int n = 0; n < mvs.size(); ++n)
     {
@@ -272,6 +273,7 @@ template<acceleration accel> static int quiesce(color c,
 
         p.undo_move<accel>(mv);
 
+        // TODO: crazy idea: try removing this block to see if stuff improves
         if(value > alpha)
         {
             if(value >= beta)
@@ -546,10 +548,12 @@ template<acceleration accel> static int negamax(color c,
     {
         int stage;
         move mv = picker.get(stage);
+#if 0
         bool const quiet_or_losing = (
             stage >= move_picker<accel>::STAGE_QUIETS);
         bool const losing = (
             stage >= move_picker<accel>::STAGE_LOSING_CAPTURES);
+#endif
 
         if(mv == NULL_MOVE)
             break;
@@ -775,7 +779,6 @@ template<acceleration accel>
 static move iterative_deepening(
     search_data& d, position const& p)
 {
-    uint64_t prev_nodes = 0;
     move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
@@ -788,7 +791,6 @@ static move iterative_deepening(
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
         bool force = (score != prev_score || d.best[0] != best);
-        prev_nodes = d.nodes;
         prev_score = score;
         d.depth = depth;
         d.score = prev_score;

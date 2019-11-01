@@ -350,7 +350,7 @@ void CHAPI ch_search(ch_search_limits const* limits)
 #endif
     ch_search_limits newlimits = *limits;
     if(newlimits.depth <= 0) newlimits.depth = INT_MAX;
-    if(newlimits.mstime <= 0) newlimits.mstime = INT_MAX;
+    //if(newlimits.mstime <= 0) newlimits.mstime = INT_MAX;
     update_limits(g_pos, newlimits);
     for(int n = 0; n < CH_MAX_THREADS; ++n)
     {

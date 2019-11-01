@@ -10,18 +10,18 @@
 #include <fstream>
 #include <random>
 
-#define SEARCH_NODES 10000
+#define SEARCH_NODES 50000
 #define SEARCH_DEPTH 0
 #define SEARCH_TIME 0
 
-#define GENERATION_KEEP 6
+#define GENERATION_KEEP 3
 
 #define GENERATION_SIZE (GENERATION_KEEP * GENERATION_KEEP)
 
-#define NUM_MUTATE 2
+#define NUM_MUTATE 1
 #define MUTATE_FACTOR 0.05
 
-int num_params;
+static int num_params;
 
 static uint32_t get_ms(void)
 {
@@ -38,93 +38,96 @@ struct tunable_param
     int n;
     int a, b;
     int nr;
+    int ai, bi;
 };
 
-#define TUNABLE_PARAM(s_, a_, b_) { #s_, &ch::s_, 1, a_, b_, 1 }
+#define TUNABLE_PARAM(s_, a_, b_) { #s_, &ch::s_, 1, a_, b_, 1, 0, 1 }
 #define TUNABLE_PARAM_ARRAY(s_, a_, b_, nr_) { \
-    #s_, ch::s_, sizeof(ch::s_) / sizeof(int), a_, b_, nr_ }
+    #s_, ch::s_, sizeof(ch::s_) / sizeof(int), a_, b_, nr_, 0, sizeof(ch::s_) / sizeof(int) }
+#define TUNABLE_PARAM_ARRAY_SUB(s_, a_, b_, nr_, ai_, bi_) { \
+    #s_, ch::s_, sizeof(ch::s_) / sizeof(int), a_, b_, nr_, ai_, bi_ }
 
-static tunable_param params[] =
+static tunable_param const params[] =
 {
-#if 0
-    TUNABLE_PARAM(ASPIRATION_BASE_DELTA, 8, 50),
-    TUNABLE_PARAM(ASPIRATION_MIN_DEPTH, 2, 10),
-    TUNABLE_PARAM(ASPIRATION_C0, 1, 10),
-    TUNABLE_PARAM(ASPIRATION_C1, 0, 20),
-    TUNABLE_PARAM(PROBCUT_MIN_DEPTH, 3, 10),
-    TUNABLE_PARAM(PROBCUT_MARGIN, 10, 500),
-    TUNABLE_PARAM(RAZOR_MARGIN, 10, 500),
-    TUNABLE_PARAM(RAZOR_MAX_DEPTH, 1, 3),
+    //TUNABLE_PARAM(ASPIRATION_BASE_DELTA, 4, 50),
+    //TUNABLE_PARAM(ASPIRATION_MIN_DEPTH, 2, 10),
+    //TUNABLE_PARAM(ASPIRATION_C0, 1, 10),
+    //TUNABLE_PARAM(ASPIRATION_C1, 1, 20),
+    //TUNABLE_PARAM(PROBCUT_MIN_DEPTH, 3, 10),
+    //TUNABLE_PARAM(PROBCUT_MARGIN, 10, 500),
+    //TUNABLE_PARAM(RAZOR_MARGIN, 10, 500),
+    //TUNABLE_PARAM(RAZOR_MAX_DEPTH, 1, 3),
     //TUNABLE_PARAM(DEEP_RAZOR_MARGIN, 50, 600),
     //TUNABLE_PARAM(DEEP_RAZOR_MAX_DEPTH, 3, 5),
-    TUNABLE_PARAM(FUTILITY_PRUNING_MAX_DEPTH, 3, 10),
-    TUNABLE_PARAM(FUTILITY_PRUNING_C0, 10, 400),
-    TUNABLE_PARAM(FUTILITY_PRUNING_C1, 10, 400),
-    TUNABLE_PARAM(NULL_MOVE_MIN_DEPTH, 3, 8),
-    TUNABLE_PARAM(IID_MIN_DEPTH, 4, 12),
-    TUNABLE_PARAM(IID_C0, 2, 4),
-    TUNABLE_PARAM(LMP_MAX_DEPTH, 2, 8),
-    TUNABLE_PARAM(LMP_C0, 3, 12),
-    TUNABLE_PARAM(LMP_C1, -5, 5),
-    TUNABLE_PARAM(LMR_MIN_DEPTH, 2, 5),
-    TUNABLE_PARAM(LMR_C0, 3, 6),
-    TUNABLE_PARAM(LMR_C1, 3, 12),
-    TUNABLE_PARAM(LMR_C2, 2, 8),
-#else
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -127, 127, 8),
+    //TUNABLE_PARAM(FUTILITY_PRUNING_MAX_DEPTH, 3, 10),
+    //TUNABLE_PARAM(FUTILITY_PRUNING_C0, 10, 400),
+    //TUNABLE_PARAM(FUTILITY_PRUNING_C1, 10, 400),
+    //TUNABLE_PARAM(NULL_MOVE_MIN_DEPTH, 3, 8),
+    //TUNABLE_PARAM(IID_MIN_DEPTH, 4, 12),
+    //TUNABLE_PARAM(IID_C0, 2, 4),
+    //TUNABLE_PARAM(LMP_MAX_DEPTH, 2, 8),
+    //TUNABLE_PARAM(LMP_C0, 3, 12),
+    //TUNABLE_PARAM(LMP_C1, -5, 5),
+    //TUNABLE_PARAM(LMR_MIN_DEPTH, 2, 5),
+    //TUNABLE_PARAM(LMR_C0, 3, 6),
+    //TUNABLE_PARAM(LMR_C1, 3, 12),
+    //TUNABLE_PARAM(LMR_C2, 2, 8),
 
-    TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
 
-    TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
-    TUNABLE_PARAM(PAWN_PROTECT_PAWN, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_KNIGHT, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_BISHOP, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_ROOK, 0, 200),
-    TUNABLE_PARAM(PAWN_THREATEN_QUEEN, 0, 140),
-    TUNABLE_PARAM_ARRAY(PASSED_PAWN_MG, 0, 200, 1),
-    TUNABLE_PARAM_ARRAY(PASSED_PAWN_EG, 0, 500, 1),
-    TUNABLE_PARAM_ARRAY(PASSED_PAWN_FREE_EG, 0, 1000, 1),
-    TUNABLE_PARAM(PASSED_PAWN_KING_ESCORT, 0, 100),
 
-    TUNABLE_PARAM(KNIGHT_PAWN_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_PAWN_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_BISHOP, 0, 50),
-    TUNABLE_PARAM(KNIGHT_THREATEN_ROOK, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_KING, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST_HALF_OPEN_FILE, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 0, 100),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_EG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -127, 127, 8),
+    //TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -127, 127, 8),
 
-    TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_ROOK, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_KING, 0, 100),
+    //TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
 
-    TUNABLE_PARAM(ROOK_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(ROOK_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(ROOK_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(ROOK_THREATEN_KING, 0, 100),
-    TUNABLE_PARAM(ROOK_ON_OPEN_FILE, 0, 200),
+    //TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
+    //TUNABLE_PARAM(PAWN_PROTECT_PAWN, 0, 100),
+    //TUNABLE_PARAM(PAWN_THREATEN_KNIGHT, 0, 100),
+    //TUNABLE_PARAM(PAWN_THREATEN_BISHOP, 0, 100),
+    //TUNABLE_PARAM(PAWN_THREATEN_ROOK, 0, 200),
+    //TUNABLE_PARAM(PAWN_THREATEN_QUEEN, 0, 140),
+    //TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_MG, 0, 200, 1, 1, 7),
+    //TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_EG, 0, 500, 1, 1, 7),
+    //TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_FREE_EG, 0, 1000, 1, 1, 7),
+    //TUNABLE_PARAM(PASSED_PAWN_KING_ESCORT, 0, 100),
 
-    TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
+    //TUNABLE_PARAM(KNIGHT_PAWN_BONUS_MG, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_PAWN_BONUS_EG, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_MG, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_EG, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_THREATEN_BISHOP, 0, 50),
+    //TUNABLE_PARAM(KNIGHT_THREATEN_ROOK, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_THREATEN_QUEEN, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_THREATEN_KING, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_OUTPOST, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_OUTPOST_HALF_OPEN_FILE, 0, 100),
+    //TUNABLE_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 0, 100),
 
-    TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
-#endif
+    //TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_MG, 0, 100),
+    //TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_EG, 0, 100),
+    //TUNABLE_PARAM(BISHOP_THREATEN_ROOK, 0, 100),
+    //TUNABLE_PARAM(BISHOP_THREATEN_QUEEN, 0, 100),
+    //TUNABLE_PARAM(BISHOP_THREATEN_KING, 0, 100),
+
+    //TUNABLE_PARAM(ROOK_MOBILITY_BONUS_MG, 0, 100),
+    //TUNABLE_PARAM(ROOK_MOBILITY_BONUS_EG, 0, 100),
+    //TUNABLE_PARAM(ROOK_THREATEN_QUEEN, 0, 100),
+    //TUNABLE_PARAM(ROOK_THREATEN_KING, 0, 100),
+    //TUNABLE_PARAM(ROOK_ON_OPEN_FILE, 0, 200),
+
+    //TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
+
+    //TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
 };
 
 struct param_values
@@ -136,7 +139,8 @@ struct param_values
     {
         int i = 0;
         for(auto const& tp : params)
-            for(int m = 0; m < tp.n; ++m)
+            //for(int m = 0; m < tp.n; ++m)
+            for(int m = tp.ai; m < tp.bi; ++m)
                 tp.p[m] = d[i++];
     }
 };
@@ -173,7 +177,8 @@ static void mutate(param_values& dst, param_values const& src)
         int n = 0;
         for(auto const& tp : params)
         {
-            for(int i = 0; i < tp.n; ++i)
+            //for(int i = 0; i < tp.n; ++i)
+            for(int i = tp.ai; i < tp.bi; ++i)
             {
                 if(n == k)
                     dst.d[n] = mutate_value(src.d[n], tp.a, tp.b);
@@ -194,7 +199,7 @@ struct sts_test
     std::string fen;
     std::map<std::string, int> moves;
 };
-std::vector<sts_test> tests;
+static std::vector<sts_test> tests;
 
 static ch_search_limits const LIMITS =
 {
@@ -210,7 +215,10 @@ static void set_best_move(ch_move m)
 
 static ch_system_info const INIT_INFO =
 {
-    &get_ms, nullptr, nullptr, &set_best_move
+    &get_ms,
+    nullptr,
+    nullptr,
+    &set_best_move
 };
 
 static uint64_t hash_mem[(1 << 20) / 8];
@@ -218,24 +226,21 @@ static uint64_t hash_mem[(1 << 20) / 8];
 static int run_sts()
 {
     int n = 0;
-    //int i = 0;
+    int i = 0;
 
     ch_init(&INIT_INFO);
     ch_set_hash(hash_mem, 0);
 
     for(auto const& test : tests)
     {
-        //if(i % 100 == 0)
-        //    printf("Running test: %d, score: %d\r", i, n);
-        //++i;
         ch_clear_caches();
         ch_load_fen(test.fen.c_str());
         ch_search(&LIMITS);
         std::string m = ch_extended_algebraic(best_move);
-        if(test.moves.count(m) != 0)
-            n += test.moves.at(m);
+        int s = test.moves.count(m) != 0 ? test.moves.at(m) : 0;
+        n += s;
+        ++i;
     }
-    //printf("Running test: %d, score: %d\n", i, n);
 
     return n;
 }
@@ -296,9 +301,11 @@ int CDECL main()
     // initial generation
     {
         num_params = 0;
-        for(auto const& tp : params) num_params += tp.n;
+        //for(auto const& tp : params) num_params += tp.n;
+        for(auto const& tp : params) num_params += (tp.bi - tp.ai);
         for(auto& v : values) v.d.resize(num_params);
     }
+
     {
         int s = run_sts();
         for(int i = 0; i < GENERATION_KEEP; ++i)
@@ -307,7 +314,8 @@ int CDECL main()
             v.score = s;
             int n = 0;
             for(auto const& tp : params)
-                for(int m = 0; m < tp.n; ++m)
+                //for(int m = 0; m < tp.n; ++m)
+                for(int m = tp.ai; m < tp.bi; ++m)
                     v.d[n++] = tp.p[m];
         }
     }
@@ -331,7 +339,9 @@ int CDECL main()
                     fprintf(f, "CH_PARAM(%s, ", tp.s);
                 for(int i = 0; i < tp.n; ++i)
                 {
-                    int v = values[0].d[n++];
+                    int v = 0;
+                    if(i >= tp.ai && i < tp.bi)
+                        v = values[0].d[n++];
                     if(tp.n == 1)
                         fprintf(f, "%d)\n", v);
                     else

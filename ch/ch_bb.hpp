@@ -27,7 +27,7 @@ static constexpr uint64_t const FILEE = (0x0101010101010101ull << 4);
 static constexpr uint64_t const FILEF = (0x0101010101010101ull << 5);
 static constexpr uint64_t const FILEG = (0x0101010101010101ull << 6);
 static constexpr uint64_t const FILEH = (0x0101010101010101ull << 7);
-static constexpr uint64_t file(int n) { return FILEA << n; }
+static constexpr uint64_t file_n(int n) { return FILEA << n; }
 
 static CH_FORCEINLINE constexpr uint64_t shift_n(uint64_t bb)
 {
