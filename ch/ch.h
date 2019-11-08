@@ -94,6 +94,7 @@ extern "C" {
     ch_move CHAPI ch_get_move(int n);
 
     int CHAPI ch_evaluate(void);
+    int CHAPI ch_evaluate_white(void);
 
     void CHAPI ch_search(ch_search_limits const* limits);
 

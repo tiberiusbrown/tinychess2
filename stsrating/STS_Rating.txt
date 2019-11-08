@@ -6,16 +6,16 @@ Hash: 128, Threads: 1, time/pos: 0.150s
 
 Number of positions in sts_all.epd: 1500
 Max score = 1500 x 10 = 15000
-Test duration: 00h:04m:03s
+Test duration: 00h:04m:05s
 Expected time to finish: 00h:04m:30s
-STS rating: 2338
+STS rating: 2294
 
   STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
   NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
- BestCnt     43     44     43     41     63     52     34     32     35     58     41     47     59     55     20    667
-   Score    560    556    563    540    726    751    475    476    494    684    542    607    689    655    377   8695
-Score(%)   56.0   55.6   56.3   54.0   72.6   75.1   47.5   47.6   49.4   68.4   54.2   60.7   68.9   65.5   37.7   58.0
-  Rating   2250   2233   2264   2161   2990   3101   1872   1876   1957   2803   2170   2460   2825   2673   1436   2338
+ BestCnt     39     41     49     38     63     47     40     33     31     57     42     45     58     48     24    655
+   Score    521    503    603    532    707    705    546    458    416    664    565    556    700    629    443   8548
+Score(%)   52.1   50.3   60.3   53.2   70.7   70.5   54.6   45.8   41.6   66.4   56.5   55.6   70.0   62.9   44.3   57.0
+  Rating   2077   1997   2442   2126   2905   2896   2188   1796   1609   2713   2273   2233   2874   2558   1730   2294
 
 :: STS ID and Titles ::
 STS 01: Undermining
@@ -35,18 +35,18 @@ STS 14: Queens and Rooks to the 7th rank
 STS 15: Avoid Pointless Exchange
 
 :: Top 5 STS with high result ::
-1. STS 06, 75.1%, "Re-Capturing"
-2. STS 05, 72.6%, "Bishop vs Knight"
-3. STS 13, 68.9%, "Pawn Play in the Center"
-4. STS 10, 68.4%, "Simplification"
-5. STS 14, 65.5%, "Queens and Rooks to the 7th rank"
+1. STS 05, 70.7%, "Bishop vs Knight"
+2. STS 06, 70.5%, "Re-Capturing"
+3. STS 13, 70.0%, "Pawn Play in the Center"
+4. STS 10, 66.4%, "Simplification"
+5. STS 14, 62.9%, "Queens and Rooks to the 7th rank"
 
 :: Top 5 STS with low result ::
-1. STS 15, 37.7%, "Avoid Pointless Exchange"
-2. STS 07, 47.5%, "Offer of Simplification"
-3. STS 08, 47.6%, "Advancement of f/g/h Pawns"
-4. STS 09, 49.4%, "Advancement of a/b/c Pawns"
-5. STS 04, 54.0%, "Square Vacancy"
+1. STS 09, 41.6%, "Advancement of a/b/c Pawns"
+2. STS 15, 44.3%, "Avoid Pointless Exchange"
+3. STS 08, 45.8%, "Advancement of f/g/h Pawns"
+4. STS 02, 50.3%, "Open Files and Diagonals"
+5. STS 01, 52.1%, "Undermining"
 
 STS Rating v13.1
 Number of cores: 4
@@ -56,16 +56,16 @@ Hash: 128, Threads: 1, time/pos: 0.150s
 
 Number of positions in sts_all.epd: 1500
 Max score = 1500 x 10 = 15000
-Test duration: 00h:04m:02s
+Test duration: 00h:04m:06s
 Expected time to finish: 00h:04m:30s
-STS rating: 2362
+STS rating: 2356
 
   STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
   NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
- BestCnt     43     48     44     41     67     55     33     34     34     59     41     46     59     54     19    677
-   Score    568    582    561    541    775    762    457    499    477    687    531    600    703    660    373   8776
-Score(%)   56.8   58.2   56.1   54.1   77.5   76.2   45.7   49.9   47.7   68.7   53.1   60.0   70.3   66.0   37.3   58.5
-  Rating   2286   2348   2255   2166   3208   3150   1792   1979   1881   2816   2121   2429   2887   2696   1418   2362
+ BestCnt     39     42     47     39     66     53     34     35     39     63     41     42     63     48     20    671
+   Score    537    532    611    529    742    763    488    488    511    717    538    558    734    631    378   8757
+Score(%)   53.7   53.2   61.1   52.9   74.2   76.3   48.8   48.8   51.1   71.7   53.8   55.8   73.4   63.1   37.8   58.4
+  Rating   2148   2126   2478   2112   3061   3154   1930   1930   2032   2949   2152   2242   3025   2567   1440   2356
 
 :: STS ID and Titles ::
 STS 01: Undermining
@@ -85,18 +85,118 @@ STS 14: Queens and Rooks to the 7th rank
 STS 15: Avoid Pointless Exchange
 
 :: Top 5 STS with high result ::
-1. STS 05, 77.5%, "Bishop vs Knight"
-2. STS 06, 76.2%, "Re-Capturing"
-3. STS 13, 70.3%, "Pawn Play in the Center"
-4. STS 10, 68.7%, "Simplification"
+1. STS 06, 76.3%, "Re-Capturing"
+2. STS 05, 74.2%, "Bishop vs Knight"
+3. STS 13, 73.4%, "Pawn Play in the Center"
+4. STS 10, 71.7%, "Simplification"
+5. STS 14, 63.1%, "Queens and Rooks to the 7th rank"
+
+:: Top 5 STS with low result ::
+1. STS 15, 37.8%, "Avoid Pointless Exchange"
+2. STS 07, 48.8%, "Offer of Simplification"
+3. STS 08, 48.8%, "Advancement of f/g/h Pawns"
+4. STS 09, 51.1%, "Advancement of a/b/c Pawns"
+5. STS 04, 52.9%, "Square Vacancy"
+
+STS Rating v13.1
+Number of cores: 4
+
+Engine: CHRISTINE 0.1
+Hash: 128, Threads: 1, time/pos: 0.150s
+
+Number of positions in sts_all.epd: 1500
+Max score = 1500 x 10 = 15000
+Test duration: 00h:04m:03s
+Expected time to finish: 00h:04m:30s
+STS rating: 2371
+
+  STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
+  NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
+ BestCnt     42     44     46     41     68     57     36     33     32     61     43     45     64     50     24    686
+   Score    557    533    566    545    752    791    471    469    461    704    572    589    738    644    413   8805
+Score(%)   55.7   53.3   56.6   54.5   75.2   79.1   47.1   46.9   46.1   70.4   57.2   58.9   73.8   64.4   41.3   58.7
+  Rating   2237   2130   2277   2184   3105   3279   1854   1845   1810   2892   2304   2380   3043   2624   1596   2371
+
+:: STS ID and Titles ::
+STS 01: Undermining
+STS 02: Open Files and Diagonals
+STS 03: Knight Outposts
+STS 04: Square Vacancy
+STS 05: Bishop vs Knight
+STS 06: Re-Capturing
+STS 07: Offer of Simplification
+STS 08: Advancement of f/g/h Pawns
+STS 09: Advancement of a/b/c Pawns
+STS 10: Simplification
+STS 11: Activity of the King
+STS 12: Center Control
+STS 13: Pawn Play in the Center
+STS 14: Queens and Rooks to the 7th rank
+STS 15: Avoid Pointless Exchange
+
+:: Top 5 STS with high result ::
+1. STS 06, 79.1%, "Re-Capturing"
+2. STS 05, 75.2%, "Bishop vs Knight"
+3. STS 13, 73.8%, "Pawn Play in the Center"
+4. STS 10, 70.4%, "Simplification"
+5. STS 14, 64.4%, "Queens and Rooks to the 7th rank"
+
+:: Top 5 STS with low result ::
+1. STS 15, 41.3%, "Avoid Pointless Exchange"
+2. STS 09, 46.1%, "Advancement of a/b/c Pawns"
+3. STS 08, 46.9%, "Advancement of f/g/h Pawns"
+4. STS 07, 47.1%, "Offer of Simplification"
+5. STS 02, 53.3%, "Open Files and Diagonals"
+
+STS Rating v13.1
+Number of cores: 4
+
+Engine: CHRISTINE 0.1
+Hash: 128, Threads: 1, time/pos: 0.150s
+
+Number of positions in sts_all.epd: 1500
+Max score = 1500 x 10 = 15000
+Test duration: 00h:04m:05s
+Expected time to finish: 00h:04m:30s
+STS rating: 2387
+
+  STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
+  NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
+ BestCnt     44     53     50     40     65     51     33     33     33     63     41     45     62     53     27    693
+   Score    565    601    615    549    739    755    441    458    465    727    558    580    715    660    431   8859
+Score(%)   56.5   60.1   61.5   54.9   73.9   75.5   44.1   45.8   46.5   72.7   55.8   58.0   71.5   66.0   43.1   59.1
+  Rating   2273   2433   2495   2201   3047   3119   1721   1796   1827   2994   2242   2339   2941   2696   1676   2387
+
+:: STS ID and Titles ::
+STS 01: Undermining
+STS 02: Open Files and Diagonals
+STS 03: Knight Outposts
+STS 04: Square Vacancy
+STS 05: Bishop vs Knight
+STS 06: Re-Capturing
+STS 07: Offer of Simplification
+STS 08: Advancement of f/g/h Pawns
+STS 09: Advancement of a/b/c Pawns
+STS 10: Simplification
+STS 11: Activity of the King
+STS 12: Center Control
+STS 13: Pawn Play in the Center
+STS 14: Queens and Rooks to the 7th rank
+STS 15: Avoid Pointless Exchange
+
+:: Top 5 STS with high result ::
+1. STS 06, 75.5%, "Re-Capturing"
+2. STS 05, 73.9%, "Bishop vs Knight"
+3. STS 10, 72.7%, "Simplification"
+4. STS 13, 71.5%, "Pawn Play in the Center"
 5. STS 14, 66.0%, "Queens and Rooks to the 7th rank"
 
 :: Top 5 STS with low result ::
-1. STS 15, 37.3%, "Avoid Pointless Exchange"
-2. STS 07, 45.7%, "Offer of Simplification"
-3. STS 09, 47.7%, "Advancement of a/b/c Pawns"
-4. STS 08, 49.9%, "Advancement of f/g/h Pawns"
-5. STS 11, 53.1%, "Activity of the King"
+1. STS 15, 43.1%, "Avoid Pointless Exchange"
+2. STS 07, 44.1%, "Offer of Simplification"
+3. STS 08, 45.8%, "Advancement of f/g/h Pawns"
+4. STS 09, 46.5%, "Advancement of a/b/c Pawns"
+5. STS 04, 54.9%, "Square Vacancy"
 
 STS Rating v13.1
 Number of cores: 4
@@ -106,16 +206,16 @@ Hash: 128, Threads: 1, time/pos: 0.150s
 
 Number of positions in sts_all.epd: 1500
 Max score = 1500 x 10 = 15000
-Test duration: 00h:04m:04s
+Test duration: 00h:04m:01s
 Expected time to finish: 00h:04m:30s
-STS rating: 2318
+STS rating: 2405
 
   STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
   NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
- BestCnt     35     44     45     40     59     44     32     29     39     59     48     51     60     57     33    675
-   Score    506    511    570    556    698    685    458    401    505    689    574    620    696    686    472   8627
-Score(%)   50.6   51.1   57.0   55.6   69.8   68.5   45.8   40.1   50.5   68.9   57.4   62.0   69.6   68.6   47.2   57.5
-  Rating   2010   2032   2295   2233   2865   2807   1796   1543   2006   2825   2313   2518   2856   2811   1859   2318
+ BestCnt     43     45     45     44     64     57     34     33     33     64     44     48     67     52     26    699
+   Score    556    563    589    584    740    768    469    466    463    724    573    605    757    625    439   8921
+Score(%)   55.6   56.3   58.9   58.4   74.0   76.8   46.9   46.6   46.3   72.4   57.3   60.5   75.7   62.5   43.9   59.5
+  Rating   2233   2264   2380   2357   3052   3177   1845   1832   1819   2981   2308   2451   3128   2540   1712   2405
 
 :: STS ID and Titles ::
 STS 01: Undermining
@@ -135,16 +235,66 @@ STS 14: Queens and Rooks to the 7th rank
 STS 15: Avoid Pointless Exchange
 
 :: Top 5 STS with high result ::
-1. STS 05, 69.8%, "Bishop vs Knight"
-2. STS 13, 69.6%, "Pawn Play in the Center"
-3. STS 10, 68.9%, "Simplification"
-4. STS 14, 68.6%, "Queens and Rooks to the 7th rank"
-5. STS 06, 68.5%, "Re-Capturing"
+1. STS 06, 76.8%, "Re-Capturing"
+2. STS 13, 75.7%, "Pawn Play in the Center"
+3. STS 05, 74.0%, "Bishop vs Knight"
+4. STS 10, 72.4%, "Simplification"
+5. STS 14, 62.5%, "Queens and Rooks to the 7th rank"
 
 :: Top 5 STS with low result ::
-1. STS 08, 40.1%, "Advancement of f/g/h Pawns"
-2. STS 07, 45.8%, "Offer of Simplification"
-3. STS 15, 47.2%, "Avoid Pointless Exchange"
-4. STS 09, 50.5%, "Advancement of a/b/c Pawns"
-5. STS 01, 50.6%, "Undermining"
+1. STS 15, 43.9%, "Avoid Pointless Exchange"
+2. STS 09, 46.3%, "Advancement of a/b/c Pawns"
+3. STS 08, 46.6%, "Advancement of f/g/h Pawns"
+4. STS 07, 46.9%, "Offer of Simplification"
+5. STS 01, 55.6%, "Undermining"
+
+STS Rating v13.1
+Number of cores: 4
+
+Engine: CHRISTINE 0.1
+Hash: 128, Threads: 1, time/pos: 0.150s
+
+Number of positions in sts_all.epd: 1500
+Max score = 1500 x 10 = 15000
+Test duration: 00h:04m:01s
+Expected time to finish: 00h:04m:30s
+STS rating: 2427
+
+  STS ID   STS1   STS2   STS3   STS4   STS5   STS6   STS7   STS8   STS9  STS10  STS11  STS12  STS13  STS14  STS15    ALL
+  NumPos    100    100    100    100    100    100    100    100    100    100    100    100    100    100    100   1500
+ BestCnt     47     52     51     40     60     52     37     34     38     65     47     47     65     54     25    714
+   Score    596    590    620    556    717    753    486    462    502    718    588    589    727    651    441   8996
+Score(%)   59.6   59.0   62.0   55.6   71.7   75.3   48.6   46.2   50.2   71.8   58.8   58.9   72.7   65.1   44.1   60.0
+  Rating   2411   2384   2518   2233   2949   3110   1921   1814   1992   2954   2375   2380   2994   2656   1721   2427
+
+:: STS ID and Titles ::
+STS 01: Undermining
+STS 02: Open Files and Diagonals
+STS 03: Knight Outposts
+STS 04: Square Vacancy
+STS 05: Bishop vs Knight
+STS 06: Re-Capturing
+STS 07: Offer of Simplification
+STS 08: Advancement of f/g/h Pawns
+STS 09: Advancement of a/b/c Pawns
+STS 10: Simplification
+STS 11: Activity of the King
+STS 12: Center Control
+STS 13: Pawn Play in the Center
+STS 14: Queens and Rooks to the 7th rank
+STS 15: Avoid Pointless Exchange
+
+:: Top 5 STS with high result ::
+1. STS 06, 75.3%, "Re-Capturing"
+2. STS 13, 72.7%, "Pawn Play in the Center"
+3. STS 10, 71.8%, "Simplification"
+4. STS 05, 71.7%, "Bishop vs Knight"
+5. STS 14, 65.1%, "Queens and Rooks to the 7th rank"
+
+:: Top 5 STS with low result ::
+1. STS 15, 44.1%, "Avoid Pointless Exchange"
+2. STS 08, 46.2%, "Advancement of f/g/h Pawns"
+3. STS 07, 48.6%, "Offer of Simplification"
+4. STS 09, 50.2%, "Advancement of a/b/c Pawns"
+5. STS 04, 55.6%, "Square Vacancy"
 

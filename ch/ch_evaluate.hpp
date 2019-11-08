@@ -184,9 +184,21 @@ struct evaluator
     CH_FORCEINLINE int eval_queens(position const& p, color c)
     {
         uint64_t t = p.bbs[c + QUEEN];
-        int x = 0;
+        if(!t) return 0;
+        uint64_t const occ = p.bb_alls[WHITE] | p.bb_alls[BLACK];
+        int x = 0, xm = -8;
         x += popcnt<accel>(t & open_files) * QUEEN_ON_OPEN_FILE;
-        return x;
+        while(t)
+        {
+            int const sq = pop_lsb<accel>(t);
+            uint64_t const a =
+                magic_rook_attacks(sq, occ) | magic_bishop_attacks(sq, occ);
+            xm += popcnt<accel>(a & ~p.bb_alls[c]);
+        }
+        return (
+            x +
+            xm * (mg * QUEEN_MOBILITY_BONUS_MG + eg * QUEEN_MOBILITY_BONUS_EG) / 256 +
+            0);
     }
 
     CH_FORCEINLINE int eval_pieces(position const& p, color c)

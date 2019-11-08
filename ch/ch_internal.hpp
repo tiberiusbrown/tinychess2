@@ -15,7 +15,7 @@
 #include <intrin.h>
 #endif
 
-#if defined(_MSC_VER) && !defined(NDEBUG)
+#if defined(_MSC_VER) && !defined(NDEBUG) && !CH_TUNABLE
 extern char const* const CH_FILESTRS[8];
 extern char const* const CH_RANKSTRS[8];
 // natvis help

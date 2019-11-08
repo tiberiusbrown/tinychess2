@@ -49,7 +49,10 @@ extern "C"
 
 void CHAPI ch_init(ch_system_info const* info)
 {
-    ch::system = *info;
+    if(info)
+        ch::system = *info;
+    else
+        ch::memzero(&ch::system, sizeof(ch::system));
     ch::init();
     ch::init_cpuid();
 #if CH_ENABLE_MAGIC
@@ -337,6 +340,13 @@ int CHAPI ch_evaluate(void)
     using namespace ch;
     evaluator<ACCEL_UNACCEL> e;
     return e.evaluate(g_pos, g_pos.current_turn);
+}
+
+int CHAPI ch_evaluate_white(void)
+{
+    using namespace ch;
+    evaluator<ACCEL_UNACCEL> e;
+    return e.evaluate(g_pos, WHITE);
 }
 
 void CHAPI ch_search(ch_search_limits const* limits)
