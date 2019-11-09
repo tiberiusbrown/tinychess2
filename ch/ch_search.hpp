@@ -395,35 +395,36 @@ template<acceleration accel> static int negamax(color c,
 
     move_list mvs;
 
-#if CH_ENABLE_PROBCUT_PRUNING
-    // Ethereal-style Probcut
-    if(
-        alpha + 1 < beta &&
-        height > 0 &&
-        depth >= PROBCUT_MIN_DEPTH &&
-        beta < MATE_SCORE - 256 &&
-        beta > MATED_SCORE + 256 &&
-        static_eval + d.p.best_case_move_value() >= beta + PROBCUT_MARGIN)
+    if(CH_ENABLE_PROBCUT_PRUNING)
     {
-        int rbeta = std::min(beta + PROBCUT_MARGIN, MATE_SCORE - 257);
-        mvs.generate<accel, MOVEGEN_QUIESCENCE>(c, d.p);
-        for(move mv : mvs)
+        // Ethereal-style Probcut
+        if(
+            alpha + 1 < beta &&
+            height > 0 &&
+            depth >= PROBCUT_MIN_DEPTH &&
+            beta < MATE_SCORE - 256 &&
+            beta > MATED_SCORE + 256 &&
+            static_eval + d.p.best_case_move_value() >= beta + PROBCUT_MARGIN)
         {
-            int v;
-            d.mvstack[height] = mv;
-            d.p.do_move<accel>(mv);
+            int rbeta = std::min(beta + PROBCUT_MARGIN, MATE_SCORE - 257);
+            mvs.generate<accel, MOVEGEN_QUIESCENCE>(c, d.p);
+            for(move mv : mvs)
+            {
+                int v;
+                d.mvstack[height] = mv;
+                d.p.do_move<accel>(mv);
 #if CH_COLOR_TEMPLATE
-            v = -negamax<opposite(c), accel>(
+                v = -negamax<opposite(c), accel>(
 #else
-            v = -negamax<accel>(opposite(c), 
+                v = -negamax<accel>(opposite(c),
 #endif
-                d, depth - 4, -rbeta, -rbeta + 1, height + 1);
-            d.p.undo_move<accel>(mv);
-            if(v >= rbeta)
-                return v;
+                    d, depth - 4, -rbeta, -rbeta + 1, height + 1);
+                d.p.undo_move<accel>(mv);
+                if(v >= rbeta)
+                    return v;
+            }
         }
     }
-#endif
 
 #if CH_COLOR_TEMPLATE
     mvs.generate<c, accel>(d.p);
@@ -458,10 +459,10 @@ template<acceleration accel> static int negamax(color c,
     }
 #endif
 
-#if CH_ENABLE_FUTILITY_PRUNING
     // futility pruning
     bool fprune = false;
     if(
+        CH_ENABLE_FUTILITY_PRUNING &&
         height > 0 &&
         !in_check &&
         depth <= FUTILITY_PRUNING_MAX_DEPTH &&
@@ -478,11 +479,10 @@ template<acceleration accel> static int negamax(color c,
         if(static_eval <= futility_margin(depth, alpha))
             fprune = true;
     }
-#endif
 
-#if CH_ENABLE_NULL_MOVE
     // null move pruning
     if(
+        CH_ENABLE_NULL_MOVE &&
         height > 0 &&
         !in_check &&
         depth >= NULL_MOVE_MIN_DEPTH &&
@@ -509,11 +509,9 @@ template<acceleration accel> static int negamax(color c,
             return value;
         }
     }
-#endif
 
-#if CH_ENABLE_IID
     // internal iterative deepening
-    if(hash_move == NULL_MOVE && depth >= IID_MIN_DEPTH)
+    if(CH_ENABLE_IID && hash_move == NULL_MOVE && depth >= IID_MIN_DEPTH)
     {
 #if CH_COLOR_TEMPLATE
         negamax<c, accel>(
@@ -523,7 +521,6 @@ template<acceleration accel> static int negamax(color c,
             d, iid_depth(depth), alpha, beta, height);
         hash_move = d.best[height];
     }
-#endif
 
     move_picker<accel> picker(
         mvs, d.p, hash_move,
@@ -572,24 +569,21 @@ template<acceleration accel> static int negamax(color c,
         if(castle)
             ++newdepth;
 
-#if CH_ENABLE_FUTILITY_PRUNING
-        if(!dont_reduce && fprune && n > 0)
+        if(CH_ENABLE_FUTILITY_PRUNING && !dont_reduce && fprune && n > 0)
             continue;
-#endif
 
-#if CH_ENABLE_LATE_MOVE_PRUNING
-        if(!dont_reduce &&
+        if(CH_ENABLE_LATE_MOVE_PRUNING &&
+            !dont_reduce &&
             newdepth <= LMP_MAX_DEPTH &&
             n >= lmp_min_n(newdepth))
             continue;
-#endif
 
         d.mvstack[height] = mv;
         d.p.do_move<accel>(mv);
 
         int v = alpha + 1;
-#if CH_ENABLE_LATE_MOVE_REDUCTION
-        if(!dont_reduce &&
+        if(CH_ENABLE_LATE_MOVE_REDUCTION &&
+            !dont_reduce &&
             newdepth >= LMR_MIN_DEPTH &&
             n >= lmr_min_n(newdepth))
         {
@@ -602,7 +596,6 @@ template<acceleration accel> static int negamax(color c,
                 d, newdepth - R, -alpha - 1, -alpha, height + 1);
 
         }
-#endif
 
         if(newdepth <= 1)
         {

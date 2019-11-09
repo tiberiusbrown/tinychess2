@@ -42,6 +42,11 @@ struct tunable_param
 
 static tunable_param const params[] =
 {
+    TUNABLE_PARAM_ARRAY(PIECE_VALUES_MAG, 100, 1500, 1),
+
+    TUNABLE_PARAM(MATERIAL_MG, 1500, 4000),
+    TUNABLE_PARAM(MATERIAL_EG, 100, 1400),
+
     TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
 
     TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
@@ -79,12 +84,14 @@ static tunable_param const params[] =
     TUNABLE_PARAM(ROOK_THREATEN_KING, 0, 100),
     TUNABLE_PARAM(ROOK_ON_OPEN_FILE, 0, 200),
 
+    TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_MG, 0, 100),
+    TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_EG, 0, 100),
     TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
 
     TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
 
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -127, 127, 8, 4, 28),
+    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -127, 127, 8, 4, 28),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
@@ -98,7 +105,7 @@ static tunable_param const params[] =
 };
 
 static std::vector<int> val_cur, val_old, val_a, val_b;
-static std::vector<char const*> val_name;
+static std::vector<std::string> val_name;
 void set_vals(std::vector<int> const& v)
 {
     int i = 0;
@@ -190,6 +197,23 @@ void write_params(std::vector<int> const& vs)
     fclose(f);
 }
 
+FT mutate_val(FT k, FT tv, FT mv, int i, int d)
+{
+    FT v = tv;
+    while(v == tv && v > mv)
+    {
+        int pv = val_cur[i];
+        val_cur[i] += d;
+        val_cur[i] = std::min(val_cur[i], val_b[i]);
+        val_cur[i] = std::max(val_cur[i], val_a[i]);
+        if(val_cur[i] == pv) break;
+        set_vals(val_cur);
+        v = run_eval(k);
+        d = (d * 3) / 2 + 1;
+    }
+    return v;
+}
+
 int CDECL main()
 {
     {
@@ -227,8 +251,17 @@ int CDECL main()
         {
             val_cur.push_back(tp.p[i]);
             val_a.push_back(tp.a);
-            val_b.push_back(tp.a);
-            val_name.push_back(tp.s);
+            val_b.push_back(tp.b);
+            {
+                std::string s = tp.s;
+                if(tp.n > 1)
+                {
+                    s += '[';
+                    s += std::to_string(i);
+                    s += ']';
+                }
+                val_name.push_back(s);
+            }
         }
     }
     val_old = val_cur;
@@ -240,8 +273,8 @@ int CDECL main()
         printf("Finding best K\n");
         FT const gr = (sqrt(FT(5)) + 1) / 2;
         FT const tol = FT(1e-5);
-        FT a = FT(1);
-        FT b = FT(2);
+        FT a = FT(1.68690);
+        FT b = FT(1.69695);
         FT c = b - (b - a) / gr;
         FT d = a + (b - a) / gr;
         int i = 0;
@@ -267,21 +300,23 @@ int CDECL main()
     {
         for(int i = 0; i < num_params; ++i)
         {
-            printf("iteration: %3d var: %20s\n", iter, val_name[i]);
+            printf("iteration: %3d var: %20s\n", iter, val_name[i].c_str());
             val_old = val_cur;
             FT tv = 100;
-            if(tv > mv && val_cur[i] < val_b[i])
-            {
-                ++val_cur[i];
-                set_vals(val_cur);
-                tv = run_eval(k);
-            }
-            if(tv > mv && val_cur[i] > val_a[i])
-            {
-                --val_cur[i];
-                set_vals(val_cur);
-                tv = run_eval(k);
-            }
+            tv = mutate_val(k, tv, mv, i, +1);
+            tv = mutate_val(k, tv, mv, i, -1);
+            //if(tv > mv && val_cur[i] < val_b[i])
+            //{
+            //    ++val_cur[i];
+            //    set_vals(val_cur);
+            //    tv = run_eval(k);
+            //}
+            //if(tv > mv && val_cur[i] > val_a[i])
+            //{
+            //    --val_cur[i];
+            //    set_vals(val_cur);
+            //    tv = run_eval(k);
+            //}
             if(tv < mv)
             {
                 mv = tv;

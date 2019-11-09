@@ -218,16 +218,14 @@ struct evaluator
     {
         int x = 0;
         {
-            static constexpr int const EG_MAT = 650;
-            static constexpr int const MG_MAT = EG_MAT + 2048;
             mg = std::max(
                 p.stack().piece_vals[WHITE],
                 p.stack().piece_vals[BLACK]);
-            mg = std::min(mg, MG_MAT);
-            mg -= EG_MAT;
+            mg = std::min(mg, MATERIAL_MG);
+            mg -= MATERIAL_EG;
             mg = std::max(mg, 0);
             mg *= 256;
-            mg /= (MG_MAT - EG_MAT);
+            mg /= (MATERIAL_MG - MATERIAL_EG);
             eg = 256 - mg;
         }
         x += p.stack().piece_vals[WHITE];

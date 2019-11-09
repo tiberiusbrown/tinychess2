@@ -7,35 +7,45 @@
 namespace ch
 {
 
+#ifdef CH_TUNABLE
+static int16_t PIECE_VALUES[13];
+static int16_t PIECE_VALUES_WHITE[13];
+static void evaluator_init_piece_values()
+{
+    for(int i = 0; i < 5; ++i)
+    {
+        PIECE_VALUES[i * 2 + 0] = (int16_t)PIECE_VALUES_MAG[i];
+        PIECE_VALUES[i * 2 + 1] = (int16_t)PIECE_VALUES_MAG[i];
+        PIECE_VALUES_WHITE[i * 2 + 1] = (int16_t)PIECE_VALUES_MAG[i];
+        PIECE_VALUES_WHITE[i * 2 + 1] = -(int16_t)PIECE_VALUES_MAG[i];
+    }
+    for(int i = 10; i < 13; ++i)
+        PIECE_VALUES[i] = PIECE_VALUES_WHITE[i] = 0;
+}
+#else
 // piece values in centipawns
 static constexpr int16_t const PIECE_VALUES[13] =
 {
-    100, 100,
-    325, 325,
-    335, 335,
-    500, 500,
-    975, 975,
+    (int16_t)PIECE_VALUES_MAG[0], (int16_t)PIECE_VALUES_MAG[0],
+    (int16_t)PIECE_VALUES_MAG[1], (int16_t)PIECE_VALUES_MAG[1],
+    (int16_t)PIECE_VALUES_MAG[2], (int16_t)PIECE_VALUES_MAG[2],
+    (int16_t)PIECE_VALUES_MAG[3], (int16_t)PIECE_VALUES_MAG[3],
+    (int16_t)PIECE_VALUES_MAG[4], (int16_t)PIECE_VALUES_MAG[4],
     0, 0,
     0,
 };
-
-static_assert(PIECE_VALUES[WHITE + PAWN  ] == PIECE_VALUES[BLACK + PAWN  ], "");
-static_assert(PIECE_VALUES[WHITE + KNIGHT] == PIECE_VALUES[BLACK + KNIGHT], "");
-static_assert(PIECE_VALUES[WHITE + BISHOP] == PIECE_VALUES[BLACK + BISHOP], "");
-static_assert(PIECE_VALUES[WHITE + ROOK  ] == PIECE_VALUES[BLACK + ROOK  ], "");
-static_assert(PIECE_VALUES[WHITE + QUEEN ] == PIECE_VALUES[BLACK + QUEEN ], "");
-
 // piece values from white's perspective
 static constexpr int16_t const PIECE_VALUES_WHITE[13] =
 {
-    PIECE_VALUES[0], -PIECE_VALUES[0],
-    PIECE_VALUES[2], -PIECE_VALUES[2],
-    PIECE_VALUES[4], -PIECE_VALUES[4],
-    PIECE_VALUES[6], -PIECE_VALUES[6],
-    PIECE_VALUES[8], -PIECE_VALUES[8],
+    (int16_t)PIECE_VALUES_MAG[0], -(int16_t)PIECE_VALUES_MAG[0],
+    (int16_t)PIECE_VALUES_MAG[1], -(int16_t)PIECE_VALUES_MAG[1],
+    (int16_t)PIECE_VALUES_MAG[2], -(int16_t)PIECE_VALUES_MAG[2],
+    (int16_t)PIECE_VALUES_MAG[3], -(int16_t)PIECE_VALUES_MAG[3],
+    (int16_t)PIECE_VALUES_MAG[4], -(int16_t)PIECE_VALUES_MAG[4],
     0, 0,
     0,
 };
+#endif
 
 static constexpr int const INIT_TABLE_ZERO[32] =
 {
@@ -67,6 +77,10 @@ static void evaluator_init_table(int8_t* dst, int const* src)
 
 static void init_evaluator()
 {
+#ifdef CH_TUNABLE
+    evaluator_init_piece_values();
+#endif
+
     // middle game
     evaluator_init_table<false>(piece_tables[0][WHITE + PAWN  ], INIT_TABLE_PAWN_MG);
     evaluator_init_table<false>(piece_tables[0][WHITE + KNIGHT], INIT_TABLE_KNIGHT_MG);
