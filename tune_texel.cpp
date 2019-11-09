@@ -200,7 +200,7 @@ void write_params(std::vector<int> const& vs)
 FT mutate_val(FT k, FT tv, FT mv, int i, int d)
 {
     FT v = tv;
-    while(v == tv && v > mv)
+    while(v == tv && v >= mv)
     {
         int pv = val_cur[i];
         val_cur[i] += d;
@@ -273,8 +273,8 @@ int CDECL main()
         printf("Finding best K\n");
         FT const gr = (sqrt(FT(5)) + 1) / 2;
         FT const tol = FT(1e-5);
-        FT a = FT(1.68690);
-        FT b = FT(1.69695);
+        FT a = FT(1);
+        FT b = FT(2);
         FT c = b - (b - a) / gr;
         FT d = a + (b - a) / gr;
         int i = 0;
@@ -298,9 +298,10 @@ int CDECL main()
 
     for(int iter = 0; ; ++iter)
     {
+        printf("iteration %d\n", iter);
         for(int i = 0; i < num_params; ++i)
         {
-            printf("iteration: %3d var: %20s\n", iter, val_name[i].c_str());
+            printf("   %-28s\r", val_name[i].c_str());
             val_old = val_cur;
             FT tv = 100;
             tv = mutate_val(k, tv, mv, i, +1);
@@ -319,8 +320,9 @@ int CDECL main()
             //}
             if(tv < mv)
             {
+                printf("   %-28s   %3d -> %3d   %.6f\n",
+                    val_name[i].c_str(), val_old[i], val_cur[i], tv);
                 mv = tv;
-                printf("   e = %f\n", tv);
                 write_params(val_cur);
                 continue;
             }
