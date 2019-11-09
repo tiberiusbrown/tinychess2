@@ -54,7 +54,6 @@ int8_t piece_tables[2][13][64];
 template<bool flipped>
 static void evaluator_init_table(int8_t* dst, int const* src)
 {
-#if 1
     for(int r = 0; r < 8; ++r)
     {
         int nr = flipped ? 7 - r : r;
@@ -64,15 +63,6 @@ static void evaluator_init_table(int8_t* dst, int const* src)
             dst[r * 8 + c] = int8_t(flipped ? -src[sq] : src[sq]);
         }
     }
-#else
-    for(int sq = 0; sq < 64; ++sq)
-    {
-        if(flipped)
-            dst[sq] = -src[sq ^ 56];
-        else
-            dst[sq] = int8_t(src[sq]);
-    }
-#endif
 }
 
 static void init_evaluator()
