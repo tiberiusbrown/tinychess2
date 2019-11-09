@@ -88,7 +88,7 @@ static tunable_param const params[] =
     TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_EG, 0, 100),
     TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
 
-    TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
+    //TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
 
     TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -127, 127, 8, 4, 28),
     TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -127, 127, 8, 4, 28),
@@ -200,6 +200,7 @@ void write_params(std::vector<int> const& vs)
 FT mutate_val(FT k, FT tv, FT mv, int i, int d)
 {
     FT v = tv;
+    int vvv = val_cur[i];
     while(v == tv && v >= mv)
     {
         int pv = val_cur[i];
@@ -209,7 +210,8 @@ FT mutate_val(FT k, FT tv, FT mv, int i, int d)
         if(val_cur[i] == pv) break;
         set_vals(val_cur);
         v = run_eval(k);
-        d = (d * 3) / 2 + 1;
+        d *= 2;
+        if(v >= mv) val_cur[i] = vvv;
     }
     return v;
 }
@@ -301,11 +303,12 @@ int CDECL main()
         printf("iteration %d\n", iter);
         for(int i = 0; i < num_params; ++i)
         {
-            printf("   %-28s\r", val_name[i].c_str());
+            printf("   %-30s\r", val_name[i].c_str());
+            fflush(stdout);
             val_old = val_cur;
             FT tv = 100;
-            tv = mutate_val(k, tv, mv, i, +1);
             tv = mutate_val(k, tv, mv, i, -1);
+            tv = mutate_val(k, tv, mv, i, +1);
             //if(tv > mv && val_cur[i] < val_b[i])
             //{
             //    ++val_cur[i];
@@ -320,7 +323,7 @@ int CDECL main()
             //}
             if(tv < mv)
             {
-                printf("   %-28s   %3d -> %3d   %.6f\n",
+                printf("   %-30s   %3d -> %3d   %.6f\n",
                     val_name[i].c_str(), val_old[i], val_cur[i], tv);
                 mv = tv;
                 write_params(val_cur);
