@@ -42,19 +42,6 @@ struct tunable_param
 
 static tunable_param const params[] =
 {
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -127, 127, 8),
-
     TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
 
     TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
@@ -95,22 +82,30 @@ static tunable_param const params[] =
     TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
 
     TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
+
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_PAWN_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -127, 127, 8),
 };
 
-struct param_values
+static std::vector<int> val_cur, val_old, val_a, val_b;
+static std::vector<char const*> val_name;
+void set_vals(std::vector<int> const& v)
 {
-    int score;
-    std::vector<int> d;
-
-    void set()
-    {
-        int i = 0;
-        for(auto const& tp : params)
-            //for(int m = 0; m < tp.n; ++m)
-            for(int m = tp.ai; m < tp.bi; ++m)
-                tp.p[m] = d[i++];
-    }
-};
+    int i = 0;
+    for(auto const& tp : params)
+        for(int m = tp.ai; m < tp.bi; ++m)
+            tp.p[m] = v[i++];
+}
 
 #ifdef _MSC_VER
 #define CDECL __cdecl
@@ -165,6 +160,36 @@ FT run_eval(FT k)
     return t / tests.size();
 }
 
+void write_params(std::vector<int> const& vs)
+{
+    FILE* f = fopen("tuned_params.txt", "w");
+    int n = 0;
+    for(auto const& tp : params)
+    {
+        if(tp.n > 1)
+            fprintf(f, "CH_PARAM_ARRAY(%s[%d],", tp.s, tp.n);
+        else
+            fprintf(f, "CH_PARAM(%s, ", tp.s);
+        for(int i = 0; i < tp.n; ++i)
+        {
+            int v = 0;
+            if(i >= tp.ai && i < tp.bi)
+                v = vs[n++];
+            if(tp.n == 1)
+                fprintf(f, "%d)\n", v);
+            else
+            {
+                if(i % (tp.n / tp.nr) == 0)
+                    fprintf(f, "\n    ");
+                fprintf(f, "%4d, ", v);
+            }
+        }
+        if(tp.n > 1)
+            fprintf(f, "    )\n");
+    }
+    fclose(f);
+}
+
 int CDECL main()
 {
     {
@@ -187,8 +212,6 @@ int CDECL main()
                 ++b, test.result = 0.f;
             else if(line[x + 3] == '2')
                 ++d, test.result = 0.5f;
-            else
-                __debugbreak();
         }
         printf("DONE: read %d tests\n", (int)tests.size());
         printf("   White: %d\n", w);
@@ -198,11 +221,21 @@ int CDECL main()
 
     num_params = 0;
     for(auto const& tp : params)
+    {
         num_params += (tp.bi - tp.ai);
+        for(int i = tp.ai; i < tp.bi; ++i)
+        {
+            val_cur.push_back(tp.p[i]);
+            val_a.push_back(tp.a);
+            val_b.push_back(tp.a);
+            val_name.push_back(tp.s);
+        }
+    }
+    val_old = val_cur;
     printf("Number of parameters: %d\n", num_params);
 
     // find best k
-    FT k;
+    FT k, mv;
     {
         printf("Finding best K\n");
         FT const gr = (sqrt(FT(5)) + 1) / 2;
@@ -213,7 +246,7 @@ int CDECL main()
         FT d = a + (b - a) / gr;
         int i = 0;
         printf("   iteration %2d: a = %+8.5f, b = %+8.5f\n", i, a, b);
-        while(abs(c - d) > tol)
+        while(std::abs(c - d) > tol)
         {
             FT ce = run_eval(c);
             FT de = run_eval(d);
@@ -226,9 +259,40 @@ int CDECL main()
             printf("   iteration %2d: a = %+8.5f, b = %+8.5f\n", ++i, a, b);
         }
         k = (a + b) / 2;
-        printf("   final       : K = %+8.5f, e = %f\n", k, run_eval(k));
+        mv = run_eval(k);
+        printf("   final       : K = %+8.5f, e = %f\n", k, mv);
     }
 
+    for(int iter = 0; ; ++iter)
+    {
+        for(int i = 0; i < num_params; ++i)
+        {
+            printf("iteration: %3d var: %20s\n", iter, val_name[i]);
+            val_old = val_cur;
+            FT tv = 100;
+            if(tv > mv && val_cur[i] < val_b[i])
+            {
+                ++val_cur[i];
+                set_vals(val_cur);
+                tv = run_eval(k);
+            }
+            if(tv > mv && val_cur[i] > val_a[i])
+            {
+                --val_cur[i];
+                set_vals(val_cur);
+                tv = run_eval(k);
+            }
+            if(tv < mv)
+            {
+                mv = tv;
+                printf("   e = %f\n", tv);
+                write_params(val_cur);
+                continue;
+            }
+            val_cur = val_old;
+            set_vals(val_cur);
+        }   
+    }
 
 
     return 0;
