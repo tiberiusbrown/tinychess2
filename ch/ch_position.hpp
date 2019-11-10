@@ -299,9 +299,16 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
             case 'K': CH_PUT(WHITE + KING);   break;
             case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8':
-                for(int j = 0; j < int(c - '0'); ++j)
-                    CH_PUT(EMPTY);
-                break;
+                //for(int j = 0; j < int(c - '0'); ++j)
+                //    CH_PUT(EMPTY);
+            {
+                int k = int(c - '0');
+                for(int j = 0; j < k; ++j)
+                    pieces[i + j] = EMPTY;
+                m <<= k;
+                i += k;
+            }
+            break;
 #undef CH_PUT
             case '/':
             default:

@@ -68,7 +68,7 @@ CH_PARAM(LMR_C0, 4)
 CH_PARAM(LMR_C1, 6)
 CH_PARAM(LMR_C2, 3)
 
-#if 1
+#if 0
 
 //
 // EVAL PARAMS
@@ -249,21 +249,26 @@ CH_PARAM_ARRAY(INIT_TABLE_KING_EG[32],
 
 CH_PARAM(MATERIAL_MG, 2048 + 650)
 CH_PARAM(MATERIAL_EG, 650)
-CH_PARAM_ARRAY(PIECE_VALUES_MAG[5], 100, 325, 335, 500, 975, )
-CH_PARAM(HALF_OPEN_FILE, 5)
+
+//CH_PARAM_ARRAY(PIECE_VALUES_MAG[5], 100, 325, 335, 500, 975, )
+CH_PARAM_ARRAY(PIECE_VALUES_MAG[5],
+     100,  359,  379,  605, 1181,     )
+//CH_PARAM_ARRAY(PIECE_VALUES_MAG[5],
+//    0, 300, 315, 500, 1000, )
+
+CH_PARAM(HALF_OPEN_FILE, 8)
+
 CH_PARAM(PAWN_PROTECT_ANY, 4)
 CH_PARAM(PAWN_PROTECT_PAWN, 4)
 CH_PARAM(PAWN_THREATEN_KNIGHT, 20)
 CH_PARAM(PAWN_THREATEN_BISHOP, 25)
-CH_PARAM(PAWN_THREATEN_ROOK, 23)
+CH_PARAM(PAWN_THREATEN_ROOK, 60)
 CH_PARAM(PAWN_THREATEN_QUEEN, 35)
-CH_PARAM_ARRAY(PASSED_PAWN_MG[8],
-       0,    0,    0,    0,    0,    0,    0,    0,     )
-CH_PARAM_ARRAY(PASSED_PAWN_EG[8],
-       0,    0,    0,    8,   15,   39,   72,    0,     )
-CH_PARAM_ARRAY(PASSED_PAWN_FREE_EG[8],
-       0,    0,    2,   28,   65,  135,  192,    0,     )
-CH_PARAM(PASSED_PAWN_KING_ESCORT, 8)
+CH_PARAM_ARRAY(PASSED_PAWN_MG[8], 0, 0, 4, 8, 16, 24, 32, 0, )
+CH_PARAM_ARRAY(PASSED_PAWN_EG[8], 0, 4, 16, 32, 64, 128, 196, 0, )
+CH_PARAM_ARRAY(PASSED_PAWN_FREE_EG[8], 0, 8, 32, 64, 128, 228, 324, 0, )
+CH_PARAM(PASSED_PAWN_KING_ESCORT, 10)
+
 CH_PARAM(KNIGHT_PAWN_BONUS_MG, 4)
 CH_PARAM(KNIGHT_PAWN_BONUS_EG, 2)
 CH_PARAM(KNIGHT_MOBILITY_BONUS_MG, 8)
@@ -274,131 +279,148 @@ CH_PARAM(KNIGHT_THREATEN_QUEEN, 0)
 CH_PARAM(KNIGHT_THREATEN_KING, 0)
 CH_PARAM(KNIGHT_OUTPOST, 8)
 CH_PARAM(KNIGHT_OUTPOST_HALF_OPEN_FILE, 4)
-CH_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 4)
+CH_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 8)
+
 CH_PARAM(BISHOP_MOBILITY_BONUS_MG, 5)
 CH_PARAM(BISHOP_MOBILITY_BONUS_EG, 3)
 CH_PARAM(BISHOP_THREATEN_ROOK, 15)
 CH_PARAM(BISHOP_THREATEN_QUEEN, 30)
 CH_PARAM(BISHOP_THREATEN_KING, 0)
+
 CH_PARAM(ROOK_MOBILITY_BONUS_MG, 3)
 CH_PARAM(ROOK_MOBILITY_BONUS_EG, 6)
 CH_PARAM(ROOK_THREATEN_QUEEN, 20)
 CH_PARAM(ROOK_THREATEN_KING, 0)
-CH_PARAM(ROOK_ON_OPEN_FILE, 18)
+CH_PARAM(ROOK_ON_OPEN_FILE, 40)
+
 CH_PARAM(QUEEN_MOBILITY_BONUS_MG, 4)
 CH_PARAM(QUEEN_MOBILITY_BONUS_EG, 8)
-CH_PARAM(QUEEN_ON_OPEN_FILE, 7)
-CH_PARAM_ARRAY(KING_DEFENDERS_MG[12],
-     -32,   -8,    1,    8,   16,   28, 
-      32,   16,   12,   12,   12,   12,     )
+CH_PARAM(QUEEN_ON_OPEN_FILE, 40)
+
+CH_PARAM_ARRAY(KING_DEFENDERS_MG[12], 
+    -32, -8, 1, 8, 16, 28, 32, 16, 12, 12, 12, 12,
+    )
+
 CH_PARAM_ARRAY(INIT_TABLE_PAWN_MG[32],
-      -1,    0,    0,    0, 
-       9,   31,   36,    6, 
-      -8,   13,    3,    1, 
-      -6,   -1,    6,    1, 
-      -8,  -21,   -6,   -5, 
-      -3,  -18,  -17,  -19, 
-       5,   -6,  -11,  -23, 
-      -9,    0,    0,    0,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_PAWN_EG[32],
-       0,    0,    0,    0, 
-      20,    3,    7,    1, 
-      11,    6,    2,   -5, 
-      -2,   -2,   -8,  -16, 
-      -7,   -7,   -8,  -18, 
-      -9,  -11,   -4,  -14, 
-      -9,   -5,   -5,   -5, 
-     -12,    0,    0,    0,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG[32],
-     -92, -127,  -45,  -69, 
-     -40,  -27,  -31,    0, 
-     -30,    0,   10,   15, 
-     -30,    5,   10,   20, 
-     -36,  -13,   15,    7, 
-     -30,   -6,  -13,   -3, 
-     -56,  -25,  -15,  -13, 
-     -53,  -58,  -41,  -61,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG[32],
-     -81,  -59,  -36,  -26, 
-     -45,  -31,  -12,   -9, 
-     -21,  -13,   -3,    0, 
-     -10,    0,    0,    0, 
-      -4,    0,    0,    0, 
-     -29,  -12,    0,    0, 
-     -40,  -38,  -17,  -20, 
-     -53,  -44,  -52,  -29,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_BISHOP_MG[32],
-     -62,  -64,  -41,  -79, 
-     -10,  -21,  -17,  -38, 
-     -10,  -11,    4,    7, 
-     -11,    1,   -4,   10, 
-     -13,  -14,    7,    0, 
-     -10,   -5,   -5,   -3, 
-     -10,   -6,   -2,   -8, 
-     -20,  -26,  -20,  -16,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_BISHOP_EG[32],
-      -1,  -12,  -15,  -15, 
-     -16,  -12,   -8,  -11, 
-     -10,   -6,  -16,  -16, 
-     -15,   -8,   -3,   -9, 
-     -16,   -6,  -12,    0, 
-     -19,  -16,   -3,   -5, 
-     -21,  -25,  -17,  -19, 
-     -22,  -25,  -20,  -22,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_ROOK_MG[32],
-       0,    0,    0,    0, 
-       5,   10,   10,   10, 
-      -5,    0,    0,    0, 
-     -12,    0,   -5,    0, 
-     -13,  -23,  -14,  -15, 
-     -26,  -25,  -21,  -22, 
-     -12,  -25,  -15,  -16, 
-      -1,   -6,   -1,    5,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_ROOK_EG[32],
-       0,    0,    0,    0, 
-       0,    0,    0,    0, 
-       0,    0,    0,    0, 
-      -1,    0,   -1,    0, 
-      -4,    0,   -1,   -1, 
-      -6,   -8,   -9,  -10, 
-     -15,   -7,  -11,   -9, 
-      -3,   -9,  -10,  -10,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_QUEEN_MG[32],
-     -20,  -45,  -10,   -9, 
-     -10,  -38,  -68,  -27, 
-     -10,  -18,  -24,  -30, 
-      -5,  -29,  -42,  -47, 
-     -16,  -44,  -36,  -45, 
-     -18,  -31,  -34,  -35, 
-     -39,  -36,  -18,  -17, 
-     -20,  -41,  -39,   -5,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_QUEEN_EG[32],
-       0,    0,    0,    0, 
-       0,    0,   -4,    0, 
-       0,   -3,    0,   -7, 
-       0,    0,   -1,  -15, 
-       0,    0,   -5,  -10, 
-       0,   -4,  -17,  -17, 
-     -32,  -10,  -40,  -36, 
-     -23,  -20,  -19,  -62,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_KING_MG[32],
-     -52,  -88,  -64,  -56, 
-     -46,  -44,  -40,  -50, 
-     -30,  -40,  -42,  -52, 
-     -38,  -43,  -56,  -68, 
-     -42,  -50,  -57,  -77, 
-     -10,  -40,  -44,  -49, 
-      -3,  -23,  -45,  -55, 
-      20,  -47,  -19,  -26,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 CH_PARAM_ARRAY(INIT_TABLE_KING_EG[32],
-     -57,  -59,  -64,  -55, 
-     -34,  -20,  -24,  -22, 
-     -30,  -10,  -15,  -16, 
-     -30,  -10,   -6,   -3, 
-     -30,  -10,  -10,   -5, 
-     -30,  -15,  -13,  -14, 
-     -37,  -30,  -17,  -20, 
-     -50,  -51,  -57,  -52,     )
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    )
 
 #endif
 

@@ -35,9 +35,11 @@ static void init_hashes(void)
         0x69e6e96592d8af17ull,
     };
 
-    for(auto& ph : hashes)
-        for(auto& h : ph)
+    for(int p = 0; p < 12; ++p)
+        for(auto& h : hashes[p])
             h = random(seed);
+    for(int n = 0; n < 64; ++n)
+        hashes[EMPTY][n] = 0;
     for(auto& h : hashes[EMPTY])
         h = 0ull;
 

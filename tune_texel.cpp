@@ -42,13 +42,13 @@ struct tunable_param
 
 static tunable_param const params[] =
 {
-    TUNABLE_PARAM_ARRAY(PIECE_VALUES_MAG, 100, 1500, 1),
+    TUNABLE_PARAM_ARRAY_SUB(PIECE_VALUES_MAG, 100, 1500, 1, 1, 5),
 
     TUNABLE_PARAM(MATERIAL_MG, 1500, 4000),
     TUNABLE_PARAM(MATERIAL_EG, 100, 1400),
-
+    
     TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
-
+    
     TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
     TUNABLE_PARAM(PAWN_PROTECT_PAWN, 0, 100),
     TUNABLE_PARAM(PAWN_THREATEN_KNIGHT, 0, 100),
@@ -59,7 +59,7 @@ static tunable_param const params[] =
     TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_EG, 0, 500, 1, 1, 7),
     TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_FREE_EG, 0, 1000, 1, 1, 7),
     TUNABLE_PARAM(PASSED_PAWN_KING_ESCORT, 0, 100),
-
+    
     TUNABLE_PARAM(KNIGHT_PAWN_BONUS_MG, 0, 100),
     TUNABLE_PARAM(KNIGHT_PAWN_BONUS_EG, 0, 100),
     TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_MG, 0, 100),
@@ -71,25 +71,25 @@ static tunable_param const params[] =
     TUNABLE_PARAM(KNIGHT_OUTPOST, 0, 100),
     TUNABLE_PARAM(KNIGHT_OUTPOST_HALF_OPEN_FILE, 0, 100),
     TUNABLE_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 0, 100),
-
+    
     TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_MG, 0, 100),
     TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_EG, 0, 100),
     TUNABLE_PARAM(BISHOP_THREATEN_ROOK, 0, 100),
     TUNABLE_PARAM(BISHOP_THREATEN_QUEEN, 0, 100),
     TUNABLE_PARAM(BISHOP_THREATEN_KING, 0, 100),
-
+    
     TUNABLE_PARAM(ROOK_MOBILITY_BONUS_MG, 0, 100),
     TUNABLE_PARAM(ROOK_MOBILITY_BONUS_EG, 0, 100),
     TUNABLE_PARAM(ROOK_THREATEN_QUEEN, 0, 100),
     TUNABLE_PARAM(ROOK_THREATEN_KING, 0, 100),
     TUNABLE_PARAM(ROOK_ON_OPEN_FILE, 0, 200),
-
+    
     TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_MG, 0, 100),
     TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_EG, 0, 100),
     TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
-
+    
     //TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
-
+    
     TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -127, 127, 8, 4, 28),
     TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -127, 127, 8, 4, 28),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
@@ -159,7 +159,7 @@ FT run_eval(FT k)
     {
         ch_load_fen(test.fen.c_str());
         FT e = (FT)ch_evaluate_white();
-        FT d = FT(1) + pow(FT(10), -k * e / num_params);
+        FT d = FT(1) + pow(FT(10), -k * e / 400);
         FT s = FT(1) / d - test.result;
         t += (s * s);
     }
@@ -182,6 +182,8 @@ void write_params(std::vector<int> const& vs)
             int v = 0;
             if(i >= tp.ai && i < tp.bi)
                 v = vs[n++];
+            else
+                v = tp.p[i];
             if(tp.n == 1)
                 fprintf(f, "%d)\n", v);
             else
@@ -275,7 +277,7 @@ int CDECL main()
         printf("Finding best K\n");
         FT const gr = (sqrt(FT(5)) + 1) / 2;
         FT const tol = FT(1e-5);
-        FT a = FT(1);
+        FT a = FT(0);
         FT b = FT(2);
         FT c = b - (b - a) / gr;
         FT d = a + (b - a) / gr;
@@ -298,9 +300,10 @@ int CDECL main()
         printf("   final       : K = %+8.5f, e = %f\n", k, mv);
     }
 
-    for(int iter = 0; ; ++iter)
+    for(int iter = 1; ; ++iter)
     {
-        printf("iteration %d\n", iter);
+        bool improved = false;
+        printf("iteration %d%30s\n", iter, "");
         for(int i = 0; i < num_params; ++i)
         {
             printf("   %-30s\r", val_name[i].c_str());
@@ -323,15 +326,17 @@ int CDECL main()
             //}
             if(tv < mv)
             {
-                printf("   %-30s   %3d -> %3d   %.6f\n",
+                printf("   %-30s   %4d -> %4d   %.6f\n",
                     val_name[i].c_str(), val_old[i], val_cur[i], tv);
                 mv = tv;
                 write_params(val_cur);
+                improved = true;
                 continue;
             }
             val_cur = val_old;
             set_vals(val_cur);
-        }   
+        }
+        if(!improved) break;
     }
 
 
