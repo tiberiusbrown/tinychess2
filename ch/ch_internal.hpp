@@ -335,7 +335,7 @@ static void dealloc(void* p)
 }
 
 // https://stackoverflow.com/questions/38088732/explanation-to-aligned-malloc-implementation
-static void* aligned_alloc(uint32_t bytes, uint32_t alignment)
+static void* alloc_aligned(uint32_t bytes, uint32_t alignment)
 {
     void* p1; // original block
     void** p2; // aligned block
@@ -349,7 +349,7 @@ static void* aligned_alloc(uint32_t bytes, uint32_t alignment)
     return p2;
 }
 
-static void aligned_dealloc(void* p)
+static void dealloc_aligned(void* p)
 {
     dealloc(((void**)p)[-1]);
 }

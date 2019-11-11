@@ -86,7 +86,7 @@ void CHAPI ch_init(ch_system_info const* info)
 ch_game* CHAPI ch_create()
 {
     using namespace ch;
-    ch_game* g = (ch_game*)aligned_alloc(sizeof(ch_game), alignof(ch_game));
+    ch_game* g = (ch_game*)alloc_aligned(sizeof(ch_game), alignof(ch_game));
     g->tt.set_memory(nullptr, 0);
     for(int n = 0; n < CH_MAX_THREADS; ++n)
     {
@@ -109,7 +109,7 @@ ch_game* CHAPI ch_create()
 
 void ch_destroy(ch_game* g)
 {
-    ch::aligned_dealloc(g);
+    ch::dealloc_aligned(g);
 }
 
 static void helper_start_search(ch_game* g, ch::search_data& d)

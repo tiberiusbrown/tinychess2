@@ -211,7 +211,7 @@ FT run_eval(std::vector<ch_game*> gs, FT k)
     size_t m = tests.size() / gs.size();
     for(size_t n = 0; n < gs.size(); ++n)
     {
-        dispatch([&,n]()
+        dispatch([&,m,n]()
         {
             FT t = 0;
             for(size_t i = m * n; i < m * (n + 1); ++i)
