@@ -10,9 +10,9 @@ static void ai_move(void)
         0, 0, 300, 0, 0
     };
 
-    cur_turn = ch_current_turn();
+    cur_turn = ch_current_turn(game);
     thinking = 1;
-    ch_search(&limits);
+    ch_search(game, &limits);
     while(thinking)
     {
         delay_ms(1);
@@ -26,7 +26,7 @@ static void ai_move(void)
     }
     prevmv = bestmv;
     animate_move(ch_move_fr_sq(prevmv), ch_move_to_sq(prevmv));
-    ch_do_move(prevmv);
+    ch_do_move(game, prevmv);
     update_board();
     draw_board();
     draw_pieces();

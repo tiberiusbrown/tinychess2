@@ -12,15 +12,18 @@ static FORCEINLINE void run(void)
 {
     ch_system_info info =
     {
-        get_ms,
-        thread_yield,
-        search_info,
-        best_move
+        &alloc,
+        &dealloc,
+        &get_ms,
+        &thread_yield,
+        &search_info,
+        &best_move,
     };
 
     ch_init(&info);
-    ch_set_hash(hash_mem, HASH_MEM_MB_LOG2);
-    ch_new_game();
+    game = ch_create();
+    ch_set_hash(game, hash_mem, HASH_MEM_MB_LOG2);
+    ch_new_game(game);
 
     thread_create(&thrd, thread_func, NULL);
 
@@ -33,8 +36,10 @@ static FORCEINLINE void run(void)
 
 static FORCEINLINE void postrun(void)
 {
-    ch_kill_threads();
+    ch_kill_threads(game);
     thread_join(&thrd);
+    ch_destroy(game);
+    game = NULL;
 }
 
 #endif

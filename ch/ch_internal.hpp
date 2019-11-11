@@ -325,6 +325,35 @@ static void thread_yield()
 {
     if(system.thread_yield) system.thread_yield();
 }
+static void* alloc(uint32_t bytes)
+{
+    return system.alloc ? system.alloc(bytes) : nullptr;
+}
+static void dealloc(void* p)
+{
+    if(system.dealloc) system.dealloc(p);
+}
+
+// https://stackoverflow.com/questions/38088732/explanation-to-aligned-malloc-implementation
+static void* aligned_alloc(uint32_t bytes, uint32_t alignment)
+{
+    void* p1; // original block
+    void** p2; // aligned block
+    int offset = alignment - 1 + sizeof(void*);
+    if((p1 = (void*)alloc(bytes + offset)) == NULL)
+    {
+        return NULL;
+    }
+    p2 = (void**)(((uintptr_t)(p1)+offset) & ~((uintptr_t)alignment - 1));
+    p2[-1] = p1;
+    return p2;
+}
+
+static void aligned_dealloc(void* p)
+{
+    dealloc(((void**)p)[-1]);
+}
+
 static CH_FORCEINLINE void search_info(
     int depth,
     int seldepth,

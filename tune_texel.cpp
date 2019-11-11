@@ -9,12 +9,50 @@
 #include <string>
 #include <fstream>
 #include <random>
+#include <thread>
+#include <functional>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 #include <cmath>
 
 typedef double FT;
 
 static int num_params;
+
+typedef std::function<void(void)> fp_t;
+static std::queue<fp_t> jobs;
+static std::vector<std::thread> workers;
+std::mutex job_lock;
+std::condition_variable job_cv;
+
+std::vector<int> done;
+std::vector<FT> results;
+
+static void worker_thread()
+{
+    std::unique_lock<std::mutex> lock(job_lock);
+    for(;;)
+    {
+        job_cv.wait(lock, []{ return (jobs.size()); });
+        if(!jobs.empty())
+        {
+            auto op = std::move(jobs.front());
+            jobs.pop();
+            lock.unlock();
+            op();
+            lock.lock();
+        }
+    }
+}
+static void dispatch(fp_t const& op)
+{
+    std::unique_lock<std::mutex> lock(job_lock);
+    jobs.push(op);
+    lock.unlock();
+    job_cv.notify_all();
+}
 
 static uint32_t get_ms(void)
 {
@@ -23,6 +61,20 @@ static uint32_t get_ms(void)
     return (uint32_t)std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start_time).count();
 }
+
+static void* alloc(uint32_t bytes) { return malloc((size_t)bytes); }
+static void dealloc(void* p) { free(p); }
+
+static ch_system_info const INIT_INFO =
+{
+    &alloc,
+    &dealloc,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+};
+
 
 struct tunable_param
 {
@@ -90,18 +142,18 @@ static tunable_param const params[] =
     
     //TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
     
-    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -127, 127, 8, 4, 28),
-    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -127, 127, 8, 4, 28),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -127, 127, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -127, 127, 8),
+    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -300, 300, 8, 4, 28),
+    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -300, 300, 8, 4, 28),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -300, 300, 8),
 };
 
 static std::vector<int> val_cur, val_old, val_a, val_b;
@@ -149,22 +201,57 @@ static std::vector<std::string> split(std::string str, std::string const& token)
     return result;
 }
 
-FT run_eval(FT k)
+FT run_eval(std::vector<ch_game*> gs, FT k)
 {
-    FT t = 0.f;
+    ch_init(&INIT_INFO);
 
-    ch_init(nullptr);
-
-    for(auto const& test : tests)
+    done.resize(gs.size());
+    for(auto& d : done) d = 0;
+    results.resize(gs.size());
+    size_t m = tests.size() / gs.size();
+    for(size_t n = 0; n < gs.size(); ++n)
     {
-        ch_load_fen(test.fen.c_str());
-        FT e = (FT)ch_evaluate_white();
-        FT d = FT(1) + pow(FT(10), -k * e / 400);
-        FT s = FT(1) / d - test.result;
-        t += (s * s);
+        dispatch([&,n]()
+        {
+            FT t = 0;
+            for(size_t i = m * n; i < m * (n + 1); ++i)
+            {
+                auto const& test = tests[i];
+                //printf("gs[%d] = %p\n", (int)n, gs[n]);
+                ch_load_fen(gs[n], test.fen.c_str());
+                FT e = (FT)ch_qsearch(gs[n]);
+                FT d = FT(1) + pow(FT(10), -k * e / 400);
+                FT s = FT(1) / d - test.result;
+                t += (s * s);
+            }
+            results[n] = t;
+            done[n] = 1;
+        });
     }
 
-    return t / tests.size();
+    for(;;)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        bool all_done = true;
+        for(int d : done) if(!d) all_done = false;
+        if(all_done) break;
+    }
+
+    FT t = 0.f;
+
+    //for(auto const& test : tests)
+    //{
+    //    ch_load_fen(gs[0], test.fen.c_str());
+    //    //FT e = (FT)ch_evaluate_white(gs[0]);
+    //    FT e = (FT)ch_qsearch(gs[0]);
+    //    FT d = FT(1) + pow(FT(10), -k * e / 400);
+    //    FT s = FT(1) / d - test.result;
+    //    t += (s * s);
+    //}
+
+    for(auto r : results) t += r;
+
+    return t / (m * gs.size());
 }
 
 void write_params(std::vector<int> const& vs)
@@ -199,11 +286,11 @@ void write_params(std::vector<int> const& vs)
     fclose(f);
 }
 
-FT mutate_val(FT k, FT tv, FT mv, int i, int d)
+FT mutate_val(std::vector<ch_game*> gs, FT k, FT tv, FT mv, int i, int d)
 {
     FT v = tv;
     int vvv = val_cur[i];
-    while(v == tv && v >= mv)
+    while(v == tv && v > mv)
     {
         int pv = val_cur[i];
         val_cur[i] += d;
@@ -211,7 +298,8 @@ FT mutate_val(FT k, FT tv, FT mv, int i, int d)
         val_cur[i] = std::max(val_cur[i], val_a[i]);
         if(val_cur[i] == pv) break;
         set_vals(val_cur);
-        v = run_eval(k);
+        printf("   %-30s: %+d     \r", val_name[i].c_str(), d);
+        v = run_eval(gs, k);
         d *= 2;
         if(v >= mv) val_cur[i] = vvv;
     }
@@ -271,6 +359,17 @@ int CDECL main()
     val_old = val_cur;
     printf("Number of parameters: %d\n", num_params);
 
+    int num_threads = (int)std::thread::hardware_concurrency();
+    num_threads = std::max(1, num_threads);
+    printf("Tuning with %d threads\n", num_threads);
+    std::vector<ch_game*> gs;
+    ch_init(&INIT_INFO);
+    for(int n = 0; n < num_threads; ++n)
+        gs.push_back(ch_create());
+    workers.resize((size_t)num_threads);
+    for(int n = 0; n < num_threads; ++n)
+        workers[n] = std::thread(worker_thread);
+
     // find best k
     FT k, mv;
     {
@@ -285,18 +384,18 @@ int CDECL main()
         printf("   iteration %2d: a = %+8.5f, b = %+8.5f\n", i, a, b);
         while(std::abs(c - d) > tol)
         {
-            FT ce = run_eval(c);
-            FT de = run_eval(d);
+            FT ce = run_eval(gs, c);
+            FT de = run_eval(gs, d);
             if(ce < de)
                 b = d;
             else
                 a = c;
             c = b - (b - a) / gr;
             d = a + (b - a) / gr;
-            printf("   iteration %2d: a = %+8.5f, b = %+8.5f\n", ++i, a, b);
+            printf("   iteration %2d: a = %+8.5f, b = %+8.5f (%.6f, %.6f)\n", ++i, a, b, ce, de);
         }
         k = (a + b) / 2;
-        mv = run_eval(k);
+        mv = run_eval(gs, k);
         printf("   final       : K = %+8.5f, e = %f\n", k, mv);
     }
 
@@ -306,12 +405,11 @@ int CDECL main()
         printf("iteration %d%30s\n", iter, "");
         for(int i = 0; i < num_params; ++i)
         {
-            printf("   %-30s\r", val_name[i].c_str());
             fflush(stdout);
             val_old = val_cur;
             FT tv = 100;
-            tv = mutate_val(k, tv, mv, i, -1);
-            tv = mutate_val(k, tv, mv, i, +1);
+            tv = mutate_val(gs, k, tv, mv, i, -1);
+            tv = mutate_val(gs, k, tv, mv, i, +1);
             //if(tv > mv && val_cur[i] < val_b[i])
             //{
             //    ++val_cur[i];
@@ -339,6 +437,9 @@ int CDECL main()
         if(!improved) break;
     }
 
+    for(ch_game* g : gs)
+        ch_destroy(g);
+    gs.clear();
 
     return 0;
 }

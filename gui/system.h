@@ -66,20 +66,26 @@ DEFPROC(BOOL, FreeLibrary, (HMODULE));
 DEFPROC(VOID, ExitProcess, (UINT));
 DEFPROC(HMODULE, GetModuleHandleA, (LPCSTR));
 DEFPROC(void, Sleep, (DWORD));
+DEFPROC(HANDLE, GetProcessHeap, (void));
+DEFPROC(LPVOID, HeapAlloc, (HANDLE, DWORD, SIZE_T));
+DEFPROC(BOOL, HeapFree, (HANDLE, DWORD, LPVOID));
 #if ENABLE_MS
 DEFPROC(BOOL, QueryPerformanceFrequency, (LARGE_INTEGER*));
 DEFPROC(BOOL, QueryPerformanceCounter, (LARGE_INTEGER*));
-static void* PROCS_KERNEL32[6] = { NULL };
+static void* PROCS_KERNEL32[9] = { NULL };
 #else
-static void* PROCS_KERNEL32[4] = { NULL };
+static void* PROCS_KERNEL32[7] = { NULL };
 #endif
 #define FN_FreeLibrary      ((PFN_FreeLibrary     )PROCS_KERNEL32[0])
 #define FN_ExitProcess      ((PFN_ExitProcess     )PROCS_KERNEL32[1])
 #define FN_GetModuleHandleA ((PFN_GetModuleHandleA)PROCS_KERNEL32[2])
 #define FN_Sleep            ((PFN_Sleep           )PROCS_KERNEL32[3])
+#define FN_GetProcessHeap   ((PFN_GetProcessHeap  )PROCS_KERNEL32[4])
+#define FN_HeapAlloc        ((PFN_HeapAlloc       )PROCS_KERNEL32[5])
+#define FN_HeapFree         ((PFN_HeapFree        )PROCS_KERNEL32[6])
 #if ENABLE_MS
-#define FN_QueryPerformanceFrequency ((PFN_QueryPerformanceFrequency)PROCS_KERNEL32[4])
-#define FN_QueryPerformanceCounter ((PFN_QueryPerformanceCounter)PROCS_KERNEL32[5])
+#define FN_QueryPerformanceFrequency ((PFN_QueryPerformanceFrequency)PROCS_KERNEL32[7])
+#define FN_QueryPerformanceCounter ((PFN_QueryPerformanceCounter)PROCS_KERNEL32[8])
 #endif
 
 /* user32 */

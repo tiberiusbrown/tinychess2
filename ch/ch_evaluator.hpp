@@ -59,10 +59,10 @@ static constexpr int const INIT_TABLE_ZERO[32] =
     0, 0, 0, 0,
 };
 
-int8_t piece_tables[2][13][64];
+int16_t piece_tables[2][13][64];
 
 template<bool flipped>
-static void evaluator_init_table(int8_t* dst, int const* src)
+static void evaluator_init_table(int16_t* dst, int const* src)
 {
     for(int r = 0; r < 8; ++r)
     {
@@ -70,7 +70,7 @@ static void evaluator_init_table(int8_t* dst, int const* src)
         for(int c = 0; c < 8; ++c)
         {
             int sq = nr * 4 + (c >= 4 ? 7 - c : c);
-            dst[r * 8 + c] = int8_t(flipped ? -src[sq] : src[sq]);
+            dst[r * 8 + c] = int16_t(flipped ? -src[sq] : src[sq]);
         }
     }
 }

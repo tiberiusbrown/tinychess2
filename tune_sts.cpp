@@ -208,6 +208,9 @@ static ch_search_limits const LIMITS =
 
 static ch_move best_move = 0;
 
+static void* alloc(uint32_t bytes) { return malloc((size_t)bytes); }
+static void dealloc(void* p) { free(p); }
+
 static void set_best_move(ch_move m)
 {
     best_move = m;
@@ -215,6 +218,8 @@ static void set_best_move(ch_move m)
 
 static ch_system_info const INIT_INFO =
 {
+    &alloc,
+    &dealloc,
     &get_ms,
     nullptr,
     nullptr,
@@ -223,19 +228,19 @@ static ch_system_info const INIT_INFO =
 
 static uint64_t hash_mem[(1 << 20) / 8];
 
-static int run_sts()
+static int run_sts(ch_game* g)
 {
     int n = 0;
     int i = 0;
 
     ch_init(&INIT_INFO);
-    ch_set_hash(hash_mem, 0);
+    ch_set_hash(g, hash_mem, 0);
 
     for(auto const& test : tests)
     {
-        ch_clear_caches();
-        ch_load_fen(test.fen.c_str());
-        ch_search(&LIMITS);
+        ch_clear_caches(g);
+        ch_load_fen(g, test.fen.c_str());
+        ch_search(g, &LIMITS);
         std::string m = ch_extended_algebraic(best_move);
         int s = test.moves.count(m) != 0 ? test.moves.at(m) : 0;
         n += s;
@@ -306,8 +311,11 @@ int CDECL main()
         for(auto& v : values) v.d.resize(num_params);
     }
 
+    ch_init(&INIT_INFO);
+    ch_game* g = ch_create();
+
     {
-        int s = run_sts();
+        int s = run_sts(g);
         for(int i = 0; i < GENERATION_KEEP; ++i)
         {
             auto& v = values[i];
@@ -320,9 +328,9 @@ int CDECL main()
         }
     }
 
-    for(int g = 0;; ++g)
+    for(int gen = 0;; ++gen)
     {
-        printf("Generation: %d\n", g);
+        printf("Generation: %d\n", gen);
         printf("Top Scores:");
         for(int i = 0; i < GENERATION_KEEP; ++i)
             printf(" %d", values[i].score);
@@ -371,7 +379,7 @@ int CDECL main()
             printf("   Running test for unit %3d... ", n);
             fflush(stdout);
             values[n].set();
-            int v = run_sts();
+            int v = run_sts(g);
             values[n].score =
                 (v == values[(n - GENERATION_KEEP) / (GENERATION_KEEP - 1)].score ?
                 0 : v);
@@ -380,6 +388,8 @@ int CDECL main()
 
         std::sort(std::begin(values), std::end(values), sort_param_values_descending());
     }
+
+    ch_destroy(g);
 
     return 0;
 }

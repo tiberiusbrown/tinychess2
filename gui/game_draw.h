@@ -74,10 +74,10 @@ static void draw_board(void)
     /* legal moves */
     if(selpos)
     {
-        for(n = 0; n < ch_num_moves(); ++n)
+        for(n = 0; n < ch_num_moves(game); ++n)
         {
             int r, c;
-            ch_move mv = ch_get_move(n);
+            ch_move mv = ch_get_move(game, n);
             if(ch_move_fr_sq(mv) != selpos) continue;
             r = ch_move_to_sq(mv) / 8;
             c = ch_move_to_sq(mv) % 8;

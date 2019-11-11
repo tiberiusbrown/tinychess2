@@ -52,6 +52,9 @@ static char const PROCNAMES_KERNEL32[] =
     "ExitProcess"          "\0"
     "GetModuleHandleA"     "\0"
     "Sleep"                "\0"
+    "GetProcessHeap"       "\0"
+    "HeapAlloc"            "\0"
+    "HeapFree"             "\0"
 #if ENABLE_MS
     "QueryPerformanceFrequency" "\0"
     "QueryPerformanceCounter" "\0"

@@ -73,6 +73,8 @@ static int wait_for_input_timeout(input* i, int* timeout_ms);
 #endif
 static uint32_t get_ms(void);
 static void shutdown(int code);
+static void* alloc(uint32_t bytes);
+static void dealloc(void* p);
 
 /* defined in run.h */
 static void flush_input(void);

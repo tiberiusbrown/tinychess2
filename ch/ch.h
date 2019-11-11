@@ -20,6 +20,12 @@ extern "C" {
 
     typedef struct ch_system_info
     {
+        // allocate memory
+        void*(*alloc)(uint32_t bytes);
+
+        // deallocate memory
+        void(*dealloc)(void* p);
+
         // return monotonic millisecond clock
         uint32_t(*get_ms)(void);
 
@@ -56,52 +62,60 @@ extern "C" {
         int mate_search; // disallow reductions
     } ch_search_limits;
 
+    typedef struct ch_game ch_game;
+
     void CHAPI ch_init(ch_system_info const* info);
+
+    ch_game* CHAPI ch_create();
+    void CHAPI ch_destroy(ch_game* g);
 
     // if this method is not called, searches will not be run in
     // the background. create as many threads as desired with this
     // method as the thread entry.
-    void CHAPI ch_thread_start(void);
+    void CHAPI ch_thread_start(ch_game* g);
     
     // kill all threads. this can be used to change the number of
     // threads: first kill threads, then create new ones with
     // ch_thread_start entries.
-    void CHAPI ch_kill_threads(void);
+    void CHAPI ch_kill_threads(ch_game* g);
 
     // mem must be at least 8-byte aligned
-    void CHAPI ch_set_hash(void* mem, int size_megabyte_log2);
+    void CHAPI ch_set_hash(ch_game* g, void* mem, int size_megabyte_log2);
 
     // clear any hash tables and heuristics (ucinewgame)
-    void CHAPI ch_clear_caches(void);
+    void CHAPI ch_clear_caches(ch_game* g);
 
-    void CHAPI ch_new_game(void);
-    void CHAPI ch_load_fen(char const* fen);
+    void CHAPI ch_new_game(ch_game* g);
+    void CHAPI ch_load_fen(ch_game* g, char const* fen);
 
-    void CHAPI ch_do_move(ch_move m);
+    void CHAPI ch_do_move(ch_game* g, ch_move m);
     // extended algebraic, e.g. e7f8q
-    void CHAPI ch_do_move_str(char const* str);
+    void CHAPI ch_do_move_str(ch_game* g, char const* str);
 
-    ch_move CHAPI ch_last_move(void);
+    ch_move CHAPI ch_last_move(ch_game* g);
     // returns the move undone, or 0 if no moves to undo
-    ch_move CHAPI ch_undo_move(void);
+    ch_move CHAPI ch_undo_move(ch_game* g);
     // returns the move redone, or 0 if no moves to redo
-    ch_move CHAPI ch_redo_move(void);
+    ch_move CHAPI ch_redo_move(ch_game* g);
 
     int CHAPI ch_move_fr_sq(ch_move mv);
     int CHAPI ch_move_to_sq(ch_move mv);
 
-    int CHAPI ch_num_moves();
-    ch_move CHAPI ch_get_move(int n);
+    int CHAPI ch_num_moves(ch_game* g);
+    ch_move CHAPI ch_get_move(ch_game* g, int n);
 
-    int CHAPI ch_evaluate(void);
-    int CHAPI ch_evaluate_white(void);
+    int CHAPI ch_evaluate(ch_game* g);
+    int CHAPI ch_evaluate_white(ch_game* g);
 
-    void CHAPI ch_search(ch_search_limits const* limits);
+    // perform qsearch and return score from white's perspective
+    int CHAPI ch_qsearch(ch_game* g);
 
-    void CHAPI ch_stop(void);
+    void CHAPI ch_search(ch_game* g, ch_search_limits const* limits);
+
+    void CHAPI ch_stop(ch_game* g);
 
     // get node count from last search
-    uint64_t CHAPI ch_get_nodes(void);
+    uint64_t CHAPI ch_get_nodes(ch_game* g);
 
     // convert move to string
     char const* CHAPI ch_extended_algebraic(ch_move m);
@@ -124,7 +138,7 @@ extern "C" {
     // A1: sq = 54
     // H8: sq = 7
     // H1: sq = 63
-    int CHAPI ch_get_piece_at(int sq);
+    int CHAPI ch_get_piece_at(ch_game* g, int sq);
 
     // draw types
     enum
@@ -135,23 +149,23 @@ extern "C" {
         CH_DRAW_MATERIAL,
         CH_DRAW_STALEMATE,
     };
-    int CHAPI ch_is_draw(void);
+    int CHAPI ch_is_draw(ch_game* g);
 
     // whether the side to move is in check
-    int CHAPI ch_is_check(void);
+    int CHAPI ch_is_check(ch_game* g);
 
     // whether the side to move is in checkmate
-    int CHAPI ch_is_checkmate(void);
+    int CHAPI ch_is_checkmate(ch_game* g);
 
     // CH_WHITE (0) or CH_BLACK (1)
-    int CHAPI ch_current_turn(void);
+    int CHAPI ch_current_turn(ch_game* g);
 
     //
     // debug methods
     //
 
-    uint64_t CHAPI ch_perft(int depth, uint64_t counts[256]);
-    int CHAPI ch_see(char const* mvstr);
+    uint64_t CHAPI ch_perft(ch_game* g, int depth, uint64_t counts[256]);
+    int CHAPI ch_see(ch_game* g, char const* mvstr);
 
 #ifdef __cplusplus
 }

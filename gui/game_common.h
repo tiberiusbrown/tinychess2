@@ -8,6 +8,8 @@
 
 static button btn_undo, btn_redo;
 
+static ch_game* game;
+
 static int selpos;
 static ch_move prevmv;
 static ch_move bestmv;
@@ -58,7 +60,7 @@ static void update_board(void)
     int r, c;
     for(r = 0; r < 8; ++r)
         for(c = 0; c < 8; ++c)
-            board[r][c] = ch_get_piece_at(r * 8 + c);
+            board[r][c] = ch_get_piece_at(game, r * 8 + c);
 }
 
 static int get_board_pos(void)
@@ -100,7 +102,7 @@ static void best_move(ch_move mv)
 static void thread_func(void* user)
 {
     (void)user;
-    ch_thread_start();
+    ch_thread_start(game);
 }
 
 #endif

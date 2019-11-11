@@ -15,12 +15,12 @@ static void player_move(void)
         wait_for_input(&i);
         if(button_input(&btn_undo, &i, &refresh_needed))
         {
-            ch_move mv = ch_last_move();
+            ch_move mv = ch_last_move(game);
             if(mv != 0)
             {
                 animate_move(ch_move_to_sq(mv), ch_move_fr_sq(mv));
-                ch_undo_move();
-                prevmv = ch_last_move();
+                ch_undo_move(game);
+                prevmv = ch_last_move(game);
                 update_board();
             }
         }
@@ -29,7 +29,7 @@ static void player_move(void)
         if(p >= 0 && i.type == INPUT_MOUSE_DOWN)
         {
             int pc = board[p / 8][p % 8];
-            if(pc != CH_EMPTY && (pc & 1) == ch_current_turn())
+            if(pc != CH_EMPTY && (pc & 1) == ch_current_turn(game))
                 selpos = p;
         }
         if(p != pos)
@@ -45,9 +45,9 @@ static void player_move(void)
         int p = get_board_pos();
         draw_board();
         drawsqbox(selpos, COLOR_THINKING);
-        for(n = 0; n < ch_num_moves(); ++n)
+        for(n = 0; n < ch_num_moves(game); ++n)
         {
-            ch_move mv = ch_get_move(n);
+            ch_move mv = ch_get_move(game, n);
             if(ch_move_fr_sq(mv) == selpos && ch_move_to_sq(mv) == p)
             {
                 drawsqbox(p, COLOR_THINKING);
@@ -60,13 +60,13 @@ static void player_move(void)
         if(i.type == INPUT_MOUSE_UP)
             movepos = get_board_pos();
     }
-    for(n = 0; n < ch_num_moves(); ++n)
+    for(n = 0; n < ch_num_moves(game); ++n)
     {
-        ch_move mv = ch_get_move(n);
+        ch_move mv = ch_get_move(game, n);
         if(ch_move_fr_sq(mv) == selpos && ch_move_to_sq(mv) == movepos)
         {
             prevmv = mv;
-            ch_do_move(mv);
+            ch_do_move(game, mv);
             update_board();
             break;
         }

@@ -21,10 +21,10 @@ static void game_play(void)
 
     for(;;)
     {
-        if(ch_is_checkmate() || ch_is_draw())
+        if(ch_is_checkmate(game) || ch_is_draw(game))
         {
             input i;
-            if(ch_is_checkmate())
+            if(ch_is_checkmate(game))
                 text("Checkmate", 190, 10, TEXT_COLOR);
             else
                 text("Stalemate", 190, 10, TEXT_COLOR);
@@ -32,7 +32,7 @@ static void game_play(void)
             for(;;) wait_for_input(&i);
         }
 
-        if(ishuman[ch_current_turn()])
+        if(ishuman[ch_current_turn(game)])
             player_move();
         else
             ai_move();

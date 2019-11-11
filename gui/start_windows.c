@@ -639,6 +639,15 @@ static int wait_for_input(input* i)
     return wait_for_input_timeout(i, NULL);
 }
 
+void* alloc(uint32_t bytes)
+{
+    return FN_HeapAlloc(FN_GetProcessHeap(), 0, (SIZE_T)bytes);
+}
+void dealloc(void* p)
+{
+    FN_HeapFree(FN_GetProcessHeap(), 0, p);
+}
+
 #else
 typedef int avoid_unused_translation_unit;
 #endif

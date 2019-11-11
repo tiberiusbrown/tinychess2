@@ -1,6 +1,7 @@
 #include "ch/ch.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 //#include <time.h>
 
 #include <algorithm>
@@ -14,6 +15,9 @@
 #include <vector>
 
 static std::chrono::steady_clock::time_point start_time;
+
+static void* alloc(uint32_t bytes) { return malloc((size_t)bytes); }
+static void dealloc(void* p) { free(p); }
 
 static uint32_t get_ms(void)
 {
@@ -68,6 +72,8 @@ static void best_move(ch_move m)
 
 static ch_system_info const SYSINF =
 {
+    &alloc,
+    &dealloc,
     &get_ms,
     &thread_yield,
     &search_info,
@@ -93,7 +99,7 @@ template<class T> T clamp(T x, T a, T b)
 }
 
 static void* hash_mem;
-static void set_hash_mem(int megabytes)
+static void set_hash_mem(ch_game* g, int megabytes)
 {
     int mpow = 0;
     megabytes = clamp(megabytes, 0, 4096);
@@ -101,7 +107,7 @@ static void set_hash_mem(int megabytes)
     if(megabytes == 0)
     {
         hash_mem = NULL;
-        ch_set_hash(NULL, 0);
+        ch_set_hash(g, NULL, 0);
         return;
     }
     while((1 << mpow) <= megabytes)
@@ -110,10 +116,10 @@ static void set_hash_mem(int megabytes)
     hash_mem = malloc((1 << mpow) << 20);
     if(!hash_mem)
         hash_mem = malloc(64 << 20);
-    ch_set_hash(hash_mem, mpow);
+    ch_set_hash(g, hash_mem, mpow);
 }
 
-static bool process_command(std::string const& line)
+static bool process_command(ch_game* g, std::string const& line)
 {
     if(line == "quit")
         return true;
@@ -131,7 +137,7 @@ static bool process_command(std::string const& line)
     }
     else if(line == "ucinewgame")
     {
-        ch_clear_caches();
+        ch_clear_caches(g);
     }
     else if(startswith(line, "setoption "))
     {
@@ -142,16 +148,16 @@ static bool process_command(std::string const& line)
             if(n != std::string::npos)
             {
                 if(contains(line, "Hash"))
-                    set_hash_mem(atoi(line.c_str() + n + 7));
+                    set_hash_mem(g, atoi(line.c_str() + n + 7));
             }
         }
     }
     else if(startswith(line, "position"))
     {
         if(contains(line, "startpos"))
-            ch_new_game();
+            ch_new_game(g);
         else if(contains(line, "fen "))
-            ch_load_fen(line.c_str() + line.find("fen ", 0) + 4);
+            ch_load_fen(g, line.c_str() + line.find("fen ", 0) + 4);
         if(contains(line, "moves "))
         {
             std::stringstream moves_ss(line.substr(line.find("moves ") + 6));
@@ -160,7 +166,7 @@ static bool process_command(std::string const& line)
                 std::istream_iterator<std::string>{} };
             for(std::string const& m : moves)
             {
-                ch_do_move_str(m.c_str());
+                ch_do_move_str(g, m.c_str());
             }
         }
     }
@@ -199,42 +205,42 @@ static bool process_command(std::string const& line)
                 std::istream_iterator<std::string>{moves_ss},
                 std::istream_iterator<std::string>{} };
 
-            int side = ch_current_turn();
+            int side = ch_current_turn(g);
             for(std::string const& m : moves)
             {
-                if(ch_current_turn() == side)
+                if(ch_current_turn(g) == side)
                 {
                     thinking = true;
-                    ch_search(&limits);
+                    ch_search(g, &limits);
                     while(thinking)
                         std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
-                ch_do_move_str(m.c_str());
+                ch_do_move_str(g, m.c_str());
             }
         }
 
         thinking = true;
-        ch_search(&limits);
+        ch_search(g, &limits);
     }
     else if(startswith(line, "stop"))
     {
-        ch_stop();
+        ch_stop(g);
     }
     else if(startswith(line, "eval"))
     {
-        std::cout << ch_evaluate() << std::endl;
+        std::cout << ch_evaluate(g) << std::endl;
     }
     else if(startswith(line, "perft "))
     {
         int depth = atoi(line.c_str() + 6);
         depth = clamp(depth, 1, 64);
         uint64_t counts[256] = { 0 };
-        uint64_t t = ch_perft(depth, counts);
+        uint64_t t = ch_perft(g, depth, counts);
         std::cout << t << std::endl;
     }
     else if(startswith(line, "see "))
     {
-        std::cout << ch_see(&line[4]) << std::endl;
+        std::cout << ch_see(g, &line[4]) << std::endl;
     }
     return false;
 }
@@ -247,10 +253,11 @@ int main(void)
 {
     hash_mem = NULL;
     ch_init(&SYSINF);
-    set_hash_mem(256);
-    ch_new_game();
+    ch_game* g = ch_create();
+    set_hash_mem(g, 256);
+    ch_new_game(g);
 
-    std::thread thrd1(&ch_thread_start);
+    std::thread thrd1(&ch_thread_start, g);
 
     start_time = std::chrono::steady_clock::now();
 
@@ -258,14 +265,15 @@ int main(void)
     {
         std::string line;
         std::getline(std::cin, line);
-        if(process_command(line))
+        if(process_command(g, line))
             break;
     }
 
-    ch_kill_threads();
+    ch_kill_threads(g);
 
     thrd1.join();
 
+    ch_destroy(g);
     free(hash_mem);
 
 	return 0;
