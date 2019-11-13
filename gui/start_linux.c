@@ -504,7 +504,11 @@ int main(int argc, char** argv)
     (void)argc;
     (void)argv;
 #else
-void __attribute__((force_align_arg_pointer, externally_visible)) start(void)
+void __attribute__((
+#ifdef __i386__
+    force_align_arg_pointer,
+#endif
+    externally_visible)) start(void)
 {
 #endif
     uncompress_data();

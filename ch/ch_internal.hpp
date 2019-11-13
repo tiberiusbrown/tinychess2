@@ -106,6 +106,27 @@ template<class T> constexpr T const& max(T const& a, T const& b)
 {
     return a < b ? b : a;
 }
+template<class T> constexpr T abs(T const& x)
+{
+    return x < T(0) ? -x : x;
+}
+
+template<class T> struct less
+{
+    constexpr bool operator()(T const& a, T const& b) const
+    {
+        return a < b;
+    }
+};
+template<class RandomIt, class Compare>
+void insertion_sort(
+    RandomIt const& a, RandomIt const& b,
+    Compare comp = less<typename RandomIt::value_type>())
+{
+    for(RandomIt i = a + 1; i < b; ++i)
+        for(RandomIt j = i; j > a && comp(*j, *(j - 1)); --j)
+            std::swap(*j, *(j - 1));
+}
 
 enum acceleration
 {
@@ -295,15 +316,15 @@ struct precomputed_mask_data
     uint64_t vertical;
     CH_ALIGN(16) uint64_t diag_anti[2];
 };
-static std::array<precomputed_mask_data, 64> masks;
+extern std::array<precomputed_mask_data, 64> masks;
 
 // for simple rank attacks: indexed by: occupancy (center 6 bits), col
-static std::array<uint8_t, 64 * 8> first_rank_attacks;
+extern std::array<uint8_t, 64 * 8> first_rank_attacks;
 
-static std::array<std::array<uint64_t, 64>, 64> betweens;
-static std::array<std::array<uint64_t, 64>, 64> lines;
+extern std::array<std::array<uint64_t, 64>, 64> betweens;
+extern std::array<std::array<uint64_t, 64>, 64> lines;
 
-static std::array<std::array<uint8_t, 64>, 64> cheby_dist;
+extern std::array<std::array<uint8_t, 64>, 64> cheby_dist;
 
 #if CH_ENABLE_SSE
 #if CH_ARCH_64BIT

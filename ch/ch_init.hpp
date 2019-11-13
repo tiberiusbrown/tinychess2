@@ -3,15 +3,13 @@
 #include "ch_internal.hpp"
 #include "ch_bb.hpp"
 
-#include <algorithm>
-
 namespace ch
 {
 
 CH_OPT_SIZE static uint8_t get_cheby_dist(int a, int b)
 {
-    int dx = std::abs((a & 7) - (b & 7));
-    int dy = std::abs((a >> 3) - (b >> 3));
+    int dx = abs((a & 7) - (b & 7));
+    int dy = abs((a >> 3) - (b >> 3));
     return uint8_t(std::max(dx, dy));
 }
 

@@ -4,9 +4,11 @@
 #include <ch.h>
 
 #include "button.h"
+#include "system.h"
 #include "thread.h"
 
-static button btn_undo, btn_redo;
+static button btn_undo;
+//static button btn_redo;
 
 static ch_game* game;
 
@@ -70,6 +72,15 @@ static int get_board_pos(void)
     if(r < 0 || c < 0 || r >= 8 || c >= 8)
         return -1;
     return r * 8 + c;
+}
+
+static void* alloc(uint32_t bytes)
+{
+    return FN_malloc((size_t)bytes);
+}
+static void dealloc(void* p)
+{
+    FN_free(p);
 }
 
 static void search_info(

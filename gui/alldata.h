@@ -154,6 +154,8 @@ static struct datadecl const ALLDATA[] =
         "exit"                "\0"
         "usleep"              "\0"
         "gettimeofday"        "\0"
+        "malloc"              "\0"
+        "free"                "\0"
     ),
 #if ENABLE_XSHM
     STR_DATA_NAME(PROCNAMES_C_SHM, char,

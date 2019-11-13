@@ -23,7 +23,10 @@ static uint64_t hash_turn;
 static uint64_t hash_castling_rights[16];
 
 // en passant columns: use extra pawn storage
-static constexpr uint64_t const* const& hash_enp = &hashes[PAWN][0];
+static CH_FORCEINLINE uint64_t& hash_enp(int i)
+{
+    return hashes[PAWN][i];
+}
 
 static void init_hashes(void)
 {

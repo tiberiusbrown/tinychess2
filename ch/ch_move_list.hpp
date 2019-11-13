@@ -44,7 +44,7 @@ struct move_list
     };
     void sort()
     {
-        std::sort(begin(), end(), sort_descending());
+        insertion_sort(begin(), end(), sort_descending());
     }
 
     int size() const { return n; }

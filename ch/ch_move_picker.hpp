@@ -86,7 +86,7 @@ struct move_picker
                     std::swap(mvs[i], mvs[--num]);
                 }
             }
-            std::sort(
+            insertion_sort(
                 mvs.begin() + knum,
                 mvs.begin() + num,
                 move_list::sort_descending());
@@ -135,7 +135,7 @@ struct move_picker
                 // sort quiets by history heuristics
                 for(int i = knum; i < num; ++i)
                     mvs[i].sort_key() = uint8_t(hh->get_hh_score(mvs[i]));
-                std::sort(
+                insertion_sort(
                     mvs.begin() + knum,
                     mvs.begin() + num,
                     move_list::sort_descending());
@@ -184,7 +184,7 @@ struct move_picker
                 out_stage = STAGE_DONE;
                 return NULL_MOVE;
             }
-            std::sort(
+            insertion_sort(
                 mvs.begin() + index,
                 mvs.begin() + num,
                 move_list::sort_descending());

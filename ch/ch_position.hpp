@@ -375,7 +375,7 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
         if(ep_rank >= 1 && ep_file >= 0)
         {
             stack().ep_sq = uint8_t((8 - ep_rank) * 8 + ep_file);
-            hash ^= hash_enp[stack().ep_sq & 7];
+            hash ^= hash_enp(stack().ep_sq & 7);
         }
     }
 
@@ -423,7 +423,7 @@ void position::do_null_move()
     st.ply_irreversible = uint16_t(ply);
     if(st.ep_sq)
     {
-        st.hash ^= hash_enp[st.ep_sq & 7];
+        st.hash ^= hash_enp(st.ep_sq & 7);
         st.ep_sq = 0;
     }
     current_turn = opposite(current_turn);
@@ -472,7 +472,7 @@ void position::do_move(move const& mv)
 
     if(st.ep_sq)
     {
-        st.hash ^= hash_enp[st.ep_sq & 7];
+        st.hash ^= hash_enp(st.ep_sq & 7);
         st.ep_sq = 0;
     }
     
@@ -480,7 +480,7 @@ void position::do_move(move const& mv)
     {
         if(mv.is_pawn_dmove())
         {
-            st.hash ^= hash_enp[b & 7];
+            st.hash ^= hash_enp(b & 7);
             st.ep_sq = uint8_t(b);
         }
         else if(mv.is_castleq())

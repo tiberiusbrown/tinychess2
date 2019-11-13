@@ -348,10 +348,14 @@ void* PROCS_X11[21];
 DEFPROC(void, exit, (int));
 DEFPROC(int, usleep, (useconds_t));
 DEFPROC(int, gettimeofday, (struct timeval*, struct timezone*));
-void* PROCS_C[3];
+DEFPROC(void*, malloc, (size_t));
+DEFPROC(void, free, (void*));
+void* PROCS_C[5];
 #define FN_exit         ((PFN_exit        )PROCS_C[0])
 #define FN_usleep       ((PFN_usleep      )PROCS_C[1])
 #define FN_gettimeofday ((PFN_gettimeofday)PROCS_C[2])
+#define FN_malloc       ((PFN_malloc      )PROCS_C[3])
+#define FN_free         ((PFN_free        )PROCS_C[4])
 
 #if ENABLE_OPENGL
 DEFPROC(XVisualInfo*, glXChooseVisual, (Display*, int, int*));

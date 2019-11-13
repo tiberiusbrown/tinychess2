@@ -22,6 +22,8 @@ if(MSVC)
     add_definitions(-D_HAS_EXCEPTIONS=0)
 elseif(UNIX)
 
+    set(CMAKE_SKIP_RPATH TRUE)
+
     if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
         option(CFG_BUILD_32BIT "Build 32-bit executable" OFF)
     else()
@@ -47,11 +49,11 @@ elseif(UNIX)
     set(COMMON_FLAGS "${COMMON_FLAGS} -mpopcnt -msse2 -mavx -mavx2 -mbmi -mbmi2")
     set(COMMON_FLAGS "${COMMON_FLAGS} -fno-tree-vectorize")
     set(COMMON_FLAGS "${COMMON_FLAGS} -Wall -Wextra")
-    #set(COMMON_FLAGS "${COMMON_FLAGS} -mpreferred-stack-boundary=4")
-    #set(COMMON_FLAGS "${COMMON_FLAGS} -mstackrealign")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -fno-PIC -fno-pie")
+    set(COMMON_FLAGS "${COMMON_FLAGS} -static-libgcc -static-libstdc++")
 
 	if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 6)
-		set(COMMON_FLAGS "${COMMON_FLAGS} -fno-plt")
+        set(COMMON_FLAGS "${COMMON_FLAGS} -fno-plt")
 	endif()
 
     set(CMAKE_CXX_FLAGS "${COMMON_FLAGS}")
@@ -71,10 +73,6 @@ elseif(UNIX)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${COMMON_OPT_FLAGS}")
 
     set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -Os")
-    #set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-jumps=1")
-    #set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-labels=1")
-    #set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-loops=1")
-    #set(CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -falign-functions=1")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -Ofast")
 
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -g")
@@ -88,6 +86,7 @@ elseif(UNIX)
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+    set(CMAKE_EXE_LINKER_FLAGS "-fno-PIC")
     set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-flto")
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-flto")
     set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "-flto")
@@ -244,30 +243,33 @@ if(MSVC)
 elseif(UNIX)
 
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_options(${PROJECT_NAME} PRIVATE -nostdlib)
         set_property(
             TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
             " -Wl,-estart -nostartfiles -Wl,-nostdlib -Wl,--gc-sections")
 
-        set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS "${LINKLD}")
-        set_property(
-            TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
-            " -Wl,-T,${LINKLD}")
+        if(NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+            set_target_properties(${PROJECT_NAME} PROPERTIES LINK_DEPENDS "${LINKLD}")
+            set_property(
+                TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,-T,${LINKLD}")
 
-        set_property(
-            TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
-            " -Wl,--build-id=none -Wl,-z,norelro -Wl,--hash-style=gnu -s")
+            set_property(
+                TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+                " -Wl,--build-id=none -Wl,-z,norelro -Wl,--hash-style=sysv -s")
 
-        #file(GLOB SSTRIP_SOURCES gui/sstrip/*.c gui/sstrip/*.h)
-        #add_executable(sstrip ${SSTRIP_SOURCES})
-        #add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        #    COMMAND $<TARGET_FILE:sstrip> $<TARGET_FILE:${PROJECT_NAME}>
-        #    )
+            file(GLOB SSTRIP_SOURCES gui/sstrip/*.c gui/sstrip/*.h)
+            add_executable(sstrip ${SSTRIP_SOURCES})
+            add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+                COMMAND $<TARGET_FILE:sstrip> $<TARGET_FILE:${PROJECT_NAME}>
+                )
+        endif()
     endif()
 
     target_link_libraries(${PROJECT_NAME} dl)
     set_property(
         TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS
-        " -Wl,--no-as-needed")
+        " -Wl,-as-needed")
 
 endif()
 
