@@ -120,7 +120,10 @@ target_compile_definitions(tune_sts PUBLIC
 add_executable(tune_texel tune_texel.cpp ${EDITORCONFIG})
 target_link_libraries(tune_texel ch_tunable)
 target_compile_definitions(tune_texel PUBLIC
-    -DTEXELFILE="${CMAKE_CURRENT_SOURCE_DIR}/texel/texel_big.epd")
+    -DTEXELFILE="${CMAKE_CURRENT_SOURCE_DIR}/texel/texel.epd")
+if(UNIX)
+    target_link_libraries(tune_texel pthread)
+endif()
 
 add_executable(${PROJECT_NAME}_uci uci.cpp ${EDITORCONFIG})
 target_link_libraries(${PROJECT_NAME}_uci ch)

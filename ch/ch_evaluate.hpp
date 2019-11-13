@@ -218,6 +218,17 @@ struct evaluator
     {
         int x = 0;
         {
+#if 1
+            // zurichess-style phase
+            int total = 4*1 + 4*1 + 4*3 + 2*6;
+            int curr = total;
+            curr -= popcnt<accel>(p.bbs[WHITE+KNIGHT] | p.bbs[BLACK+KNIGHT]) * 1;
+            curr -= popcnt<accel>(p.bbs[WHITE+BISHOP] | p.bbs[BLACK+BISHOP]) * 1;
+            curr -= popcnt<accel>(p.bbs[WHITE+ROOK] | p.bbs[BLACK+ROOK]) * 3;
+            curr -= popcnt<accel>(p.bbs[WHITE+QUEEN] | p.bbs[BLACK+QUEEN]) * 6;
+            curr = std::max(curr, 0);
+            mg = (curr * 256 + total / 2) / total;
+#else
             mg = std::max(
                 p.stack().piece_vals[WHITE],
                 p.stack().piece_vals[BLACK]);
@@ -226,6 +237,7 @@ struct evaluator
             mg = std::max(mg, 0);
             mg *= 256;
             mg /= (MATERIAL_MG - MATERIAL_EG);
+#endif
             eg = 256 - mg;
         }
         x += p.stack().piece_vals[WHITE];
