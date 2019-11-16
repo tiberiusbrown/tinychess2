@@ -761,6 +761,14 @@ void* memmove(void* dest, const void* src, size_t count)
     return dest;
 }
 
+static void* alloc(uint32_t bytes)
+{
+    return FN_malloc((size_t)bytes);
+}
+static void dealloc(void* p)
+{
+    FN_free(p);
+}
 
 #else
 typedef int avoid_unused_translation_unit;

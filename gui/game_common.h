@@ -74,15 +74,6 @@ static int get_board_pos(void)
     return r * 8 + c;
 }
 
-static void* alloc(uint32_t bytes)
-{
-    return FN_malloc((size_t)bytes);
-}
-static void dealloc(void* p)
-{
-    FN_free(p);
-}
-
 static void search_info(
     int depth,
     int seldepth,
