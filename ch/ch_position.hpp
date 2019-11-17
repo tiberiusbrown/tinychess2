@@ -28,7 +28,7 @@ struct position
 
     int age;
 
-    static constexpr uint16_t ST_PIECE_VALUES[13] =
+    static constexpr uint16_t const ST_PIECE_VALUES[13] =
     {
         10, 10, 30, 30, 32, 32, 50, 50, 90, 90, 0, 0, 0,
     };
@@ -699,5 +699,8 @@ uint64_t position::root_perft(trans_table& tt, int depth, uint64_t* counts)
 
     return total;
 }
+
+constexpr uint16_t const position::ST_PIECE_VALUES[13];
+constexpr int const position::STACK_SIZE;
 
 }
