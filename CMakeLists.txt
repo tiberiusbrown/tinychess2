@@ -111,10 +111,10 @@ endif()
 add_executable(test_perft test_perft.cpp ${EDITORCONFIG})
 target_link_libraries(test_perft ch)
 
-add_executable(tune_sts tune_sts.cpp ${EDITORCONFIG})
-target_link_libraries(tune_sts ch_tunable)
-target_compile_definitions(tune_sts PUBLIC
-    -DSTSFILE="${CMAKE_CURRENT_SOURCE_DIR}/stsrating/sts_all.epd")
+#add_executable(tune_sts tune_sts.cpp ${EDITORCONFIG})
+#target_link_libraries(tune_sts ch_tunable)
+#target_compile_definitions(tune_sts PUBLIC
+#    -DSTSFILE="${CMAKE_CURRENT_SOURCE_DIR}/stsrating/sts_all.epd")
 
 add_executable(tune_texel tune_texel.cpp ${EDITORCONFIG})
 target_link_libraries(tune_texel ch_tunable)

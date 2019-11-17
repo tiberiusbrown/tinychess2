@@ -79,81 +79,31 @@ static ch_system_info const INIT_INFO =
 struct tunable_param
 {
     char const* s;
-    int* p;
+    int32_t* p;
     int n;
     int a, b;
     int nr;
     int ai, bi;
+    bool phased;
 };
 
-#define TUNABLE_PARAM(s_, a_, b_) { #s_, &ch::s_, 1, a_, b_, 1, 0, 1 }
-#define TUNABLE_PARAM_ARRAY(s_, a_, b_, nr_) { \
-    #s_, ch::s_, sizeof(ch::s_) / sizeof(int), a_, b_, nr_, 0, sizeof(ch::s_) / sizeof(int) }
-#define TUNABLE_PARAM_ARRAY_SUB(s_, a_, b_, nr_, ai_, bi_) { \
-    #s_, ch::s_, sizeof(ch::s_) / sizeof(int), a_, b_, nr_, ai_, bi_ }
+#define TUNABLE_PARAM(s_, a_, b_, ph_) { #s_, &ch::s_, 1, a_, b_, 1, 0, 1, ph_ }
+#define TUNABLE_PARAM_ARRAY(s_, a_, b_, nr_, ph_) { \
+    #s_, ch::s_, sizeof(ch::s_) / sizeof(int32_t), a_, b_, nr_, 0, sizeof(ch::s_) / sizeof(int), ph_ }
+#define TUNABLE_PARAM_ARRAY_SUB(s_, a_, b_, nr_, ai_, bi_, ph_) { \
+    #s_, ch::s_, sizeof(ch::s_) / sizeof(int32_t), a_, b_, nr_, ai_, bi_, ph_ }
 
 static tunable_param const params[] =
 {
-    TUNABLE_PARAM_ARRAY_SUB(PIECE_VALUES_MAG, 100, 1500, 1, 1, 5),
+    TUNABLE_PARAM_ARRAY_SUB(PIECE_VALUES_MAG, 100, 1500, 5, 0, 5, true),
 
-    //TUNABLE_PARAM(MATERIAL_MG, 1500, 4000),
-    //TUNABLE_PARAM(MATERIAL_EG, 100, 1400),
-    
-    TUNABLE_PARAM(HALF_OPEN_FILE, 0, 50),
-    
-    TUNABLE_PARAM(PAWN_PROTECT_ANY, 0, 100),
-    TUNABLE_PARAM(PAWN_PROTECT_PAWN, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_KNIGHT, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_BISHOP, 0, 100),
-    TUNABLE_PARAM(PAWN_THREATEN_ROOK, 0, 200),
-    TUNABLE_PARAM(PAWN_THREATEN_QUEEN, 0, 140),
-    TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_MG, 0, 200, 1, 1, 7),
-    TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_EG, 0, 500, 1, 1, 7),
-    TUNABLE_PARAM_ARRAY_SUB(PASSED_PAWN_FREE_EG, 0, 1000, 1, 1, 7),
-    TUNABLE_PARAM(PASSED_PAWN_KING_ESCORT, 0, 100),
-    
-    TUNABLE_PARAM(KNIGHT_PAWN_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_PAWN_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_BISHOP, 0, 50),
-    TUNABLE_PARAM(KNIGHT_THREATEN_ROOK, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(KNIGHT_THREATEN_KING, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST_HALF_OPEN_FILE, 0, 100),
-    TUNABLE_PARAM(KNIGHT_OUTPOST_OPEN_FILE, 0, 100),
-    
-    TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(BISHOP_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_ROOK, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(BISHOP_THREATEN_KING, 0, 100),
-    
-    TUNABLE_PARAM(ROOK_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(ROOK_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(ROOK_THREATEN_QUEEN, 0, 100),
-    TUNABLE_PARAM(ROOK_THREATEN_KING, 0, 100),
-    TUNABLE_PARAM(ROOK_ON_OPEN_FILE, 0, 200),
-    
-    TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_MG, 0, 100),
-    TUNABLE_PARAM(QUEEN_MOBILITY_BONUS_EG, 0, 100),
-    TUNABLE_PARAM(QUEEN_ON_OPEN_FILE, 0, 200),
-    
-    //TUNABLE_PARAM_ARRAY(KING_DEFENDERS_MG, -100, 100, 2),
-    
-    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_MG, -300, 300, 8, 4, 28),
-    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN_EG, -300, 300, 8, 4, 28),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_MG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT_EG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_MG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP_EG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_MG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK_EG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_MG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN_EG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_MG, -300, 300, 8),
-    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING_EG, -300, 300, 8),
+    TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN, -500, 500, 8, 4, 28, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT, -500, 500, 8, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT, -500, 500, 8, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP, -500, 500, 8, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_ROOK, -500, 500, 8, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_QUEEN, -500, 500, 8, true),
+    TUNABLE_PARAM_ARRAY(INIT_TABLE_KING, -500, 500, 8, true),
 };
 
 static std::vector<int> val_cur, val_old, val_a, val_b;
@@ -162,8 +112,19 @@ void set_vals(std::vector<int> const& v)
 {
     int i = 0;
     for(auto const& tp : params)
+    {
         for(int m = tp.ai; m < tp.bi; ++m)
-            tp.p[m] = v[i++];
+        {
+            if(tp.phased)
+            {
+                int16_t vm = (int16_t)v[i++];
+                int16_t ve = (int16_t)v[i++];
+                tp.p[m] = ch::SC(vm, ve);
+            }
+            else
+                tp.p[m] = v[i++];
+        }
+    }
 }
 
 #ifdef _MSC_VER
@@ -266,22 +227,47 @@ void write_params(std::vector<int> const& vs)
             fprintf(f, "CH_PARAM(%s, ", tp.s);
         for(int i = 0; i < tp.n; ++i)
         {
-            int v = 0;
-            if(i >= tp.ai && i < tp.bi)
-                v = vs[n++];
-            else
-                v = tp.p[i];
-            if(tp.n == 1)
-                fprintf(f, "%d)\n", v);
+            if(tp.phased)
+            {
+                int vm = 0, ve = 0;
+                if(i >= tp.ai && i < tp.bi)
+                {
+                    vm = vs[n++];
+                    ve = vs[n++];
+                }
+                else
+                {
+                    vm = ch::SC_MG(tp.p[i]);
+                    ve = ch::SC_EG(tp.p[i]);
+                }
+                if(tp.n == 1)
+                    fprintf(f, "SC(%d, %d))\n", vm, ve);
+                else
+                {
+                    if(i % (tp.n / tp.nr) == 0)
+                        fprintf(f, "\n    ");
+                    fprintf(f, "SC(%4d, %4d), ", vm, ve);
+                }
+            }
             else
             {
-                if(i % (tp.n / tp.nr) == 0)
-                    fprintf(f, "\n    ");
-                fprintf(f, "%4d, ", v);
+                int v = 0;
+                if(i >= tp.ai && i < tp.bi)
+                    v = vs[n++];
+                else
+                    v = tp.p[i];
+                if(tp.n == 1)
+                    fprintf(f, "%d)\n", v);
+                else
+                {
+                    if(i % (tp.n / tp.nr) == 0)
+                        fprintf(f, "\n    ");
+                    fprintf(f, "%4d, ", v);
+                }
             }
         }
         if(tp.n > 1)
-            fprintf(f, "    )\n");
+            fprintf(f, " )\n");
     }
     fclose(f);
 }
@@ -338,12 +324,23 @@ int CDECL main()
     num_params = 0;
     for(auto const& tp : params)
     {
-        num_params += (tp.bi - tp.ai);
+        if(tp.phased)
+            num_params += (tp.bi - tp.ai) * 2;
+        else
+            num_params += (tp.bi - tp.ai);
         for(int i = tp.ai; i < tp.bi; ++i)
         {
-            val_cur.push_back(tp.p[i]);
             val_a.push_back(tp.a);
             val_b.push_back(tp.b);
+            if(tp.phased)
+            {
+                val_a.push_back(tp.a);
+                val_b.push_back(tp.b);
+                val_cur.push_back(ch::SC_MG(tp.p[i]));
+                val_cur.push_back(ch::SC_EG(tp.p[i]));
+            }
+            else
+                val_cur.push_back(tp.p[i]);
             {
                 std::string s = tp.s;
                 if(tp.n > 1)
@@ -352,7 +349,13 @@ int CDECL main()
                     s += std::to_string(i);
                     s += ']';
                 }
-                val_name.push_back(s);
+                if(tp.phased)
+                {
+                    val_name.push_back(s + " (MG)");
+                    val_name.push_back(s + " (EG)");
+                }
+                else
+                    val_name.push_back(s);
             }
         }
     }

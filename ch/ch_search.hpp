@@ -165,37 +165,9 @@ template<acceleration accel> static int quiesce(color c,
 
     move hash_move = NULL_MOVE;
     int stand_pat;
-
-//#if CH_ENABLE_HASH
-//    // transposition table lookup
-//    {
-//        hash_info i;
-//        if(d.tt->get(d.p.hash(), i) && i.depth >= depth)
-//        {
-//            int v = i.value;
-//            if(v >= MATE_SCORE - 256)
-//                v -= height;
-//            if(v <= MATED_SCORE + 256)
-//                v += height;
-//            if(i.flag == hash_info::EXACT)
-//                return v;
-//            else if(i.flag == hash_info::LOWER)
-//                alpha = std::max<int>(alpha, v);
-//            else if(i.flag == hash_info::UPPER)
-//                beta = std::min<int>(beta, v);
-//            if(alpha >= beta)
-//                return v;
-//            hash_move = i.get_best();
-//        }
-//    }
-//#endif
-
     {
         evaluator<accel> e;
-        stand_pat = e.evaluate_first(p, c);
-        if(stand_pat >= beta + 100)
-            return beta;
-        stand_pat = e.evaluate_second(p, c);
+        stand_pat = e.evaluate(p, c);
     }
 
     if(stand_pat >= beta)
@@ -212,7 +184,8 @@ template<acceleration accel> static int quiesce(color c,
     alpha = std::max(alpha, stand_pat);
 
     bool const endgame = (
-        p.stack().piece_vals[WHITE] + p.stack().piece_vals[BLACK] < 1200);
+        p.stack().piece_vals[WHITE] + p.stack().piece_vals[BLACK] <
+        position::ST_PIECE_VALUES[PAWN] * 12);
     for(int n = 0; n < mvs.size(); ++n)
     {
         move& mv = mvs[n];
@@ -227,7 +200,8 @@ template<acceleration accel> static int quiesce(color c,
         if(
             !endgame &&
             !mv.is_promotion() &&
-            stand_pat + PIECE_VALUES[p.pieces[mv.to()]] + 200 < alpha
+            stand_pat + PIECE_VALUES_ESTIMATE[p.pieces[mv.to()]] +
+            PIECE_VALUES_ESTIMATE[PAWN] < alpha
             )
         {
             std::swap(mv, mvs[mvs.size() - 1]);
@@ -383,11 +357,7 @@ template<acceleration accel> static int negamax(color c,
     int static_eval;
     {
         evaluator<accel> e;
-        static_eval = e.evaluate_first(d.p, c);
-
-        // TODO: prune here?
-
-        static_eval = e.evaluate_second(d.p, c);
+        static_eval = e.evaluate(d.p, c);
     }
 
     if(height >= MAX_VARIATION)

@@ -28,14 +28,19 @@ struct position
 
     int age;
 
+    static constexpr uint16_t ST_PIECE_VALUES[13] =
+    {
+        10, 10, 30, 30, 32, 32, 50, 50, 90, 90, 0, 0, 0,
+    };
+
     static constexpr int const STACK_SIZE = 256;
     struct CH_ALIGN(16) stack_node
     {
         uint64_t hash;
         uint32_t UNUSED1;
         move prev_move;
-        int16_t piece_vals[2]; // white and black
-        int16_t piece_sq[2]; // middle and end game
+        int32_t piece_sq;
+        uint16_t piece_vals[2]; // white and black
         uint16_t ply_irreversible;
         uint16_t UNUSED2;
         uint8_t cap_piece;
@@ -88,29 +93,26 @@ struct position
 
     CH_FORCEINLINE void update_piece_sq(int pc, int from, int to)
     {
-        auto* v = stack().piece_sq;
-        v[0] -= piece_tables[0][pc][from];
-        v[0] += piece_tables[0][pc][to];
-        v[1] -= piece_tables[1][pc][from];
-        v[1] += piece_tables[1][pc][to];
+        auto& v = stack().piece_sq;
+        v -= piece_tables[pc][from];
+        v += piece_tables[pc][to];
     }
 
     CH_FORCEINLINE void update_piece_sq_cap(int cap, int from)
     {
-        auto* v = stack().piece_sq;
-        v[0] -= piece_tables[0][cap][from];
-        v[1] -= piece_tables[1][cap][from];
+        auto& v = stack().piece_sq;
+        v -= piece_tables[cap][from];
     }
 
     CH_FORCEINLINE int best_case_move_value() const
     {
-        int v = PIECE_VALUES[PAWN];
+        int v = PIECE_VALUES_ESTIMATE[PAWN];
         color ec = opposite(current_turn);
         for(int pc = ec + QUEEN; ec > BLACK + PAWN; pc -= 2)
-            if(bbs[pc]) { v = PIECE_VALUES[pc]; break; }
+            if(bbs[pc]) { v = PIECE_VALUES_ESTIMATE[pc]; break; }
         uint64_t const pro_rank = current_turn == WHITE ? RANK7 : RANK2;
         if(bbs[current_turn + PAWN] & pro_rank)
-            v += PIECE_VALUES[QUEEN] - PIECE_VALUES[PAWN];
+            v += PIECE_VALUES_ESTIMATE[QUEEN] - PIECE_VALUES_ESTIMATE[PAWN];
         return v;
     }
 
@@ -186,7 +188,7 @@ struct position
         int ev = stack().piece_vals[opposite(c)];
         if(mv == 0)
         {
-            if(ev < PIECE_VALUES[ROOK])
+            if(ev < ST_PIECE_VALUES[ROOK])
                 return true;
         }
         return false;
@@ -201,7 +203,7 @@ struct position
     {
         if((bbs[WHITE + PAWN] | bbs[BLACK + PAWN]) != 0)
             return false;
-        if(stack().piece_vals[WHITE] <= PIECE_VALUES[BISHOP] &&
+        if(stack().piece_vals[WHITE] <= ST_PIECE_VALUES[BISHOP] &&
             stack().piece_vals[WHITE] == stack().piece_vals[BLACK])
             return true;
         return
@@ -258,12 +260,13 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     memzero(&pieces[0], int(pieces.size() * sizeof(pieces[0])));
 
     stack_index = 0;
-    stack().cap_piece = EMPTY;
-    stack().prev_move = NULL_MOVE;
-    stack().ply_irreversible = 0;
-    stack().piece_sq[0] = stack().piece_sq[1] = 0;
-    stack().piece_vals[0] = stack().piece_vals[1] = 0;
-    uint64_t& hash = stack().hash;
+    auto& st = stack();
+    st.cap_piece = EMPTY;
+    st.prev_move = NULL_MOVE;
+    st.ply_irreversible = 0;
+    st.piece_sq = 0;
+    st.piece_vals[0] = st.piece_vals[1] = 0;
+    uint64_t& hash = st.hash;
     hash = 0ull;
 
     char c = 1;
@@ -278,10 +281,9 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     bbs[p_] |= m; \
     pieces[i] = p_; \
     hash ^= hashes[p_][i]; \
+    st.piece_vals[(p_) & 1] += ST_PIECE_VALUES[p_]; \
+    st.piece_sq += piece_tables[p_][i]; \
     m <<= 1; ++i; \
-    stack().piece_vals[(p_) & 1] += PIECE_VALUES[p_]; \
-    stack().piece_sq[0] += piece_tables[0][p_][i]; \
-    stack().piece_sq[1] += piece_tables[1][p_][i]; \
     } while(0)
             switch(c)
             {
@@ -340,15 +342,15 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     {
         switch(c)
         {
-        case 'K': stack().castling_rights &= ~CASTLE_WK_MASK; break;
-        case 'Q': stack().castling_rights &= ~CASTLE_WQ_MASK; break;
-        case 'k': stack().castling_rights &= ~CASTLE_BK_MASK; break;
-        case 'q': stack().castling_rights &= ~CASTLE_BQ_MASK; break;
+        case 'K': st.castling_rights &= ~CASTLE_WK_MASK; break;
+        case 'Q': st.castling_rights &= ~CASTLE_WQ_MASK; break;
+        case 'k': st.castling_rights &= ~CASTLE_BK_MASK; break;
+        case 'q': st.castling_rights &= ~CASTLE_BQ_MASK; break;
         default:
             break;
         }
     }
-    hash ^= hash_castling_rights[stack().castling_rights];
+    hash ^= hash_castling_rights[st.castling_rights];
 
     // en passant target square
     {
@@ -374,8 +376,8 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
         }
         if(ep_rank >= 1 && ep_file >= 0)
         {
-            stack().ep_sq = uint8_t((8 - ep_rank) * 8 + ep_file);
-            hash ^= hash_enp(stack().ep_sq & 7);
+            st.ep_sq = uint8_t((8 - ep_rank) * 8 + ep_file);
+            hash ^= hash_enp(st.ep_sq & 7);
         }
     }
 
@@ -383,11 +385,11 @@ CH_OPT_SIZE void position::load_fen(char const* fen)
     ply = 0;
 
     {
-        auto& v = stack().piece_vals;
+        auto& v = st.piece_vals;
         v[0] = v[1] = 0;
         for(int i : { WHITE, BLACK })
             for(int p : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN })
-                v[i] += int16_t(popcnt<ACCEL_UNACCEL>(bbs[i + p]) * PIECE_VALUES[i + p]);
+                v[i] += int16_t(popcnt<ACCEL_UNACCEL>(bbs[i + p]) * ST_PIECE_VALUES[i + p]);
     }
 }
 
@@ -508,9 +510,8 @@ void position::do_move(move const& mv)
             bbs[pieces[sq]] ^= (1ull << sq);
             pieces[sq] = EMPTY;
             st.hash ^= hashes[st.cap_piece][sq];
-            enemy_vals -= PIECE_VALUES[PAWN];
-            st.piece_sq[0] -= piece_tables[0][st.cap_piece][sq];
-            st.piece_sq[1] -= piece_tables[1][st.cap_piece][sq];
+            enemy_vals -= ST_PIECE_VALUES[PAWN];
+            st.piece_sq -= piece_tables[st.cap_piece][sq];
         }
         else if(mv.is_promotion())
         {
@@ -525,15 +526,12 @@ void position::do_move(move const& mv)
                 hashes[t][b] ^
                 hashes[cap][b]
                 );
-            my_vals += PIECE_VALUES[t] - PIECE_VALUES[PAWN];
-            enemy_vals -= PIECE_VALUES[cap];
+            my_vals += ST_PIECE_VALUES[t] - ST_PIECE_VALUES[PAWN];
+            enemy_vals -= ST_PIECE_VALUES[cap];
 
-            st.piece_sq[0] -= piece_tables[0][p][a];
-            st.piece_sq[0] += piece_tables[0][t][b];
-            st.piece_sq[0] -= piece_tables[0][cap][b];
-            st.piece_sq[1] -= piece_tables[1][p][a];
-            st.piece_sq[1] += piece_tables[1][t][b];
-            st.piece_sq[1] -= piece_tables[1][cap][b];
+            st.piece_sq -= piece_tables[p][a];
+            st.piece_sq += piece_tables[t][b];
+            st.piece_sq -= piece_tables[cap][b];
 
             st.ply_irreversible = uint16_t(ply);
             return;
@@ -545,7 +543,7 @@ void position::do_move(move const& mv)
     pieces[a] = EMPTY;
     pieces[b] = uint8_t(p);
 
-    enemy_vals -= PIECE_VALUES[cap];
+    enemy_vals -= ST_PIECE_VALUES[cap];
     update_piece_sq(p, a, b);
     update_piece_sq_cap(cap, b);
 
