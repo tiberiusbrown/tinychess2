@@ -19,6 +19,12 @@ static constexpr uint64_t const RANK6 = 0x0000000000FF0000ull;
 static constexpr uint64_t const RANK7 = 0x000000000000FF00ull;
 static constexpr uint64_t const RANK8 = 0x00000000000000FFull;
 
+static constexpr uint64_t const OUTPOST_RANKS[2] =
+{
+    RANK4 | RANK5 | RANK6 | RANK7,
+    RANK5 | RANK4 | RANK3 | RANK2,
+};
+
 static constexpr uint64_t const FILEA = (0x0101010101010101ull << 0);
 static constexpr uint64_t const FILEB = (0x0101010101010101ull << 1);
 static constexpr uint64_t const FILEC = (0x0101010101010101ull << 2);
@@ -27,7 +33,28 @@ static constexpr uint64_t const FILEE = (0x0101010101010101ull << 4);
 static constexpr uint64_t const FILEF = (0x0101010101010101ull << 5);
 static constexpr uint64_t const FILEG = (0x0101010101010101ull << 6);
 static constexpr uint64_t const FILEH = (0x0101010101010101ull << 7);
+
 static constexpr uint64_t file_n(int n) { return FILEA << n; }
+
+static constexpr int file_index_of_sq(int sq) { return sq & 0x7; }
+static constexpr uint64_t file_of_sq(int sq) { return file_n(file_index_of_sq(sq)); }
+
+static constexpr uint64_t const ADJACENT_FILES[8] =
+{
+    FILEB,
+    FILEA | FILEC,
+    FILEB | FILED,
+    FILEC | FILEE,
+    FILED | FILEF,
+    FILEE | FILEG,
+    FILEF | FILEH,
+    FILEG,
+};
+
+static constexpr uint64_t adjacent_files_of_sq(int sq)
+{
+    return ADJACENT_FILES[file_index_of_sq(sq)];
+}
 
 static CH_FORCEINLINE constexpr uint64_t shift_n(uint64_t bb)
 {
@@ -60,6 +87,11 @@ static CH_FORCEINLINE constexpr uint64_t shift_sw(uint64_t bb)
 static CH_FORCEINLINE constexpr uint64_t shift_se(uint64_t bb)
 {
     return (bb << 9) & ~FILEA;
+}
+
+static CH_FORCEINLINE constexpr int forward_sq(int sq, color c)
+{
+    return c == WHITE ? sq - 8 : sq + 8;
 }
 
 template<color c>

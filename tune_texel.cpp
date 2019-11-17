@@ -96,7 +96,11 @@ struct tunable_param
 static tunable_param const params[] =
 {
     TUNABLE_PARAM_ARRAY_SUB(PIECE_VALUES_MAG, 100, 1500, 5, 0, 5, true),
-
+    TUNABLE_PARAM(PAWN_ISOLATED, -500, 500, true),
+    TUNABLE_PARAM(PAWN_DOUBLED, -500, 500, true),
+    TUNABLE_PARAM_ARRAY(KNIGHT_OUTPOST, -500, 500, 1, true),
+    TUNABLE_PARAM_ARRAY(KNIGHT_MOBILITY, -500, 500, 2, true),
+    TUNABLE_PARAM_ARRAY(BISHOP_MOBILITY, -500, 500, 4, true),
     TUNABLE_PARAM_ARRAY_SUB(INIT_TABLE_PAWN, -500, 500, 8, 4, 28, true),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_KNIGHT, -500, 500, 8, true),
     TUNABLE_PARAM_ARRAY(INIT_TABLE_BISHOP, -500, 500, 8, true),
@@ -224,6 +228,7 @@ void write_params(std::vector<int> const& vs)
             fprintf(f, "CH_PARAM_ARRAY(%s[%d],", tp.s, tp.n);
         else
             fprintf(f, "CH_PARAM(%s, ", tp.s);
+        int const per_row = ((tp.n + tp.nr - 1) / tp.nr);
         for(int i = 0; i < tp.n; ++i)
         {
             if(tp.phased)
@@ -243,7 +248,7 @@ void write_params(std::vector<int> const& vs)
                     fprintf(f, "SC(%d, %d))\n", vm, ve);
                 else
                 {
-                    if(i % (tp.n / tp.nr) == 0)
+                    if(i % per_row == 0)
                         fprintf(f, "\n    ");
                     fprintf(f, "SC(%4d, %4d), ", vm, ve);
                 }
@@ -259,7 +264,7 @@ void write_params(std::vector<int> const& vs)
                     fprintf(f, "%d)\n", v);
                 else
                 {
-                    if(i % (tp.n / tp.nr) == 0)
+                    if(i % per_row == 0)
                         fprintf(f, "\n    ");
                     fprintf(f, "%4d, ", v);
                 }
