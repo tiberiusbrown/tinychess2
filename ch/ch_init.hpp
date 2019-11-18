@@ -13,6 +13,13 @@ CH_OPT_SIZE static uint8_t get_cheby_dist(int a, int b)
     return uint8_t(std::max(dx, dy));
 }
 
+CH_OPT_SIZE static uint8_t get_manhatten_dist(int a, int b)
+{
+    int dx = abs((a & 7) - (b & 7));
+    int dy = abs((a >> 3) - (b >> 3));
+    return uint8_t(dx + dy);
+}
+
 CH_OPT_SIZE static void init()
 {
     static int8_t const NDI[8] = { -2, -2, 1, -1, 2, 2, -1, 1 };
@@ -28,11 +35,14 @@ CH_OPT_SIZE static void init()
     memzero(&pawn_attacks, int(sizeof(pawn_attacks)));
     memzero(&betweens, int(sizeof(betweens)));
     memzero(&lines, int(sizeof(lines)));
-    memzero(&cheby_dist, int(sizeof(cheby_dist)));
 
     for(int i = 0; i < 64; ++i)
         for(int j = 0; j < 64; ++j)
             cheby_dist[i][j] = get_cheby_dist(i, j);
+
+    for(int i = 0; i < 64; ++i)
+        for(int j = 0; j < 64; ++j)
+            manhatten_dist[i][j] = get_manhatten_dist(i, j);
 
     for(int i = 0; i < 64; ++i)
     {

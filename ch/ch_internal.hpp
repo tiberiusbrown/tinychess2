@@ -313,6 +313,7 @@ extern std::array<std::array<uint64_t, 2>, 64> pawn_attacks;
 extern std::array<std::array<uint64_t, 64>, 64> betweens;
 extern std::array<std::array<uint64_t, 64>, 64> lines;
 extern std::array<std::array<uint8_t, 64>, 64> cheby_dist;
+extern std::array<std::array<uint8_t, 64>, 64> manhatten_dist;
 
 #if CH_ENABLE_SSE
 #if CH_ARCH_64BIT

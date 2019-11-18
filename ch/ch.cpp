@@ -29,6 +29,7 @@ std::array<std::array<uint64_t, 2>, 64> pawn_attacks;
 std::array<std::array<uint64_t, 64>, 64> betweens;
 std::array<std::array<uint64_t, 64>, 64> lines;
 std::array<std::array<uint8_t, 64>, 64> cheby_dist;
+std::array<std::array<uint8_t, 64>, 64> manhatten_dist;
  
 }
 
