@@ -17,6 +17,7 @@ struct evaluator
     uint64_t pawn_attacks[2];
     uint64_t mobility_squares[2];
     uint64_t occ;
+    uint64_t pawns;
 
     CH_FORCEINLINE int eval_pawns(position const& p, color c)
     {
@@ -30,7 +31,7 @@ struct evaluator
 
             uint64_t const pawns_in_adjacent_files = mp & adjacent_files_of_sq(sq);
             uint64_t const enemy_pawn_threats = ep & masks[sq].pawn_attacks[c];
-            uint64_t const enemy_pawn_push_threats = ep & masks[forward_sq(sq, c)].pawn_attacks[c];
+            //uint64_t const enemy_pawn_push_threats = ep & masks[forward_sq(sq, c)].pawn_attacks[c];
 
             // isolated pawn penalty
             if(!pawns_in_adjacent_files && !enemy_pawn_threats)
@@ -64,8 +65,16 @@ struct evaluator
                 x += KNIGHT_OUTPOST[defended * 2 + outside];
             }
 
+            // bonus for knights shielded by a pawn of either color
+            if(shift_forward(c, mask) & pawns)
+                x += KNIGHT_BEHIND_PAWN;
+
             // mobility bonus
-            x += KNIGHT_MOBILITY[popcnt<accel>(attacks & mobility_squares[c])];
+            {
+                int mob = popcnt<accel>(attacks & mobility_squares[c]);
+                mob = clamp(mob, 0, 7);
+                x += KNIGHT_MOBILITY[mob];
+            }
         }
         return x;
     }
@@ -78,9 +87,26 @@ struct evaluator
         {
             int sq = pop_lsb<accel>(t);
             uint64_t const attacks = magic_bishop_attacks(sq, occ);
+            uint64_t const mask = (1ull << sq);
+
+            // bishop outpost bonus
+            if((mask & OUTPOST_RANKS[c]) && !(mask & pawn_attacks[opposite(c)]))
+            {
+                int const outside = (mask & (FILEA | FILEH)) != 0;
+                int const defended = (mask & pawn_attacks[c]) != 0;
+                x += BISHOP_OUTPOST[defended * 2 + outside];
+            }
+
+            // bonus for bishops shielded by a pawn of either color
+            if(shift_forward(c, mask) & pawns)
+                x += BISHOP_BEHIND_PAWN;
 
             // mobility bonus
-            x += BISHOP_MOBILITY[popcnt<accel>(attacks & mobility_squares[c])];
+            {
+                int mob = popcnt<accel>(attacks & mobility_squares[c]);
+                mob = clamp(mob, 1, 11);
+                x += BISHOP_MOBILITY[mob];
+            }
         }
         return x;
     }
@@ -95,7 +121,11 @@ struct evaluator
             uint64_t const attacks = magic_rook_attacks(sq, occ);
 
             // mobility bonus
-            x += ROOK_MOBILITY[popcnt<accel>(attacks & mobility_squares[c])];
+            {
+                int mob = popcnt<accel>(attacks & mobility_squares[c]);
+                mob = clamp(mob, 1, 14);
+                x += ROOK_MOBILITY[mob];
+            }
         }
         return x;
     }
@@ -107,10 +137,16 @@ struct evaluator
         while(t)
         {
             int sq = pop_lsb<accel>(t);
-            uint64_t const attacks = magic_bishop_attacks(sq, occ) | magic_rook_attacks(sq, occ);
+            uint64_t const attacks =
+                magic_bishop_attacks(sq, occ) |
+                magic_rook_attacks(sq, occ);
 
             // mobility bonus
-            x += QUEEN_MOBILITY[popcnt<accel>(attacks & mobility_squares[c])];
+            {
+                int mob = popcnt<accel>(attacks & mobility_squares[c]);
+                mob = clamp(mob, 3, 24);
+                x += QUEEN_MOBILITY[mob];
+            }
         }
         return x;
     }
@@ -136,6 +172,7 @@ struct evaluator
         mobility_squares[WHITE] = ~(pawn_attacks[BLACK] | p.bbs[WHITE + KING]);
         mobility_squares[BLACK] = ~(pawn_attacks[WHITE] | p.bbs[BLACK + KING]);
         occ = p.bb_alls[WHITE] | p.bb_alls[BLACK];
+        pawns = p.bbs[WHITE + PAWN] | p.bbs[BLACK + PAWN];
 
         int x = 0;
         x += p.stack().piece_sq;

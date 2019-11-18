@@ -106,6 +106,10 @@ template<class T> constexpr T const& max(T const& a, T const& b)
 {
     return a < b ? b : a;
 }
+template<class T> constexpr T const& clamp(T const& x, T const& a, T const& b)
+{
+    return min(max(x, a), b);
+}
 template<class T> constexpr T abs(T const& x)
 {
     return x < T(0) ? -x : x;
