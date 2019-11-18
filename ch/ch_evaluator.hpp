@@ -67,7 +67,7 @@ static constexpr int32_t const INIT_TABLE_ZERO[32] =
     0, 0, 0, 0,
 };
 
-int32_t piece_tables[13][64];
+static int32_t piece_tables[13][64];
 
 template<bool flipped>
 static void evaluator_init_table(int32_t dst[64], int32_t const src[32], int32_t pval)
@@ -84,13 +84,17 @@ static void evaluator_init_table(int32_t dst[64], int32_t const src[32], int32_t
     }
 }
 
+static int32_t passed_pawn_files[8];
+
 static void init_evaluator()
 {
 #ifdef CH_TUNABLE
     evaluator_init_piece_values();
 #endif
 
-    // middle game
+    for(int i = 0; i < 4; ++i)
+        passed_pawn_files[i] = passed_pawn_files[7-i] = PAWN_PASSED_FILE[i];
+
     evaluator_init_table<false>(piece_tables[WHITE + PAWN  ], INIT_TABLE_PAWN  , PIECE_VALUES_MAG[0]);
     evaluator_init_table<false>(piece_tables[WHITE + KNIGHT], INIT_TABLE_KNIGHT, PIECE_VALUES_MAG[1]);
     evaluator_init_table<false>(piece_tables[WHITE + BISHOP], INIT_TABLE_BISHOP, PIECE_VALUES_MAG[2]);

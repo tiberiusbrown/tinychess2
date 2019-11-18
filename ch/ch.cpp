@@ -20,8 +20,12 @@
 namespace ch
 {
 
-std::array<precomputed_mask_data, 64> masks;
-std::array<uint8_t, 64 * 8> first_rank_attacks;
+std::array<uint64_t, 64> knight_attacks;
+std::array<uint64_t, 64> king_attacks;
+std::array<uint64_t, 64> rook_pseudo_attacks;
+std::array<uint64_t, 64> bishop_pseudo_attacks;
+std::array<std::array<uint64_t, 2>, 64> pawn_passed_check;
+std::array<std::array<uint64_t, 2>, 64> pawn_attacks;
 std::array<std::array<uint64_t, 64>, 64> betweens;
 std::array<std::array<uint64_t, 64>, 64> lines;
 std::array<std::array<uint8_t, 64>, 64> cheby_dist;

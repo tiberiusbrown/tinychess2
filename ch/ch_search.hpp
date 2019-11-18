@@ -451,6 +451,7 @@ template<acceleration accel> static int negamax(color c,
     }
 
     // null move pruning
+    bool mate_threat = false;
     if(
         CH_ENABLE_NULL_MOVE &&
         height > 0 &&
@@ -478,6 +479,8 @@ template<acceleration accel> static int negamax(color c,
                 value = beta;
             return value;
         }
+        else if(value <= CH_MATED_SCORE + 256)
+            mate_threat = true;
     }
 
     // internal iterative deepening
@@ -511,6 +514,10 @@ template<acceleration accel> static int negamax(color c,
 
     if(in_check)
         ++depth;
+
+    if(mate_threat || mvs.size() <= 2)
+        ++depth;
+
     for(int n = 0;; ++n)
     {
         int stage;

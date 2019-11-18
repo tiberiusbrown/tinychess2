@@ -304,30 +304,14 @@ void print_bbs(uint64_t bbs[], int n);
 inline void print_bb(uint64_t bb) { print_bbs(&bb, 1); }
 inline void print_bb(__m128i bb) { print_bbs((uint64_t*)&bb, 2); }
 
-struct precomputed_mask_data
-{
-    uint64_t knight_attacks;
-    uint64_t king_attacks;
-    uint64_t rook_pseudo_attacks;
-    uint64_t bishop_pseudo_attacks;
-    uint64_t pawn_attacks[2]; // white, black
-
-    // for king defenders
-    uint64_t king_areas[2];
-
-    // for hyperbola quintessence
-    uint64_t singleton;
-    uint64_t vertical;
-    CH_ALIGN(16) uint64_t diag_anti[2];
-};
-extern std::array<precomputed_mask_data, 64> masks;
-
-// for simple rank attacks: indexed by: occupancy (center 6 bits), col
-extern std::array<uint8_t, 64 * 8> first_rank_attacks;
-
+extern std::array<uint64_t, 64> knight_attacks;
+extern std::array<uint64_t, 64> king_attacks;
+extern std::array<uint64_t, 64> rook_pseudo_attacks;
+extern std::array<uint64_t, 64> bishop_pseudo_attacks;
+extern std::array<std::array<uint64_t, 2>, 64> pawn_passed_check;
+extern std::array<std::array<uint64_t, 2>, 64> pawn_attacks;
 extern std::array<std::array<uint64_t, 64>, 64> betweens;
 extern std::array<std::array<uint64_t, 64>, 64> lines;
-
 extern std::array<std::array<uint8_t, 64>, 64> cheby_dist;
 
 #if CH_ENABLE_SSE

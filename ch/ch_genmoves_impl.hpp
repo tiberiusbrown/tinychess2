@@ -206,9 +206,9 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
         attacked_nonking |= slide_attack_e(e, empty_nonking);
         e = p.bbs[enemy_color + KING];
         assert(e != 0);
-        attacked_nonking |= masks[lsb<accel>(e)].king_attacks;
+        attacked_nonking |= king_attacks[lsb<accel>(e)];
         e = p.bbs[enemy_color + KNIGHT];
-        while(e) attacked_nonking |= masks[pop_lsb<accel>(e)].knight_attacks;
+        while(e) attacked_nonking |= knight_attacks[pop_lsb<accel>(e)];
         e = p.bbs[enemy_color + PAWN];
         attacked_nonking |= shift_pawn_attack(enemy_color, e);
         p.attacked_nonking = attacked_nonking;
@@ -218,8 +218,8 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
     {
         // first find enemy pieces that could be pinners
         uint64_t potential_pinners =
-            (masks[king_sq].rook_pseudo_attacks & enemy_orth_sliders) |
-            (masks[king_sq].bishop_pseudo_attacks & enemy_diag_sliders);
+            (rook_pseudo_attacks[king_sq] & enemy_orth_sliders) |
+            (bishop_pseudo_attacks[king_sq] & enemy_diag_sliders);
 
         // see if exactly one piece is between any pinners and our king
         while(potential_pinners)
@@ -235,7 +235,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
 
     // generate legal king moves
     {
-        uint64_t a = masks[king_sq].king_attacks;
+        uint64_t a = king_attacks[king_sq];
         a &= capture & ~attacked_nonking;
         while(a) *m++ = move(king_sq, pop_lsb<accel>(a));
     }
@@ -259,12 +259,12 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
         */
 
         uint64_t slider_threats =
-            (hq_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
-            (hq_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
+            (magic_bishop_attacks(king_sq, all_pieces) & enemy_diag_sliders) |
+            (magic_rook_attacks(king_sq, all_pieces) & enemy_orth_sliders);
         uint64_t knight_pawn_threats =
-            masks[king_sq].knight_attacks & p.bbs[enemy_color + KNIGHT];
+            knight_attacks[king_sq] & p.bbs[enemy_color + KNIGHT];
         knight_pawn_threats |= (
-            masks[king_sq].pawn_attacks[c] &
+            pawn_attacks[king_sq][c] &
             p.bbs[enemy_color + PAWN]);
 
         if(knight_pawn_threats)
@@ -276,10 +276,10 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
                 int i = lsb<accel>(knight_pawn_threats);
                 move mv = move::to(i);
                 uint64_t pcs =
-                    (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-                    (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-                    (hq_rook_attacks(i, all_pieces) & my_orth_sliders);
-                pcs |= (masks[i].pawn_attacks[enemy_color] & my_nonpro_pawns);
+                    (knight_attacks[i] & p.bbs[c + KNIGHT]) |
+                    (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+                    (magic_rook_attacks(i, all_pieces) & my_orth_sliders);
+                pcs |= (pawn_attacks[i][enemy_color] & my_nonpro_pawns);
                 pcs &= ~pin_mask;
                 while(pcs) *m++ = mv + move::from(pop_lsb<accel>(pcs));
 
@@ -301,9 +301,9 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
                 int i = pop_lsb<accel>(ray_and_threat);
                 move mv = move::to(i);
                 uint64_t pcs = (
-                    (masks[i].knight_attacks & p.bbs[c + KNIGHT]) |
-                    (hq_bishop_attacks(i, all_pieces) & my_diag_sliders) |
-                    (hq_rook_attacks(i, all_pieces) & my_orth_sliders)
+                    (knight_attacks[i] & p.bbs[c + KNIGHT]) |
+                    (magic_bishop_attacks(i, all_pieces) & my_diag_sliders) |
+                    (magic_rook_attacks(i, all_pieces) & my_orth_sliders)
                     ) & ~pin_mask;
                 while(pcs) *m++ = mv + move::from(pop_lsb<accel>(pcs));
             }
@@ -360,10 +360,10 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             {
                 int i = lsb<accel>(slider_threats);
                 move mv = move::to(i);
-                uint64_t t = masks[i].pawn_attacks[enemy_color] &
+                uint64_t t = pawn_attacks[i][enemy_color] &
                     non_pinned_pawns & my_nonpro_pawns;
                 while(t) *m++ = mv + move::from(pop_lsb<accel>(t));
-                t = masks[i].pawn_attacks[enemy_color] &
+                t = pawn_attacks[i][enemy_color] &
                     non_pinned_pawns & my_pro_pawns;
                 while(t) m = add_pawn_promotions(c, m, mv + move::from(pop_lsb<accel>(t)));
             }
@@ -442,8 +442,8 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             }
 
             // captures (can promote)
-            if(c == WHITE) pf = masks[sq].pawn_attacks[WHITE];
-            else pf = masks[sq].pawn_attacks[BLACK];
+            if(c == WHITE) pf = pawn_attacks[sq][WHITE];
+            else pf = pawn_attacks[sq][BLACK];
             pf &= enemy_all & ray;
             // at most one capture can be generated for a pinned pawn
             if(pf)
@@ -474,7 +474,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
         while(knights)
         {
             int i = pop_lsb<accel>(knights);
-            uint64_t a = masks[i].knight_attacks & capture;
+            uint64_t a = knight_attacks[i] & capture;
             move mv = move::from(i);
             while(a)
                 *m++ = (mv + move::to(pop_lsb<accel>(a)));
@@ -490,7 +490,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             int i = pop_lsb<accel>(pcs);
             move mv = move::from(i);
             bb_from ^= pcs;
-            uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+            uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
             a &= lines[king_sq][i];
             while(a) *m++ = (mv + move::to(pop_lsb<accel>(a)));
         }
@@ -505,7 +505,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             int i = pop_lsb<accel>(pcs);
             move mv = move::from(i);
             bb_from ^= pcs;
-            uint64_t a = hq_bishop_attacks(i, all_pieces) & capture;
+            uint64_t a = magic_bishop_attacks(i, all_pieces) & capture;
             while(a) *m++ = (mv + move::to(pop_lsb<accel>(a)));
         }
     }
@@ -519,7 +519,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             int i = pop_lsb<accel>(pcs);
             move mv = move::from(i);
             bb_from ^= pcs;
-            uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+            uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
             a &= lines[king_sq][i];
             while(a) *m++ = (mv + move::to(pop_lsb<accel>(a)));
         }
@@ -534,7 +534,7 @@ int move_generator<accel, quiescence>::generate(color c, move* mvs, position& p)
             int i = pop_lsb<accel>(pcs);
             move mv = move::from(i);
             bb_from ^= pcs;
-            uint64_t a = hq_rook_attacks(i, all_pieces) & capture;
+            uint64_t a = magic_rook_attacks(i, all_pieces) & capture;
             while(a) *m++ = (mv + move::to(pop_lsb<accel>(a)));
         }
     }

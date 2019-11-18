@@ -27,12 +27,11 @@ static CH_FORCEINLINE uint64_t see_least_valuable_attacker(
     position& p, uint64_t occ, color c, int sq, int& pc)
 {
     uint64_t a;
-    auto const& d = masks[sq];
 
-    a = d.pawn_attacks[opposite(c)] & p.bbs[c + PAWN] & occ;
+    a = pawn_attacks[sq][opposite(c)] & p.bbs[c + PAWN] & occ;
     CH_CHECK_SEE_A(PAWN);
 
-    a = d.knight_attacks & p.bbs[c + KNIGHT] & occ;
+    a = knight_attacks[sq] & p.bbs[c + KNIGHT] & occ;
     CH_CHECK_SEE_A(KNIGHT);
 
     uint64_t bishop_attacks = magic_bishop_attacks(sq, occ) & occ;
@@ -47,7 +46,7 @@ static CH_FORCEINLINE uint64_t see_least_valuable_attacker(
     a = queen_attacks & p.bbs[c + QUEEN];
     CH_CHECK_SEE_A(QUEEN);
 
-    a = d.king_attacks & p.bbs[c + KING] & occ;
+    a = king_attacks[sq] & p.bbs[c + KING] & occ;
     if(a)
     {
         pc = KING;

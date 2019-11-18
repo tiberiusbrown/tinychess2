@@ -51,9 +51,9 @@ CH_OPT_SIZE static void init_magic()
 
     for(int i = 0; i < 64; ++i)
     {
-        magic_bishop_rays[i] = masks[i].bishop_pseudo_attacks &
+        magic_bishop_rays[i] = bishop_pseudo_attacks[i] &
             ~(RANK1 | RANK8 | FILEA | FILEH);
-        uint64_t rm = masks[i].rook_pseudo_attacks;
+        uint64_t rm = rook_pseudo_attacks[i];
         if(i / 8 != 0) rm &= ~RANK8;
         if(i / 8 != 7) rm &= ~RANK1;
         if(i % 8 != 0) rm &= ~FILEA;

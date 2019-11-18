@@ -275,35 +275,4 @@ static CH_FORCEINLINE uint64_t bswap(uint64_t x)
 #endif
 }
 
-// hyperbola quintessence
-static CH_FORCEINLINE uint64_t hq_attacks(int sq, uint64_t occ, uint64_t mask)
-{
-    uint64_t forward = occ & mask;
-    uint64_t reverse = bswap(forward);
-    forward -= masks[sq].singleton;
-    reverse -= masks[sq ^ 0x38].singleton;
-    forward ^= bswap(reverse);
-    return forward & mask;
-}
-static CH_FORCEINLINE uint64_t hq_bishop_attacks(int sq, uint64_t occ)
-{
-    return
-        hq_attacks(sq, occ, masks[sq].diag_anti[0]) |
-        hq_attacks(sq, occ, masks[sq].diag_anti[1]);
-}
-static CH_FORCEINLINE uint64_t rank_attacks_simple(int sq, uint64_t occ)
-{
-    int col = sq & 7;
-    int row = sq & 0x38; // row times 8
-    size_t mask = size_t(occ >> row) & 0x7E; // move occupancy to LSByte and mask 01111110
-    uint64_t a = first_rank_attacks[mask * 4 + col];
-    return a << row;
-}
-static CH_FORCEINLINE uint64_t hq_rook_attacks(int sq, uint64_t occ)
-{
-    return
-        hq_attacks(sq, occ, masks[sq].vertical) |
-        rank_attacks_simple(sq, occ);
-}
-
 }

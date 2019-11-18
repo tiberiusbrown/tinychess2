@@ -159,12 +159,12 @@ struct position
         switch(pieces[mv.from()])
         {
         case WHITE + PAWN:
-            return (masks[ek].pawn_attacks[BLACK] & d) != 0;
+            return (pawn_attacks[ek][BLACK] & d) != 0;
         case BLACK + PAWN:
-            return (masks[ek].pawn_attacks[WHITE] & d) != 0;
+            return (pawn_attacks[ek][WHITE] & d) != 0;
         case WHITE + KNIGHT:
         case BLACK + KNIGHT:
-            return (masks[ek].knight_attacks & d) != 0;
+            return (knight_attacks[ek] & d) != 0;
         case WHITE + BISHOP:
         case BLACK + BISHOP:
             return (magic_bishop_attacks(ek, occ) & d) != 0;

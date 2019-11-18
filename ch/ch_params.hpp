@@ -90,30 +90,9 @@ CH_PARAM(LMR_C2, 3)
 // EVAL PARAMS
 //
 
-CH_PARAM_ARRAY(KNIGHT_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0),
+CH_PARAM_ARRAY(PAWN_PASSED_FILE[4],
     SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(BISHOP_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(ROOK_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(QUEEN_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(KNIGHT_ENEMY_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0),
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(BISHOP_ENEMY_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(ROOK_ENEMY_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
-CH_PARAM_ARRAY(QUEEN_ENEMY_PAWN_ADJUST[8],
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), 
-    SC(0, 0), SC(0, 0), SC(0, 0), SC(0, 0), )
+CH_PARAM(PAWN_PASSED_PROTECTED, SC(0, 0))
 
 CH_PARAM_ARRAY(PIECE_VALUES_MAG[5],
     SC( 100,  129), 
