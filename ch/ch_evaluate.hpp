@@ -18,6 +18,7 @@ struct evaluator
     uint64_t mobility_squares[2];
     uint64_t occ;
     uint64_t pawns;
+    int num_pawns[2];
 
     CH_FORCEINLINE int eval_pawns(position const& p, color c)
     {
@@ -51,6 +52,9 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + KNIGHT];
         int x = 0;
+        x += (KNIGHT_PAWN_ADJUST[num_pawns[c]] +
+            KNIGHT_ENEMY_PAWN_ADJUST[num_pawns[opposite(c)]]) *
+            popcnt<accel>(t);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -83,6 +87,9 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + BISHOP];
         int x = 0;
+        x += (BISHOP_PAWN_ADJUST[num_pawns[c]] +
+            BISHOP_ENEMY_PAWN_ADJUST[num_pawns[opposite(c)]]) *
+            popcnt<accel>(t);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -115,6 +122,9 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + ROOK];
         int x = 0;
+        x += (ROOK_PAWN_ADJUST[num_pawns[c]] +
+            ROOK_ENEMY_PAWN_ADJUST[num_pawns[opposite(c)]]) *
+            popcnt<accel>(t);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -134,6 +144,9 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + QUEEN];
         int x = 0;
+        x += (QUEEN_PAWN_ADJUST[num_pawns[c]] +
+            QUEEN_ENEMY_PAWN_ADJUST[num_pawns[opposite(c)]]) *
+            popcnt<accel>(t);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -173,6 +186,8 @@ struct evaluator
         mobility_squares[BLACK] = ~(pawn_attacks[WHITE] | p.bbs[BLACK + KING]);
         occ = p.bb_alls[WHITE] | p.bb_alls[BLACK];
         pawns = p.bbs[WHITE + PAWN] | p.bbs[BLACK + PAWN];
+        num_pawns[WHITE] = popcnt<accel>(p.bbs[WHITE + PAWN]);
+        num_pawns[BLACK] = popcnt<accel>(p.bbs[BLACK + PAWN]);
 
         int x = 0;
         x += p.stack().piece_sq;
