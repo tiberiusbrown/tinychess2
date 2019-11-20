@@ -726,6 +726,25 @@ static int aspiration_window(
     return 0;
 }
 
+template<acceleration accel>
+static int MTDF(
+    search_data& d, int depth, int f)
+{
+    int g = f;
+    int lower = MIN_SCORE;
+    int upper = MAX_SCORE;
+    while(lower < upper)
+    {
+        int beta = max(g, lower + 1);
+        g = negamax_root<accel>(d, depth, beta - 1, beta);
+        if(g < beta)
+            upper = g;
+        else
+            lower = g;
+    }
+    return g;
+}
+
 static int get_next_depth(
     search_data const& d, int default_depth)
 {
@@ -760,6 +779,7 @@ static move iterative_deepening(
     {
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
+        //int score = MTDF<accel>(d, depth, prev_score);
         bool force = (score != prev_score || d.best[0] != best);
         prev_score = score;
         d.depth = depth;
