@@ -99,6 +99,11 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + BISHOP];
         int x = 0;
+
+        // bonus for having two bishops of different colors
+        if((t & WHITE_SQUARES) && (t & BLACK_SQUARES))
+            x += BISHOP_BOTH_COLORS;
+
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -126,6 +131,7 @@ struct evaluator
                 x += BISHOP_MOBILITY[mob];
             }
         }
+
         return x;
     }
 
@@ -244,6 +250,8 @@ struct evaluator
 
         x = (SC_MG(x) * (256 - phase) + SC_EG(x) * phase) / 256;
         x = (c == WHITE ? x : -x);
+
+        x += TEMPO_BONUS;
 
         return x;
     }

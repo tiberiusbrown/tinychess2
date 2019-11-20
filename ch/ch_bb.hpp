@@ -34,6 +34,9 @@ static constexpr uint64_t const FILEF = (0x0101010101010101ull << 5);
 static constexpr uint64_t const FILEG = (0x0101010101010101ull << 6);
 static constexpr uint64_t const FILEH = (0x0101010101010101ull << 7);
 
+static constexpr uint64_t const WHITE_SQUARES = 0x5555555555555555ull;
+static constexpr uint64_t const BLACK_SQUARES = ~WHITE_SQUARES;
+
 static constexpr uint64_t file_n(int n) { return FILEA << n; }
 
 static constexpr int file_index_of_sq(int sq) { return sq & 0x7; }

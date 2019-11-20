@@ -95,6 +95,8 @@ struct tunable_param
 
 static tunable_param const params[] =
 {
+    TUNABLE_PARAM(TEMPO_BONUS, -500, 500, false),
+
     TUNABLE_PARAM_ARRAY_SUB(PIECE_VALUES_MAG, 100, 1500, 5, 0, 5, true),
     
     TUNABLE_PARAM(PAWN_ISOLATED, -500, 500, true),
@@ -109,6 +111,7 @@ static tunable_param const params[] =
     
     TUNABLE_PARAM_ARRAY(BISHOP_OUTPOST, -500, 500, 1, true),
     TUNABLE_PARAM(BISHOP_BEHIND_PAWN, -500, 500, true),
+    TUNABLE_PARAM(BISHOP_BOTH_COLORS, -500, 500, true),
     TUNABLE_PARAM_ARRAY_SUB(BISHOP_MOBILITY, -500, 500, 4, 1, 12, true),
     
     TUNABLE_PARAM_ARRAY_SUB(ROOK_MOBILITY  , -500, 500, 4, 1, 15, true),
