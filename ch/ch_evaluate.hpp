@@ -20,6 +20,7 @@ struct evaluator
     uint64_t pawns;
     uint64_t attacked_by[2];
     int king_sq[2];
+    int num_pawns[2];
 
     CH_FORCEINLINE int eval_pawns(position const& p, color c)
     {
@@ -61,10 +62,12 @@ struct evaluator
         return x;
     }
 
-    CH_FORCEINLINE int eval_knights(position const& p, color c)
+    CH_FORCEINLINE int32_t eval_knights(position const& p, color c)
     {
         uint64_t t = p.bbs[c + KNIGHT];
-        int x = 0;
+        int32_t x = 0;
+        int32_t b = KNIGHT_NUM_PAWNS[num_pawns[c]] +
+            KNIGHT_NUM_ENEMY_PAWNS[num_pawns[opposite(c)]];
         while(t)
         {
             int sq = pop_lsb<accel>(t);
@@ -72,6 +75,8 @@ struct evaluator
             uint64_t const mask = (1ull << sq);
 
             attacked_by[c] |= attacks;
+
+            x += b;
 
             // knight outpost bonus
             if((mask & OUTPOST_RANKS[c]) && !(mask & all_pawn_attacks[opposite(c)]))
@@ -87,9 +92,9 @@ struct evaluator
 
             // mobility bonus
             {
-                int mob = popcnt<accel>(attacks & mobility_squares[c]);
-                mob = clamp(mob, 0, 7);
-                x += KNIGHT_MOBILITY[mob];
+                uint64_t m = attacks & mobility_squares[c];
+                x += KNIGHT_MOBILITY[clamp(popcnt<accel>(m), 0, 7)];
+                x += KNIGHT_MOBILITY_MOVE[clamp(popcnt<accel>(m & ~p.bb_alls[c]), 0, 7)];
             }
         }
         return x;
@@ -139,10 +144,11 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + ROOK];
         int x = 0;
+        uint64_t const tocc = occ & ~(p.bbs[c + ROOK] | p.bbs[c + QUEEN]);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
-            uint64_t const attacks = magic_rook_attacks(sq, occ);
+            uint64_t const attacks = magic_rook_attacks(sq, tocc);
 
             attacked_by[c] |= attacks;
 
@@ -160,12 +166,13 @@ struct evaluator
     {
         uint64_t t = p.bbs[c + QUEEN];
         int x = 0;
+        uint64_t const tocc = occ & ~(p.bbs[c + BISHOP] | p.bbs[c + QUEEN]);
         while(t)
         {
             int sq = pop_lsb<accel>(t);
             uint64_t const attacks =
-                magic_bishop_attacks(sq, occ) |
-                magic_rook_attacks(sq, occ);
+                magic_bishop_attacks(sq, tocc) |
+                magic_rook_attacks(sq, tocc);
 
             attacked_by[c] |= attacks;
 
@@ -203,9 +210,25 @@ struct evaluator
     {
         (void)p;
         int x = 0;
-        uint64_t m = king_attacks[king_sq[c]];
-        m &= ~attacked_by[opposite(c)];
-        x += KING_SAFETY_MOVES[popcnt<accel>(m)];
+        int k = king_sq[c];
+        {
+            uint64_t m = king_attacks[k];
+            m &= ~attacked_by[opposite(c)];
+            x += KING_SAFETY_MOVES[popcnt<accel>(m)];
+        }
+        {
+            uint64_t m = file_of_sq(k);
+            uint64_t mp = p.bbs[c + PAWN];
+            if(!(m & pawns))
+                x += KING_ON_OPEN_FILE;
+            else if(!(m & mp))
+                x += KING_ON_HALF_OPEN_FILE;
+            m = shift_w(m) | shift_e(m);
+            if(!(m & pawns))
+                x += KING_NEAR_OPEN_FILE;
+            else if(!(m & mp))
+                x += KING_NEAR_HALF_OPEN_FILE;
+        }
         return x;
     }
 
@@ -235,6 +258,8 @@ struct evaluator
         attacked_by[BLACK] = all_pawn_attacks[BLACK];
         king_sq[WHITE] = lsb<accel>(p.bbs[WHITE + KING]);
         king_sq[BLACK] = lsb<accel>(p.bbs[BLACK + KING]);
+        num_pawns[WHITE] = popcnt<accel>(p.bbs[WHITE + PAWN]);
+        num_pawns[BLACK] = popcnt<accel>(p.bbs[BLACK + PAWN]);
 
         int x = 0;
         x += p.stack().piece_sq;
