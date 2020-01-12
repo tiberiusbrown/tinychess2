@@ -768,6 +768,7 @@ template<acceleration accel>
 static move iterative_deepening(
     search_data& d, position const& p)
 {
+    uint64_t prev_nodes = 0;
     move best = NULL_MOVE;
     int depth = 1;
     int prev_score;
@@ -780,7 +781,10 @@ static move iterative_deepening(
         d.seldepth = 0;
         int score = aspiration_window<accel>(d, depth, prev_score);
         //int score = MTDF<accel>(d, depth, prev_score);
-        bool force = (score != prev_score || d.best[0] != best);
+        bool force = depth < 5 || (
+            (score != prev_score || d.best[0] != best) &&
+            (d.nodes > prev_nodes + 1000));
+        prev_nodes = d.nodes;
         prev_score = score;
         d.depth = depth;
         d.score = prev_score;
