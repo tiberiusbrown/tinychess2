@@ -664,7 +664,7 @@ template<acceleration accel> static int negamax(color c,
 
         d.tt->put(d.p.hash(), i);
     }
-    if(!d.stop)
+    if(height == 0 || !d.stop)
         d.best[height] = best_move;
 #endif
 
@@ -788,7 +788,7 @@ static move iterative_deepening(
         prev_score = score;
         d.depth = depth;
         d.score = prev_score;
-        if(!d.stop) best = d.best[0];
+        if(!best || !d.stop) best = d.best[0];
         if(d.any_limit_reached()) break;
         if(d.data_index == 0) send_info<accel>(d, force);
         depth = get_next_depth(d, depth + 1);
